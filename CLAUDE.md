@@ -22,14 +22,19 @@ riferimento Restore-internal nel codice o nei doc.
 
 ## Stato
 
-**Design phase**. Nessuno scaffolding tecnico ancora. La visione,
-decisioni prese e decisioni residue sono in [`PLAN.md`](PLAN.md).
+**Design phase + dogfooding interno**. Nessuno scaffolding tecnico
+ancora. La visione, decisioni prese e decisioni residue sono in
+[`PLAN.md`](PLAN.md).
 
-Sequencing: il lavoro vero parte **dopo** che `pb-orca-mcp` è pubblicato
-su PyPI (currently `v0.1.0`, target dipendenza `pb-orca-mcp>=0.1.0`).
+**Sequencing aggiornato (2026-05-14 sera)**: il lavoro su `pb-ai-code`
+può partire quando Carlo vuole, **durante** la fase di dogfooding
+interno di `pb-orca-mcp`. Entrambi i repo restano privati finché
+l'uso reale su workspace Magware non conferma stabilità. La
+dipendenza da `pb-orca-mcp` si soddisfa con **editable install**
+locale (`pip install -e ../pb-orca-mcp`), non con PyPI. Quando si
+deciderà di andare pubblici, si passa a versionato.
 
-Vedi [`PLAN.md`](PLAN.md) → "Sequencing" per i 5 TODO che precedono
-l'attivazione di questo repo.
+Vedi [`PLAN.md`](PLAN.md) → "Sequencing" per il quadro completo.
 
 ## Stack & convenzioni (previsti)
 
@@ -38,7 +43,9 @@ Linee guida sintetiche per coerenza con `pb-orca-mcp`:
 
 - Se ci sarà codice Python: Python 3.10+, `from __future__ import annotations`,
   type hints, `mypy --strict`, `ruff` line-length 100, src-layout,
-  `hatchling`.
+  `hatchling`. Dipendenza `pb-orca-mcp` da `pyproject.toml` punta in
+  editable install al sibling locale durante la fase corrente; sarà
+  riportata a `pb-orca-mcp>=0.1.0` quando si pubblica.
 - Skill in `.claude/skills/<name>/SKILL.md` (formato Claude Code standard).
 - Slash command in `.claude/commands/<name>.md`.
 - Docs Appeon mirrorate sotto `docs/appeon/` (struttura TBD,

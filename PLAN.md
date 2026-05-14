@@ -59,9 +59,13 @@ PowerBuilder project:
 
 - **Required dependency**: `pb-ai-code` does not duplicate any ORCA
   primitive. Every action on a `.pbl` goes through `pb-orca-mcp` tools.
-- **Versioning**: `pb-ai-code` depends on a **PyPI-published**
-  `pb-orca-mcp>=0.1.0` (not an editable install). This avoids
-  unobserved drift while the MCP layer keeps evolving.
+- **Versioning**: during the current **internal dogfooding phase**
+  (both repos private), `pb-ai-code` depends on an **editable install**
+  of the local sibling — `pip install -e ../pb-orca-mcp`. When both
+  repos flip to public and `pb-orca-mcp` ships on PyPI, this switches
+  to versioned `pb-orca-mcp>=0.1.0` to avoid drift between releases.
+  The editable mode is acceptable now because both projects are
+  Carlo-only or restore-team-only.
 - **Audience overlap, but distinct scope**: both repos target anyone
   who develops PB. `pb-orca-mcp` is the engine; `pb-ai-code` is the
   workflow + knowledge + orchestration. Either can be adopted
@@ -134,7 +138,7 @@ The repo contains a mix of artifacts:
 | Appeon docs | Hybrid: core pages mirrored, rest via WebFetch | Balances offline friendliness, context cost, and freshness |
 | Test framework | Agnostic via adapters; first adapter pbunit | Audience is broader than Restore; first adapter is the one we have ground truth on |
 | Debugging scope | Four levels: compile-time (already MCP) + failing-test + runtime trace/log parsing + impact analysis | All four are realistic for PB given no DAP exists |
-| Sequencing relative to `pb-orca-mcp` PyPI publish | **Serial — pb-ai-code starts after pb-orca-mcp is on PyPI** | Avoid unobserved drift on the foundation library |
+| Sequencing relative to `pb-orca-mcp` PyPI publish | **Internal dogfooding first** — both repos private; active dev on `pb-ai-code` can start whenever Carlo wants, using editable install of the local sibling. PyPI versioning + public flip when dogfooding confirms stability | Decouples scope readiness from external release pressure |
 
 ## Residual decisions (to settle before active development starts)
 
@@ -167,24 +171,30 @@ The repo contains a mix of artifacts:
 
 ## Sequencing
 
-`pb-ai-code` development **starts only after** `pb-orca-mcp` is
-published to PyPI and stable at a tagged version (currently `v0.1.0`).
+**Current phase — internal dogfooding (both repos private)**:
+`pb-ai-code` development can start whenever Carlo wants. The
+`pb-orca-mcp` foundation (v0.1.0, 107 pytest green, compile loop
+validated via Claude Code) is already usable via editable install. The
+goal is to drive real Restore Magware work through this stack and
+discover the gaps before any public release pressure.
 
-The five `pb-orca-mcp` TODOs that come first (tracked in that repo's
-own docs):
+**`pb-orca-mcp` pre-flight already done** (commit `876c34d`, 2026-05-14):
+PyPI name verified free, recipe export/import asymmetry documented,
+tool count aligned 23→29 with SCC group, Restore-internal references
+scrubbed from public-facing docs, wheel + sdist built locally in
+`dist/`.
 
-1. Verify `pb-orca-mcp` name availability on PyPI.
-2. Fix Recipe 1 in `docs/recipes.md` (export/import asymmetry).
-3. Align tool count from 23 → 29 in `README.md` and `PLAN.md` (SCC
-   group was added after the original count).
-4. Flip the `restoresrl/pb-orca-mcp` GitHub repo from private to public
-   (after a final Restore-internal-references grep).
-5. `python -m build` + `twine upload dist/*`.
+**Public release path (deferred, no deadline)** — when dogfooding has
+confirmed stability:
 
-Once that is done, work on `pb-ai-code` begins by tackling the residual
-decisions above, then scaffolding the Python project (if needed),
-adding the first skill (probably scaffolding-related — it's the
-shortest path to demonstrating the loop), and iterating from there.
+1. Update the "Stato" line in `pb-orca-mcp/CLAUDE.md` (currently
+   reflects dogfooding phase).
+2. `gh repo edit restoresrl/pb-orca-mcp --visibility public --accept-visibility-change-consequences`.
+3. `twine upload "dist/*"` for `pb-orca-mcp`.
+4. Switch `pb-ai-code` dependency from editable install to versioned
+   PyPI: `pip install pb-orca-mcp>=0.1.0`.
+5. Flip `restoresrl/pb-ai-code` to public when its design phase
+   matures into something with usable skills / docs.
 
 ## Out of scope
 
