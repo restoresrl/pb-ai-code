@@ -84,17 +84,41 @@ The repo contains a mix of artifacts:
    - Debugging skills (failing test loop, runtime trace parsing,
      impact analysis)
 
-2. **Appeon documentation, ingested in hybrid mode**:
-   - **Core pages mirrored statically** as Markdown in the repo
-     (priority candidate: PowerScript Language Reference; likely also
-     DataWindow Reference). The agent reads them via plain `Read`/`Grep`.
-   - **Long-tail pages fetched on-demand** via `WebFetch` against
-     `docs.appeon.com`. Skill instructs the agent when to fetch and
-     what to look for.
-   - Hybrid choice trades freshness vs context cost vs offline
-     friendliness. The exact set of mirrored pages is a residual
-     decision (see below); attribution and Appeon's license must be
-     verified before public publication.
+2. **Knowledge base, organized in three layers** (revised
+   2026-05-15; supersedes the earlier "hybrid mirror + WebFetch"
+   plan):
+
+   - **Layer 1 — PowerScript language and runtime API (Appeon docs)**:
+     ingested with [`cli-printing-press`](https://github.com/mvanhorn/cli-printing-press),
+     which scrapes `docs.appeon.com/pb2022` once into a local
+     SQLite+FTS database and emits an MCP server the agent queries
+     via tools like `appeon_search` / `appeon_get_page`. Replaces
+     both the Markdown mirror and the on-demand `WebFetch` of the
+     original design: one-time ingest, token-efficient query, no
+     per-call live download. Recipe and skill live in the repo;
+     the SQLite DB is generated locally (and possibly distributed
+     as a release artifact pending Appeon's license terms).
+
+   - **Layer 2 — `.sr*` source-file format (reverse-engineered)**:
+     a Karpathy-style ["LLM Wiki"](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
+     under `docs/pb-source-format/` — Markdown pages, one per
+     entry type (`.sra/.srw/.sru/.srf/.srd/.srm/.srs/.srq/.srj`)
+     plus an `encoding.md` seed page and a `patterns/` folder for
+     cross-cutting blocks. Pre-populated by a Python tool
+     (`tools/pb-source-analyzer/`) that ingests a real `.sr*` tree
+     privately, anonymizes project-specific identifiers, and emits
+     statistics merged into a dedicated section of each page. The
+     wiki then grows incrementally during real agent work: when
+     the agent encounters a variant the wiki has not documented,
+     it appends a new entry. Skill `pb-src-format` triggers this
+     behavior.
+
+   - **Layer 3 — codebase-specific patterns and conventions
+     (project-private)**: deferred. The vendor-neutral repo cannot
+     mirror a specific codebase. When this layer is added, it
+     will live outside the public repo (per-workspace
+     `.knowledge/`, gitignored) and use semantic RAG or LLM Wiki
+     depending on requirements seen during dogfooding.
 
 3. **Test orchestration — framework-agnostic with adapters**:
    - A common interface "run test suite, return structured results"
@@ -135,18 +159,42 @@ The repo contains a mix of artifacts:
 |---|---|---|
 | Repo location | Public, separate from `pb-orca-mcp` | International audience; no Restore-internal references; clean LICENSE story for Appeon docs mirror |
 | Project name | **`pb-ai-code`** | Self-explanatory ("AI coding assistant for PB"); pairs naturally with `pb-orca-mcp` (engine + experience); agent-agnostic in name (no "claude" in the slug) |
-| Appeon docs | Hybrid: core pages mirrored, rest via WebFetch | Balances offline friendliness, context cost, and freshness |
+| Appeon docs | Hybrid: core pages mirrored, rest via WebFetch | Balances offline friendliness, context cost, and freshness — **superseded 2026-05-15, see below** |
 | Test framework | Agnostic via adapters; first adapter pbunit | Audience is broader than Restore; first adapter is the one we have ground truth on |
 | Debugging scope | Four levels: compile-time (already MCP) + failing-test + runtime trace/log parsing + impact analysis | All four are realistic for PB given no DAP exists |
 | Sequencing relative to `pb-orca-mcp` PyPI publish | **Internal dogfooding first** — both repos private; active dev on `pb-ai-code` can start whenever Carlo wants, using editable install of the local sibling. PyPI versioning + public flip when dogfooding confirms stability | Decouples scope readiness from external release pressure |
 
+### Knowledge architecture revision (2026-05-15)
+
+The "Appeon docs ingested in hybrid mode" decision above is replaced
+by a three-layer knowledge architecture, because a single layer
+conflated three distinct needs:
+
+| Layer | Knowledge | Tech | Public in repo? |
+|---|---|---|---|
+| 1 | PowerScript language + runtime API (docs Appeon) | `cli-printing-press` → SQLite+FTS + MCP server | yes (recipe + skill; DB pending license check) |
+| 2 | `.sr*` source-file format (reverse-engineered) | Karpathy-style LLM Wiki in `docs/pb-source-format/`, pre-populated by `tools/pb-source-analyzer/` | yes |
+| 3 | Codebase-specific patterns / style | LLM Wiki or semantic RAG (TBD) | no — per-workspace, gitignored |
+
+Rationales: Layer 1 → FTS suffices for reference-style queries on
+already-curated docs; cli-printing-press generates the MCP for free.
+Layer 2 → no upstream documentation exists; the wiki has to be built
+ex nihilo and grows incrementally. Layer 3 → vendor-neutral repo
+constraint plus genuine project-specific knowledge, so it lives
+outside.
+
 ## Residual decisions (to settle before active development starts)
 
-1. **Which Appeon pages go into the static mirror** — PowerScript
-   Language Reference is the obvious anchor; possibly DataWindow
-   Reference, Application Techniques, Connecting to Your Database.
-   Plus: Appeon's content license / attribution requirements for a
-   public mirror.
+1. ~~Which Appeon pages go into the static mirror~~ — **closed
+   2026-05-15**: superseded by the layer-1 design. There is no
+   Markdown mirror; `cli-printing-press` ingests the whole
+   relevant subtree of `docs.appeon.com/pb2022` into a local
+   SQLite+FTS DB and exposes search via an MCP server. The
+   recipe (`docs/appeon-cli/recipe.json`) lists exactly which
+   URLs are ingested — start with `powerscript_reference` and
+   expand as gaps surface during dogfooding. The Appeon
+   license / attribution check remains a blocker for
+   *distributing* the generated DB, not for the design.
 2. **Structured logging format for runtime trace** — JSON-lines is
    the leading candidate. The format must be (a) easy to emit from
    PowerScript (no JSON-stringify dependency), (b) easy to parse
@@ -159,11 +207,14 @@ The repo contains a mix of artifacts:
    from day one — produces upfront work without proof it's the right
    shape. Default: pbunit-first, extract the abstraction *from* it
    once it works.
-4. **Distribution model for `pb-ai-code`** — PyPI package
-   (`pip install pb-ai-code`)? Git-clone into `~/.claude/`? Claude
-   Code plugin (when plugins become a stable surface)? Depends on the
-   actual content mix: if it's mostly skills + docs + slash commands
-   with little Python, PyPI is overkill.
+4. **Distribution model for `pb-ai-code`** — **partially settled
+   2026-05-15**: the repo carries Python (`tools/pb-source-analyzer/`,
+   exposed as console script `pb-source-analyzer`), Markdown wiki
+   (`docs/pb-source-format/`), skills (`.claude/skills/`), and a
+   cli-printing-press recipe (`docs/appeon-cli/`). Distribution
+   model still TBD: PyPI is now justified by the Python component
+   but git-clone-into-workspace remains viable for the
+   skill/wiki side. Final call deferred to public-flip time.
 5. **Name availability verification** — check that
    `github.com/restoresrl/pb-ai-code` is free (very likely) and, if
    the distribution model ends up using PyPI, that `pb-ai-code` is

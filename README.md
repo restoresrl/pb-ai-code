@@ -23,9 +23,21 @@ published to PyPI as a stable, versioned dependency (currently
 
 - **Skills** — workflow patterns (scaffolding, idiomatic PowerScript,
   test orchestration, debugging) that the agent follows.
-- **Appeon docs ingested in hybrid mode** — core pages mirrored as
-  Markdown for fast `Grep`/`Read`; long-tail fetched on demand via
-  `WebFetch`.
+- **Layer 1 — Appeon docs via `cli-printing-press`** — the upstream
+  PowerScript reference at `docs.appeon.com` is ingested once into a
+  local SQLite+FTS database that exposes itself as an MCP server.
+  The agent queries it via tools like `appeon_search` instead of
+  re-downloading pages, keeping per-query token cost low. Recipe
+  and skill live in this repo; the generated database is rebuilt
+  locally.
+- **Layer 2 — `.sr*` source-file format wiki** — a Karpathy-style
+  ["LLM Wiki"](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
+  under `docs/pb-source-format/` documenting the textual layout of
+  each PB entry type (`.sra`/`.srw`/`.sru`/`.srf`/`.srd`/`.srm`/
+  `.srs`/`.srq`/`.srj`). Pre-populated by `pb-source-analyzer`
+  (Python tool in `tools/`) from a real `.sr*` corpus, then grows
+  incrementally during agent work — when the agent meets an
+  undocumented variant, it appends an entry.
 - **Test orchestration, framework-agnostic via adapters** — first
   adapter likely pbunit, abstraction extracted from there.
 - **Structured logging pattern for runtime debugging** — PB has no DAP,

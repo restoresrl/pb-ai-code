@@ -1,0 +1,80 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pb-ai-code"
+version = "0.0.1"
+description = "Agentic dev kit for PowerBuilder: skills, knowledge base and orchestration on top of pb-orca-mcp"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Carlo Torrese", email = "carlo.torrese@re-store.it" },
+]
+keywords = ["powerbuilder", "agentic", "claude", "mcp", "pb", "ai", "coding"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "chardet>=5.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+pb-source-analyzer = "pb_source_analyzer.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/restoresrl/pb-ai-code"
+Issues = "https://github.com/restoresrl/pb-ai-code/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tools/pb-source-analyzer/src/pb_source_analyzer"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "tools/pb-source-analyzer",
+    "docs",
+    ".claude/skills",
+    "README.md",
+    "CLAUDE.md",
+    "LICENSE",
+    "PLAN.md",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tools/pb-source-analyzer/tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["tools/pb-source-analyzer/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
+mypy_path = "tools/pb-source-analyzer/src"
