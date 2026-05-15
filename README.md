@@ -23,13 +23,16 @@ published to PyPI as a stable, versioned dependency (currently
 
 - **Skills** — workflow patterns (scaffolding, idiomatic PowerScript,
   test orchestration, debugging) that the agent follows.
-- **Layer 1 — Appeon docs via `cli-printing-press`** — the upstream
-  PowerScript reference at `docs.appeon.com` is ingested once into a
-  local SQLite+FTS database that exposes itself as an MCP server.
-  The agent queries it via tools like `appeon_search` instead of
-  re-downloading pages, keeping per-query token cost low. Recipe
-  and skill live in this repo; the generated database is rebuilt
-  locally.
+- **Layer 1 — Appeon doc index (`tools/pb-appeon-index/`)** —
+  a Python tool that scrapes `docs.appeon.com` once into a local
+  SQLite FTS5 database and exposes it as an MCP server with four
+  tools (`appeon_search`, `appeon_get`, `appeon_list_topics`,
+  `appeon_list_versions`). Multi-version by design — a TOML config
+  lists the PB versions to index, and `pb-appeon-index update` is
+  idempotent and incremental. A typical lookup costs ~400 tokens vs
+  ~3000-10000 for a live `WebFetch`. See
+  [`docs/appeon-index/README.md`](docs/appeon-index/README.md) for
+  setup.
 - **Layer 2 — `.sr*` source-file format wiki** — a Karpathy-style
   ["LLM Wiki"](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
   under `docs/pb-source-format/` documenting the textual layout of

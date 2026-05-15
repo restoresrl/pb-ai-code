@@ -28,6 +28,9 @@ classifiers = [
 ]
 dependencies = [
     "chardet>=5.2",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "mcp>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -36,21 +39,28 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "mypy>=1.10",
+    "types-requests>=2.31",
+    "types-beautifulsoup4>=4.12",
 ]
 
 [project.scripts]
 pb-source-analyzer = "pb_source_analyzer.__main__:main"
+pb-appeon-index = "pb_appeon_index.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/restoresrl/pb-ai-code"
 Issues = "https://github.com/restoresrl/pb-ai-code/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["tools/pb-source-analyzer/src/pb_source_analyzer"]
+packages = [
+    "tools/pb-source-analyzer/src/pb_source_analyzer",
+    "tools/pb-appeon-index/src/pb_appeon_index",
+]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "tools/pb-source-analyzer",
+    "tools/pb-appeon-index",
     "docs",
     ".claude/skills",
     "README.md",
@@ -62,13 +72,19 @@ include = [
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["tools/pb-source-analyzer/tests"]
+testpaths = [
+    "tools/pb-source-analyzer/tests",
+    "tools/pb-appeon-index/tests",
+]
 addopts = "-ra --strict-markers"
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-src = ["tools/pb-source-analyzer/src"]
+src = [
+    "tools/pb-source-analyzer/src",
+    "tools/pb-appeon-index/src",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
@@ -77,4 +93,4 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.10"
 strict = true
 warn_unused_ignores = true
-mypy_path = "tools/pb-source-analyzer/src"
+mypy_path = "tools/pb-source-analyzer/src:tools/pb-appeon-index/src"

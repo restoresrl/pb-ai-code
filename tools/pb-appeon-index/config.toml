@@ -1,0 +1,35 @@
+# pb-appeon-index — Appeon PowerBuilder doc-site ingestion config.
+#
+# One [[versions]] entry per PB version to index. `priority` orders
+# results when a query does not pin a version (lower number = preferred
+# default). Add a new version by appending an entry and rerunning
+# `pb-appeon-index update --version <slug>`.
+#
+# Available slugs on docs.appeon.com as of 2026-05-15:
+#   pb2017, pb2017r2, pb2017r3
+#   pb2019, pb2019r2, pb2019r3
+#   pb2021
+#   pb2022, pb2022r2, pb2022r3
+#   pb2025, pb2025r2 (Beta)
+
+[[versions]]
+slug = "pb2022r3"
+base_url = "https://docs.appeon.com/pb2022r3/"
+sections = ["powerscript_reference"]
+priority = 1
+
+# Uncomment and append further versions to extend coverage.
+#
+# [[versions]]
+# slug = "pb2025"
+# base_url = "https://docs.appeon.com/pb2025/"
+# sections = ["powerscript_reference", "datawindow_reference"]
+# priority = 2
+
+[scraper]
+# Politeness: ms between requests against the same host.
+request_delay_ms = 200
+# Total cap on pages fetched per `update` run (safety net).
+max_pages_per_run = 5000
+# User-Agent string sent to the server.
+user_agent = "pb-appeon-index/0.0.1 (+https://github.com/restoresrl/pb-ai-code)"

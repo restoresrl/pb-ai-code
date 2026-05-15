@@ -36,13 +36,15 @@ Thumbs.db
 .claude/mcp.json
 .claude/settings.local.json
 
-# Layer 1 — cli-printing-press generated artefacts (Appeon docs CLI/MCP)
-# The generated binary and SQLite DB are user-side, not committed.
-docs/appeon-cli/bin/
-docs/appeon-cli/*.db
-docs/appeon-cli/*.sqlite
-docs/appeon-cli/*.sqlite3
-docs/appeon-cli/*.sqlite-journal
+# Layer 1 — Appeon docs index (HTML cache + SQLite FTS5 DB)
+# Mirror artefacts are user-side, not committed. Only the source
+# code (scraper + parser + indexer + MCP server) and the seed
+# config live in the repo.
+.appeon-cache/
+docs/appeon-index/*.db
+docs/appeon-index/*.sqlite
+docs/appeon-index/*.sqlite3
+docs/appeon-index/*.sqlite-journal
 
 # Layer 3 — per-workspace private knowledge (reserved for future codebase-aware
 # layer; lives in the developer's PB workspace, never in this repo).

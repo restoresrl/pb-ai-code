@@ -89,15 +89,21 @@ The repo contains a mix of artifacts:
    plan):
 
    - **Layer 1 — PowerScript language and runtime API (Appeon docs)**:
-     ingested with [`cli-printing-press`](https://github.com/mvanhorn/cli-printing-press),
-     which scrapes `docs.appeon.com/pb2022` once into a local
-     SQLite+FTS database and emits an MCP server the agent queries
-     via tools like `appeon_search` / `appeon_get_page`. Replaces
-     both the Markdown mirror and the on-demand `WebFetch` of the
-     original design: one-time ingest, token-efficient query, no
-     per-call live download. Recipe and skill live in the repo;
-     the SQLite DB is generated locally (and possibly distributed
-     as a release artifact pending Appeon's license terms).
+     a custom Python tool (`tools/pb-appeon-index/`) scrapes
+     `docs.appeon.com` into a local SQLite FTS5 database and serves
+     it via an MCP server exposing `appeon_search`, `appeon_get`,
+     `appeon_list_topics`, `appeon_list_versions`. Multi-version
+     by design — schema has a `version` column, a TOML config
+     enumerates the PB versions to index, and the `update` command
+     is idempotent and incremental (conditional `If-None-Match` /
+     `If-Modified-Since` skips unchanged pages). The earlier
+     attempt with `cli-printing-press` was abandoned 2026-05-15
+     after the POC confirmed it's tuned for REST API docs, not
+     language-reference doc-sites — see
+     [the Appeon index README](docs/appeon-index/README.md)
+     for the replacement design and the
+     [`appeon-query`](.claude/skills/appeon-query/SKILL.md) skill
+     for agent-side usage.
 
    - **Layer 2 — `.sr*` source-file format (reverse-engineered)**:
      a Karpathy-style ["LLM Wiki"](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
@@ -172,7 +178,7 @@ conflated three distinct needs:
 
 | Layer | Knowledge | Tech | Public in repo? |
 |---|---|---|---|
-| 1 | PowerScript language + runtime API (docs Appeon) | `cli-printing-press` → SQLite+FTS + MCP server | yes (recipe + skill; DB pending license check) |
+| 1 | PowerScript language + runtime API (docs Appeon) | custom Python: `tools/pb-appeon-index/` (scrape → SQLite FTS5 → MCP server) | yes (code + config + skill; DB rebuilt locally per dev) |
 | 2 | `.sr*` source-file format (reverse-engineered) | Karpathy-style LLM Wiki in `docs/pb-source-format/`, pre-populated by `tools/pb-source-analyzer/` | yes |
 | 3 | Codebase-specific patterns / style | LLM Wiki or semantic RAG (TBD) | no — per-workspace, gitignored |
 
