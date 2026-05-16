@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "pb-appeon-index": {
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pb_appeon_index", "serve-mcp"]
+    }
+  }
+}

@@ -108,27 +108,31 @@ Inputs and outputs:
 
 ## Wiring up the MCP server
 
-Add this entry to your Claude Code MCP config (typically
-`.claude/mcp.json` in this repo, or the user-level Claude Code
-settings):
+The repo ships a project-level `.mcp.json` at the root, which Claude
+Code picks up automatically when its cwd is inside the project. It
+points to the venv-resident Python so no PATH activation is needed:
 
 ```jsonc
 {
   "mcpServers": {
     "pb-appeon-index": {
-      "command": "pb-appeon-index",
-      "args": ["serve-mcp"],
-      "env": {
-        "PB_APPEON_INDEX_DB": "C:\\Users\\<you>\\projects\\pb-ai-code\\docs\\appeon-index\\index.db"
-      }
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pb_appeon_index", "serve-mcp"]
     }
   }
 }
 ```
 
-Set `PB_APPEON_INDEX_DB` to the absolute path of `index.db` on your
-machine. Without it the server tries `./docs/appeon-index/index.db`
-and `~/.pb-appeon-index/index.db`, falling back to the former.
+Prereq for this form: a Python virtualenv at `.venv/` with
+`pb_appeon_index` installed (`pip install -e ".[dev]"`).
+
+No env var is needed: the server falls back to
+`./docs/appeon-index/index.db` (relative to cwd), and Claude Code
+launches MCP servers with cwd set to the project root. If you keep
+the DB elsewhere, set `PB_APPEON_INDEX_DB` to its absolute path.
+
+User-level Claude Code config works too if you prefer not to commit
+the server entry — the JSON shape is the same.
 
 Once the server is connected, the agent calls `appeon_search` /
 `appeon_get` / `appeon_list_topics` / `appeon_list_versions` as
