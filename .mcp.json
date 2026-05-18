@@ -3,6 +3,10 @@
     "pb-appeon-index": {
       "command": ".venv/Scripts/python.exe",
       "args": ["-m", "pb_appeon_index", "serve-mcp"]
+    },
+    "pb-orca-mcp": {
+      "command": "../pb-orca-mcp/.venv-x86/Scripts/python.exe",
+      "args": ["-m", "pb_orca_mcp"]
     }
   }
 }

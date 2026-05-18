@@ -1,6 +1,6 @@
 ---
 name: menu
-status: stub
+status: seeded
 description: Layout of .srm files (PB Menu entry).
 ---
 
@@ -11,8 +11,48 @@ Typically attached to a window.
 
 ## Canonical form
 
-> Stub. Seed with a two-level menu (one top item, two children, one
-> event handler).
+Minimal valid `.srm` — a menu with no items, validated end-to-end
+against ORCA on PB 22 (compile + import + round-trip export):
+
+```
+$PBExportHeader$m_basic.srm
+forward
+global type m_basic from menu
+end type
+end forward
+
+global type m_basic from menu
+end type
+global m_basic m_basic
+
+on m_basic.create
+call super::create
+end on
+
+on m_basic.destroy
+call super::destroy
+end on
+```
+
+Anatomy:
+
+- **`$PBExportHeader$<name>.srm`** — first text line. Required on
+  disk; ignored by `pb_compile_entry_import`.
+- **`forward … end forward`** — declares the menu type before the
+  body. PB needs this even for a flat single-type file because the
+  body references the type symbol.
+- **`global type <name> from menu` … `end type`** — the body. Item
+  definitions (sub-menu types) go inside this block.
+- **`global <name> <name>`** — the global instance declaration.
+- **`on <name>.create` / `on <name>.destroy`** — constructor /
+  destructor with `call super::create` / `call super::destroy`. They
+  are required even when empty; without them the parent chain breaks.
+
+A menu without items is structurally valid but useless at runtime.
+In real-world menus, item definitions are nested `global type m_<item>
+from menu` blocks inside the body, each with its own
+`event clicked` handler. The corpus auto-stats below give a sense of
+how many items / events typical menus carry.
 
 ## Variants observed
 

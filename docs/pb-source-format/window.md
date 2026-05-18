@@ -1,6 +1,6 @@
 ---
 name: window
-status: stub
+status: seeded
 description: Layout of .srw files (PB Window entry).
 ---
 
@@ -12,8 +12,57 @@ events, functions, and instance state all coexist in the same file.
 
 ## Canonical form
 
-> Stub. To be filled in from `pb-source-analyzer` bootstrap or a
-> hand-curated minimal example (single window, one button, one event).
+Minimal valid `.srw` — a control-less, event-less window, validated
+end-to-end against ORCA on PB 22 (compile + import + round-trip
+export):
+
+```
+$PBExportHeader$w_blank.srw
+forward
+global type w_blank from window
+end type
+end forward
+
+global type w_blank from window
+integer width = 2400
+integer height = 1500
+boolean titlebar = true
+string title = "Blank"
+end type
+global w_blank w_blank
+
+on w_blank.create
+end on
+
+on w_blank.destroy
+end on
+```
+
+Anatomy:
+
+- **`$PBExportHeader$<name>.srw`** — first text line. Required on
+  disk; ignored by `pb_compile_entry_import`.
+- **`forward … end forward`** — declares the window type up front so
+  the body can reference its own symbol.
+- **`global type <name> from <parent>`** — the body. `<parent>` is
+  `window` for a top-level window, or a custom ancestor (`w_base`,
+  `w_modal_base`, …) in typical apps — see the corpus parent-class
+  list below.
+- **Property assignments** inside the body — `integer width`,
+  `integer height`, `boolean titlebar`, `string title`, etc. PB IDE
+  writes these on save; values are in PBUnits (~1/256 of an inch) for
+  geometry, native types for booleans/strings.
+- **`global <name> <name>`** — global instance declaration.
+- **`on <name>.create` / `on <name>.destroy`** — constructor /
+  destructor. May be left empty (the `call super::…` form is also
+  valid and is what userobjects/menus use, but windows do not need
+  it).
+
+Controls (buttons, datawindow controls, etc.) are declared as
+**nested `type` blocks** inside the body, before `end type`. Events
+are `event <name>; … end event` blocks at the body level. Instance
+variables go into a `type variables` block. The corpus auto-stats
+below give the typical block ordering.
 
 ## Variants observed
 

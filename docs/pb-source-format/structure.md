@@ -1,6 +1,6 @@
 ---
 name: structure
-status: stub
+status: seeded
 description: Layout of .srs files (PB Structure entry).
 ---
 
@@ -11,8 +11,33 @@ userobject, no methods. Used as a value type.
 
 ## Canonical form
 
-> Stub. Seed with a flat structure of three fields of different
-> primitive types.
+Minimal valid `.srs`, validated end-to-end against ORCA on PB 22
+(compile + import + round-trip export):
+
+```
+$PBExportHeader$s_point.srs
+global type s_point from structure
+    long x
+    long y
+end type
+```
+
+Anatomy:
+
+- **`$PBExportHeader$<name>.srs`** — first text line. Required on
+  disk; ignored by `pb_compile_entry_import`.
+- **`global type <name> from structure` … `end type`** — declares
+  the structure. The parent is `structure` for a flat record (all
+  corpus observations to date use this); a structure may instead
+  extend another structure to inherit its fields.
+- **Field lines** — `<type> <name>`, one per line, **indented by
+  4 spaces** (ORCA preserves the indent verbatim on round-trip).
+  Supported field types include all PB scalars (`long`, `string`,
+  `decimal`, `date`, …) plus arrays and other structures.
+
+A zero-field structure (just `global type … end type` with no fields
+in between) compiles but is degenerate; the minimal *useful* form
+has at least one field.
 
 ## Variants observed
 

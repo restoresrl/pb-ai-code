@@ -1,6 +1,6 @@
 ---
 name: function
-status: stub
+status: seeded
 description: Layout of .srf files (PB global function entry).
 ---
 
@@ -12,8 +12,40 @@ convention).
 
 ## Canonical form
 
-> Stub. Seed with: one global function taking two typed parameters
-> and returning a value.
+Minimal valid `.srf`, validated end-to-end against ORCA on PB 22
+(compile + import + round-trip export):
+
+```
+$PBExportHeader$gf_hello.srf
+global type gf_hello from function_object
+end type
+
+forward prototypes
+global function string gf_hello ()
+end prototypes
+
+global function string gf_hello ();return "hello"
+end function
+```
+
+Anatomy:
+
+- **`$PBExportHeader$<name>.srf`** — first text line. Required on disk
+  so PB IDE can identify the entry on import; ignored when passing the
+  body to `pb_compile_entry_import` (entry name/type are arguments).
+- **`global type <name> from function_object` … `end type`** —
+  declares the global function object. The parent is always
+  `function_object` for a free-standing global function.
+- **`forward prototypes` … `end prototypes`** — declares the function
+  signature. Required even with zero arguments.
+- **`global function <return> <name> (<args>);<body>` … `end function`** —
+  the body. The opening `;` lives on the same line as the signature;
+  `<body>` may continue on subsequent lines. `end function` is on
+  its own line.
+
+Member functions of a userobject / window use the same body syntax but
+live inside a `type <name>.functions` block in the owning object's
+file — they are not `.srf` entries.
 
 ## Variants observed
 

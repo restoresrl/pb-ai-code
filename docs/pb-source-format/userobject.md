@@ -1,6 +1,6 @@
 ---
 name: userobject
-status: stub
+status: seeded
 description: Layout of .sru files (PB User Object entry — visual or non-visual).
 ---
 
@@ -13,9 +13,61 @@ extension serves both flavors; the type is determined by the
 
 ## Canonical form
 
-> Stub. Two minimal forms to seed:
-> 1. Non-visual class extending `nonvisualobject`, with one function.
-> 2. Visual userobject extending one of the visual base types.
+Minimal valid `.sru` for an NVO (non-visual object), validated
+end-to-end against ORCA on PB 22 (compile + import + round-trip
+export):
+
+```
+$PBExportHeader$u_basic.sru
+forward
+global type u_basic from nonvisualobject
+end type
+end forward
+
+global type u_basic from nonvisualobject
+end type
+global u_basic u_basic
+
+on u_basic.create
+call super::create
+TriggerEvent( this, "constructor" )
+end on
+
+on u_basic.destroy
+TriggerEvent( this, "destructor" )
+call super::destroy
+end on
+```
+
+Anatomy:
+
+- **`$PBExportHeader$<name>.sru`** — first text line. Required on
+  disk; ignored by `pb_compile_entry_import`.
+- **`forward … end forward`** — declares the userobject type up front.
+- **`global type <name> from <parent>`** — the body. `<parent>`
+  determines flavor:
+  - `nonvisualobject` — NVO, pure logic, no UI surface.
+  - `userobject` / `customvisual` — generic visual base.
+  - `commandbutton`, `datawindow`, `dragobject`, … — specialized
+    visual ancestors.
+  - a custom `u_<base>` / `n_<base>` — typical in framework-heavy
+    codebases (see parent-class corpus list below).
+- **`global <name> <name>`** — global instance declaration. Present
+  even though userobjects are normally instantiated by name, not used
+  as a global.
+- **`on <name>.create` / `on <name>.destroy`** — constructor /
+  destructor. Both `call super::create` / `call super::destroy` *and*
+  `TriggerEvent( this, "constructor" )` / `…, "destructor"` are
+  required to fire the user-defined events of the same name. The
+  `call super::…` must be **first** in create and **last** in destroy
+  (mirror order so the parent's setup runs before the user's events
+  and the user's destruction events run before the parent tears
+  down).
+
+A visual userobject adds geometry properties to the body block
+(`integer width`, `integer height`, etc.) and may nest control
+declarations. Member functions live in a `type <name>.functions`
+block; instance variables in a `type variables` block.
 
 ## Variants observed
 
