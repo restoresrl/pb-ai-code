@@ -1,6 +1,6 @@
 ---
 name: pb-context-build
-description: Use this when you are about to read, review, or refactor PowerBuilder code in a monolithic legacy workspace and need to assemble a scoped context pack — a budgeted slice of entries (sources + dependency map) instead of dumping whole PBLs into the conversation. Orchestrates `pb-orca-mcp` primitives (`pb_target_info`, `pb_library_directory`, `pb_object_query_hierarchy`, `pb_object_query_reference`, `pb_library_entry_export`). Required pre-step for the `/pb-review` flow. v1 covers incoming references (callers) only — callees via source parsing are out of scope.
+description: Use this when you are about to read, review, or refactor PowerBuilder code in a monolithic legacy workspace and need to assemble a scoped context pack — a budgeted slice of entries (sources + dependency map) instead of dumping whole PBLs into the conversation. Orchestrates `pb-orca-mcp` primitives (`pb_target_info`, `pb_library_directory`, `pb_object_query_hierarchy`, `pb_object_query_reference`, `pb_library_entry_export`). Required pre-step for the `/pb-review` flow. v1.1 covers incoming references (callers) via ORCA and outgoing references (callees) via heuristic source parsing — dynamic calls are flagged but unresolved.
 ---
 
 # Building a scoped context pack for review / refactoring
@@ -48,6 +48,12 @@ This skill never replaces a primitive; it just sequences them.
 | `pb_library_entry_information(lib_path, entry_name, entry_type)` | Metadata for an entry (timestamps, size, base class, comment) | yes |
 | `pb_library_entry_export(lib_path, entry_name, entry_type)` | Full source of an entry as plain text | yes |
 
+ORCA does not expose outgoing references natively. To populate the
+`outgoing_refs` (callees) of each exported entry, this skill runs a
+heuristic source-parsing pass over `pb_library_entry_export` output
+(see "Callee discovery" below). Verification of each candidate uses
+`pb_library_directory` against the configured liblist.
+
 To use the session-bound primitives, the agent must first open a
 session via `pb_session_open`, set the current application via
 `pb_set_current_application`, and configure the library list via
@@ -86,22 +92,30 @@ Default flow:
 
 Input: a `.pbt` (or `.pbw`) path.
 
-Default flow:
+Default flow (fast-path, v1.1):
 
-1. `pb_target_info(path)` → extract `lib_list` and `app_name`.
-2. For each PBL in `lib_list`: `pb_library_directory(lib, "any")` to
-   enumerate entries. Aggregate counts by entry type.
-3. **Do not blindly export everything.** Instead, return a summary
-   like:
-   - "Target `foo.pbt`: app `app_foo`, 12 libraries, 1834 entries
-     total (1240 functions, 312 userobjects, 156 windows, 76
-     datawindows, 30 menus, 20 structures)."
-   - "Largest PBLs by entry count: `mw_core.pbl` (412), `mw_aclw.pbl`
-     (340), …"
-4. Then ask the user (or the calling slash command) for a refinement:
-   "Do you want to review a specific PBL, a specific entry type, or
-   a specific entry?" The refined query becomes a Flavor A or
-   Flavor C invocation.
+1. `pb_target_info(path)` → extract `lib_list` and `app_name`. Cheap,
+   no enumeration.
+2. **Immediately** show the PBL list to the user:
+   - "Target `foo.pbt`: app `app_foo`, 12 libraries: `mw_core.pbl`,
+     `mw_aclw.pbl`, `mw_ppc.pbl`, …"
+   - Ask: "Which PBL or entry name pattern do you want to focus on?"
+3. Only after the user has chosen a sub-scope (a single PBL → Flavor
+   C; a single entry → Flavor A; a name pattern → filtered Flavor
+   C), run `pb_library_directory` on the chosen scope.
+
+**Why fast-path?** On real legacy targets (~6-12 PBLs × 100+ entries
+each), the v1 sweep — running `pb_library_directory` on every PBL —
+costs many round-trips and almost always concludes with "too big,
+refine". Skipping the sweep saves the round-trips and gets the user
+to the same refinement turn one step earlier.
+
+**Opt-in full sweep** (fallback): if the user explicitly asks for a
+complete overview ("give me a count by entry type for the whole
+target"), run the legacy v1 flow: enumerate all PBLs, aggregate
+counts, return a summary like "1834 entries total (1240 functions,
+312 userobjects, …); largest PBLs by entry count: `mw_core.pbl`
+(412), …". Then ask for refinement before any export.
 
 This flavor's job is **orientation**, not export. Exporting at the
 target level is almost always a budget violation.
@@ -121,6 +135,82 @@ Default flow:
 4. If the count is large (> ~100), refuse to export en masse. Return
    a summary and ask for refinement (single entry, or a sub-pattern
    match on entry name).
+
+## Callee discovery (v1.1)
+
+After exporting each entry's source, run a heuristic parsing pass to
+populate the entry's `outgoing_refs` (callees). The MCP does not
+expose outgoing references natively, so this is a best-effort step
+verified against ORCA.
+
+### Patterns the parser recognizes
+
+Run regex passes on the exported source, in this order:
+
+1. **Global function call**: `\bf_[a-z0-9_]+\s*\(` — PB convention,
+   global functions are commonly prefixed `f_`. Refine to the
+   project's actual convention if `pb_library_directory` reveals
+   a different prefix.
+2. **Method call on object reference**: `\b[a-z][a-z0-9_]*\.[a-z_]+\s*\(` —
+   captures `iuo_logger.write(...)`, `lnv_target.flush(...)`, etc.
+   Resolution of the receiver type requires reading declarations
+   (DECLARE/instance variables) higher up in the same source.
+3. **Ancestor / scoped call**: `\bCall\s+\w+::\w+`, `\bSuper::\w+`,
+   `\b\w+::\w+\s*\(` — explicit scoped invocation.
+4. **Event triggers**: `\b(Post|Trigger|Send)Event\b`,
+   `\bPostEvent\s*\(`, `\bTriggerEvent\s*\(` — event names follow
+   the open-paren or a comma after the target.
+5. **Type declarations**: `\b[a-z]+_\w+\s+\w+\s*$` — captures
+   `n_logger inv_log` or `u_dw_grid idw_main` declarations in
+   instance variable blocks. The type name is a callee dependency.
+6. **`Open()` / `OpenWithParm()` of windows**: captures the
+   first arg literal if present.
+
+### Filter step
+
+Discard candidates that are PowerScript keywords (`if`, `then`,
+`return`, `string`, …) or runtime built-ins. Use the
+[`appeon-query`](../appeon-query/SKILL.md) skill to check if an
+identifier matches a documented PowerScript function before treating
+it as a user-defined callee.
+
+### Verification step
+
+For each surviving candidate identifier:
+
+- Try `pb_library_directory` with each plausible `entry_type`
+  (`function`, `userobject`, `window`, `datawindow`, `menu`,
+  `structure`) against each PBL in the configured liblist. If found
+  → add to `outgoing_refs` with `confidence: high` and `kind`
+  resolved.
+- If matched in multiple PBLs (homonyms), record all matches with
+  `confidence: medium` — the agent or user will need to disambiguate.
+- If no match: drop the candidate silently (likely a local variable,
+  a builtin we missed, or a typo in the source).
+
+### Unresolvable patterns (flagged, not resolved)
+
+Mark these explicitly in the output as `confidence: low, kind:
+dynamic`:
+
+- `Dynamic Call`, `Dynamic Function`, `Dynamic Event` invocations.
+- DataWindow expression strings (`SetItem(row, "col", value)` where
+  `"col"` could be anything at runtime).
+- Function name constructed at runtime via string concat:
+  `f_call(name + "_handler")`.
+
+The downstream consumer (`/pb-review`, `pb-apply-plan`) treats
+`confidence: low` edges as warnings to surface to the user during
+topo-sort or impact-check, not as hard dependencies.
+
+### Editability contract
+
+The `outgoing_refs` produced by this pass are **proposals**, not
+truth. The downstream plan-file format (`.pb-review/<...>.md`,
+opzione 2+ YAML front-matter) allows the user to edit the
+`depends_on` field by hand. The user-augmented edges are marked
+`confidence: user-augmented` and override anything the parser
+suggested.
 
 ## Budget mechanics
 
@@ -164,9 +254,18 @@ shape — flexible markdown, not a rigid schema:
 - ...
 - nonvisualobject — framework, not exported (see appeon-query)
 
-**Callers** (depth 1, N total, M exported):
+**Incoming refs (callers)** — via `pb_object_query_reference`,
+depth 1, N total, M exported:
 - caller_1 (lib, ref_type=open) — exported
 - caller_2 (lib, ref_type=simple) — listed, not exported (budget)
+- ...
+
+**Outgoing refs (callees)** — via heuristic source parsing,
+verified against liblist, N total:
+- callee_1 (lib, kind=function, confidence=high)
+- callee_2 (lib, kind=userobject, confidence=high)
+- callee_3 (?, confidence=medium) — homonym in 2 PBLs, disambiguate
+- callee_4 (?, confidence=low, kind=dynamic) — Dynamic Call, flagged
 - ...
 
 **Budget**: N entries exported, ~K tokens of source loaded.
@@ -187,25 +286,26 @@ Pruned: <what was dropped and why>.
 
 The agent that receives the pack is then responsible for the
 downstream work (review, refactor, impact analysis). The pack is
-informational, not executable.
+informational, not executable. The `outgoing_refs` confidence levels
+should be surfaced honestly — they are proposals, not facts.
 
-## v1 limitations (explicit non-goals)
+## v1.1 limitations (explicit non-goals)
 
-- **No outgoing references (callees) via source parsing**.
-  `pb_object_query_reference` only returns incoming references. To
-  find what the target *calls*, the agent would have to parse the
-  exported source. v1 does not do this. If a review needs to follow
-  callees, the agent can read the exported source and note unresolved
-  identifiers, then look them up manually via `pb_library_directory`
-  or `pb_object_query_*`. Add proper callee-tracking only when a
-  real dogfooding session shows it's load-bearing.
+- **Callee discovery is heuristic, not exhaustive**. The parser
+  catches static call patterns (function calls, method calls,
+  ancestor scoped calls, event triggers, type declarations) and
+  verifies each candidate against the liblist via
+  `pb_library_directory`. Dynamic patterns (`Dynamic Call`, DW
+  expressions, runtime-constructed function names) are flagged with
+  `confidence: low` but not resolved. The downstream user can
+  augment `depends_on` manually in the plan-file YAML.
 - **No cross-target review**. If the workspace has multiple `.pbt`
-  files (Magware: 13 targets) and the refactor would span them, v1
+  files (Magware: 13 targets) and the refactor would span them, v1.1
   does one target at a time. Cross-target is a future extension.
 - **No caching of context packs between sessions**. Every invocation
   rebuilds from scratch. Caching is a future optimization if review
   latency becomes painful.
-- **No automatic bulk sweep**. v1 is manual-assist: the user picks
+- **No automatic bulk sweep**. v1.1 is manual-assist: the user picks
   the target; the skill helps the agent understand it. Bulk
   refactoring across many targets is out of scope.
 

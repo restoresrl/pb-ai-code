@@ -45,12 +45,22 @@ if (-not (Test-Path -LiteralPath $target -PathType Container)) {
 }
 
 # --- Whitelist of what gets vendored ---
-# Keep deliberately small. /pb-review only needs context-build (its primitive)
-# + appeon-query (language lookup) + pb-src-format (on-disk format reference).
+# Keep deliberately small. /pb-review needs:
+# - pb-context-build (its primitive for scoped context pack)
+# - pb-apply-plan (Phase B: orchestrates per-fix apply loop, invoked from
+#   /pb-review Step 4 handoff)
+# - appeon-query (language lookup during review)
+# - pb-src-format (on-disk format reference, consulted by pb-apply-plan
+#   when patches touch a variant entry type)
 # pb-scaffold is intentionally NOT vendored: a consumer of code review rarely
 # needs to scaffold new top-level objects.
-$skills = @('pb-context-build', 'appeon-query', 'pb-src-format')
+$skills = @('pb-context-build', 'pb-apply-plan', 'appeon-query', 'pb-src-format')
 $commandFiles = @('pb-review.md')
+
+# Settings file with the pre-approved MCP permissions policy. Snapshotted as
+# the consumer's project-level .claude/settings.json. The consumer's own
+# settings.local.json (gitignored, user-specific) is never touched.
+$settingsFile = 'settings.json'
 
 # --- Source repo metadata ---
 $sha = (& git -C $source rev-parse --short HEAD).Trim()
@@ -69,6 +79,8 @@ Write-Host ""
 
 $skillsTarget = Join-Path $target '.claude\skills'
 $commandsTarget = Join-Path $target '.claude\commands'
+$settingsSrc = Join-Path $source ".claude\$settingsFile"
+$settingsDst = Join-Path $target ".claude\$settingsFile"
 $markerPath = Join-Path $target '.claude\_vendored-from-pb-ai-code.txt'
 
 # --- Plan ---
@@ -89,13 +101,17 @@ foreach ($c in $commandFiles) {
     }
     $plan += [pscustomobject]@{ Op = 'sync command'; Src = $src; Dst = $dst }
 }
+if (-not (Test-Path -LiteralPath $settingsSrc)) {
+    throw "Source settings file missing: $settingsSrc"
+}
+$plan += [pscustomobject]@{ Op = 'sync settings'; Src = $settingsSrc; Dst = $settingsDst }
 
 foreach ($p in $plan) {
     $srcShort = $p.Src.Replace($source, '<src>')
     $dstShort = $p.Dst.Replace($target, '<dst>')
-    Write-Host ("{0,-13} {1} -> {2}" -f $p.Op, $srcShort, $dstShort)
+    Write-Host ("{0,-14} {1} -> {2}" -f $p.Op, $srcShort, $dstShort)
 }
-Write-Host ("{0,-13} <dst>\.claude\_vendored-from-pb-ai-code.txt" -f 'marker')
+Write-Host ("{0,-14} <dst>\.claude\_vendored-from-pb-ai-code.txt" -f 'marker')
 Write-Host ""
 
 if ($DryRun) {
@@ -128,6 +144,13 @@ foreach ($c in $commandFiles) {
     Write-Host "Synced command: $c" -ForegroundColor Green
 }
 
+# Project-level settings.json. Overwrites the consumer's settings.json if
+# present (the snapshot pattern: the consumer's policy is what pb-ai-code
+# declares). The consumer's settings.local.json is never touched — that file
+# is gitignored and user-specific.
+Copy-Item -LiteralPath $settingsSrc -Destination $settingsDst -Force
+Write-Host "Synced settings: $settingsFile" -ForegroundColor Green
+
 # --- Marker file (UTF-8 so other tools / git diff it cleanly) ---
 $markerLines = @(
     "# Skills + slash commands vendored from pb-ai-code (snapshot)",
@@ -148,11 +171,14 @@ foreach ($s in $skills) {
 foreach ($c in $commandFiles) {
     $markerLines += "#   .claude/commands/$c"
 }
+$markerLines += "#   .claude/$settingsFile"
 $markerLines += @(
     "#",
     "# Source of truth: https://github.com/restoresrl/pb-ai-code",
     "# To re-sync: from pb-ai-code, run scripts/sync-skills.ps1 <this-consumer-path>",
-    "# Modifications should be made in pb-ai-code, not here."
+    "# Modifications should be made in pb-ai-code, not here.",
+    "# .claude/settings.local.json (gitignored) is for user-specific overrides",
+    "# and is never touched by the sync script."
 )
 Set-Content -LiteralPath $markerPath -Value ($markerLines -join "`r`n") -Encoding utf8
 Write-Host "Wrote marker:   $markerPath" -ForegroundColor Green
