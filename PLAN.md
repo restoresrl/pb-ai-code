@@ -17,7 +17,57 @@ cross-references.
 orchestration needed to actually *do* agentic PB development — design,
 write, test, and debug — using `pb-orca-mcp` as the foundation tool.
 
+## Re-prioritization 2026-05-19 — refactoring-first
+
+The original 2026-05-14 design framed `pb-ai-code` as a balanced
+four-pillar dev kit: design, coding, testing, debugging. After a week
+of dogfooding (Pillar 1 scaffolding closed, Pillar 2 testing
+brainstorming) the primary use case has been sharpened:
+
+> **`pb-ai-code` is, first and foremost, a code-review assistant for
+> refactoring legacy PowerBuilder codebases.** Greenfield PB development
+> is rare; the realistic audience is people maintaining decades-old
+> monolithic PB applications (Magware-class, PB ports from 1995+) who
+> need to read, understand, refactor, bug-fix, and extend existing
+> code.
+
+Implications for the four pillars:
+
+| Pillar | Status under refactoring-first lens |
+|---|---|
+| 1. Design — *understand existing architecture* | **Primary**. Was secondary in the 2026-05-14 framing. Now the entry point of every workflow. |
+| 1. Design — *scaffold new entries* | **Demoted to on-demand**. Refactoring rarely creates new top-level objects. The 6-entry-type MVP done 2026-05-19 is enough; the 3 residual types (`application`, `query`, `project`) are not blocking. |
+| 1. Design — *idiomatic patterns* | **Promoted, but bottom-up**. The Layer 2 wiki grows from real review sessions, not as an upfront cookbook. |
+| 2. Coding | **Foundation, unchanged**. Edit + propagate + compile-error loop is already covered by `pb-orca-mcp` (`pb-workflow` skill + ORCA primitives). |
+| 3. Testing | **Deferred**. PB testing (both unit and UAT) is structurally hard. The pbunit22 architectural work (SPEC.md, 2026-05-19) remains valid as a future direction but is not driving immediate development. |
+| 4. Debugging — *impact analysis* | **Promoted**. Refactoring without blast-radius analysis is unsafe; `pb_object_query_reference` orchestration becomes a Tier-1 skill. |
+| 4. Debugging — *runtime trace logging* | **Deferred**. Useful for live debugging but not for the static-review primary loop. |
+
+**Three-tier priority for the new direction**:
+
+- **Tier 1** (active development): `pb-context-build` skill +
+  `/pb-review` slash command (report-only v1) + `pb-impact-analysis`
+  skill. These three orchestrate existing ORCA primitives into the
+  refactoring loop.
+- **Tier 2** (grows alongside Tier 1): Layer 2 wiki expansion on
+  real findings; optional `pb-style-guide` skill once the wiki has
+  critical mass.
+- **Tier 3** (on-demand or deferred): scaffolding completion (3
+  residual entry types); Pillar 2 testing; runtime trace logging;
+  upfront pattern cookbook.
+
+The sections below (Vision, Composition, Sequencing) keep the
+original four-pillar conceptual framework as reference, but the
+current direction is what this section spells out. Where the older
+content lists work that is now Tier 3, the deferred status is called
+out inline.
+
 ## Vision: the four pillars of agentic PB development
+
+> **Note**: this section describes the *conceptual framework* of
+> four pillars. The current sequencing and weight of each pillar is
+> set by the [Re-prioritization 2026-05-19](#re-prioritization-2026-05-19--refactoring-first)
+> section above. Read both together.
 
 The goal is to let a coding agent (Claude Code in first instance, but
 agent-agnostic by design) handle the full development loop on a
@@ -72,7 +122,41 @@ PowerBuilder project:
   independently — you can use the MCP alone with your own prompts, or
   use the dev kit if you want the ready-made experience.
 
-## Composition (as designed in the review session 2026-05-14)
+## Composition
+
+### Current focus under refactoring-first (2026-05-19)
+
+Active components driving the next slices of work:
+
+- **`pb-context-build` skill** (new, Tier 1) — orchestrates ORCA
+  primitives (`pb_target_info`, `pb_library_directory`,
+  `pb_object_query_hierarchy`, `pb_object_query_reference`,
+  `pb_library_entry_export`) to assemble a scoped context pack from a
+  monolithic PB workspace, respecting a token / depth budget. v1: only
+  incoming references (callers); callees via source parsing deferred.
+- **`/pb-review` slash command** (new, Tier 1) — two-phase
+  refactoring loop. Phase A: invoke `pb-context-build`, run review,
+  emit structured report (bug-risk, refactoring-opportunities,
+  style-issues). Phase B: confirmed edits applied via `pb-workflow`
+  (sibling) → `pb_compile_entry_import` → `pb_get_last_compile_errors`.
+  v1 = Phase A only (report-only).
+- **`pb-impact-analysis` skill** (new, Tier 1) — pre-flight
+  blast-radius report for any non-trivial refactor, built on
+  `pb_object_query_reference` with `ref_type` (`simple` vs `open`)
+  interpretation.
+- **`pb-scaffold` skill + Layer 2 wiki** (existing, kept) — invariant
+  for now. The wiki grows on-encounter during real review sessions
+  (Tier 2). The 3 residual scaffold entry types are Tier 3, on-demand.
+- **`appeon-query` skill + `pb-appeon-index` MCP** (existing, kept) —
+  the `/pb-review` flow calls into it for syntax / runtime API
+  cross-reference.
+
+### Historical full composition (as designed 2026-05-14)
+
+The list below is the original full-scope composition. Items not in
+the Current focus block above are either covered by what is now in
+Tier 2/3 of the [re-prioritization](#re-prioritization-2026-05-19--refactoring-first)
+section, or are deferred. Kept here as reference.
 
 The repo contains a mix of artifacts:
 
@@ -234,6 +318,25 @@ outside.
 validated via Claude Code) is already usable via editable install. The
 goal is to drive real Restore Magware work through this stack and
 discover the gaps before any public release pressure.
+
+**Next slice (2026-05-19, refactoring-first re-prioritization)**:
+
+1. Write `pb-context-build` skill (`.claude/skills/pb-context-build/SKILL.md`).
+2. Write `/pb-review` slash command, Phase A only — report-only
+   (`.claude/commands/pb-review.md`).
+3. Validate end-to-end on a small target in `magware/mw21r2/` or a
+   customization. Measure context-build cost, signal/noise of
+   findings, scoping efficacy.
+4. Iterate on `pb-context-build` heuristics based on real findings,
+   *not* upfront on hypotheses.
+5. Add `pb-impact-analysis` skill once `/pb-review` has shaped the
+   surface area expectations.
+6. Phase B of `/pb-review` (edit-loop) after v1 is stable on real
+   targets.
+
+Tier 2 work (Layer 2 wiki growth, style-guide skill) follows the
+first slice on-encounter. Tier 3 (testing, runtime trace, scaffold
+completion) remains deferred.
 
 **`pb-orca-mcp` pre-flight already done** (commit `876c34d`, 2026-05-14):
 PyPI name verified free, recipe export/import asymmetry documented,

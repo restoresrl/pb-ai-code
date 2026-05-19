@@ -22,19 +22,31 @@ riferimento Restore-internal nel codice o nei doc.
 
 ## Stato
 
-**Design phase + dogfooding interno**. Nessuno scaffolding tecnico
-ancora. La visione, decisioni prese e decisioni residue sono in
-[`PLAN.md`](PLAN.md).
+**Dogfooding interno + refactoring-first**. Il dev kit ha consolidato
+Pillar 1-scaffolding (skill `pb-scaffold` + 6 pagine Layer 2 seeded,
+pushato 2026-05-19) e ha riprioritizzato il backlog il 2026-05-19 sera
+verso un uso primario di **code-review per refactoring di legacy
+PB** — vedi sezione "Re-prioritization 2026-05-19" di [`PLAN.md`](PLAN.md).
 
-**Sequencing aggiornato (2026-05-14 sera)**: il lavoro su `pb-ai-code`
-può partire quando Carlo vuole, **durante** la fase di dogfooding
-interno di `pb-orca-mcp`. Entrambi i repo restano privati finché
-l'uso reale su workspace Magware non conferma stabilità. La
-dipendenza da `pb-orca-mcp` si soddisfa con **editable install**
-locale (`pip install -e ../pb-orca-mcp`), non con PyPI. Quando si
-deciderà di andare pubblici, si passa a versionato.
+In pratica, il prossimo slice di lavoro è:
 
-Vedi [`PLAN.md`](PLAN.md) → "Sequencing" per il quadro completo.
+1. Skill `pb-context-build` — scoping intelligente del context per
+   workspace PB monolitici.
+2. Slash command `/pb-review` (Phase A, report-only).
+3. Validazione end-to-end su un target Magware piccolo.
+4. Skill `pb-impact-analysis` come pre-flight di refactor.
+
+Testing (Pillar 2) e runtime trace logging restano rimandati. Il
+sequencing originale 2026-05-14 (4 pillar peso bilanciato) è
+sostituito dal modello a 3-tier.
+
+**Dipendenza**: `pb-orca-mcp` è MCP server raggiungibile via
+`.mcp.json` (wiring x86 risolto 2026-05-19 puntando a
+`../pb-orca-mcp/.venv-x86/`). Non importato come libreria Python —
+`pyproject.toml` di pb-ai-code non lo lista come dep.
+
+Vedi [`PLAN.md`](PLAN.md) → "Re-prioritization 2026-05-19" e "Next
+slice" per il quadro completo.
 
 ## Stack & convenzioni (previsti)
 
