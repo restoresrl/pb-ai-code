@@ -264,8 +264,11 @@ confirmed stability:
 - **A new UI / dashboard**: this is a Claude-Code-shaped repo (skills,
   slash commands, docs, occasional Python helpers). It has no UI of
   its own.
-- **A new MCP server**: the only MCP server in play is `pb-orca-mcp`.
-  `pb-ai-code` consumes it.
+- **Generic MCP servers unrelated to PB development**: in-scope MCP
+  servers are limited to the PB-dev stack (`pb-orca-mcp` for ORCA,
+  `pb-appeon-index` for Appeon docs). New MCP servers are built only
+  when they serve a clear PB-dev knowledge or workflow need, not as a
+  general capability sprawl.
 - **PowerBuilder Classic (pre-2019)**: not supported — same boundary
   as `pb-orca-mcp`.
 
