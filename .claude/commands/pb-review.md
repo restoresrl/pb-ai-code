@@ -198,19 +198,42 @@ behavior.
 
 ### Bug-risk findings (highest priority)
 
+Before walking the generic list below, consult the
+[PowerScript antipattern catalog](../../docs/pb-antipatterns/index.md).
+It records concrete PB-specific hazards that recur across legacy
+codebases, with code samples and idiomatic fixes. Match the
+context-pack sources against every entry in the catalog before
+deciding the code is clean — these are the bugs that compile fine
+and bite in production.
+
+Generic patterns to also check (not yet promoted to the catalog,
+or independent of PB-specific idioms):
+
 - Uninitialized variables before read; null reads without `IsNull()`
-  guard; type coercion that silently drops precision.
+  guard; type coercion that silently drops precision. (See
+  [`isnull-on-numeric`](../../docs/pb-antipatterns/isnull-on-numeric.md)
+  for the PB-specific trap.)
 - Dynamic SQL strings concatenated from user input (SQL injection).
 - `Open()` without paired `Close()`; `CREATE` without `DESTROY` for
-  NVOs allocated on the fly.
+  NVOs allocated on the fly. (See
+  [`destroy-on-auto-instance`](../../docs/pb-antipatterns/destroy-on-auto-instance.md)
+  and [`exitprocess-in-destruction`](../../docs/pb-antipatterns/exitprocess-in-destruction.md).)
 - Empty `catch` blocks, or `catch` blocks that swallow without
-  logging.
+  logging. (See
+  [`throw-factory-loses-subtype`](../../docs/pb-antipatterns/throw-factory-loses-subtype.md).)
 - Cursor logic without `CLOSE` on every code path.
 - Hard-coded environment-specific paths or credentials.
 - Numeric loop counters declared `integer` when the upper bound
   could exceed 32767 (use `long`).
 - `MessageBox` left in production code paths (debug residue).
 - Off-by-one in array bounds (PB arrays are 1-based by default).
+- IO calls without checking the sentinel return. (See
+  [`fileopen-unchecked`](../../docs/pb-antipatterns/fileopen-unchecked.md),
+  [`space-before-init`](../../docs/pb-antipatterns/space-before-init.md).)
+
+When you spot a recurring pattern that isn't in the catalog yet,
+note it under "Notes for the wiki" in the report — that's a
+candidate for a new entry under `docs/pb-antipatterns/`.
 
 ### Refactoring opportunities (medium priority)
 
@@ -345,17 +368,40 @@ style | ...), `priority` (high | medium | low), `depends_on` (list
 of `id`), `confidence` (parsed | user-augmented | manual), `status`
 (pending | applied | skipped).
 
-Optional YAML fields: `function`, `lines`, `effort_estimate`,
-`tag`, ...
+Optional YAML fields:
+
+- `function`, `lines` — narrow down the location of the issue.
+- `effort_estimate` — `small` | `medium` | `large`. Signals to
+  `pb-apply-plan` whether to expect a long apply step.
+- `tag` — free-form labels for grouping or filtering.
+- `also_in: [entry_triple, ...]` — when the same fix concept
+  applies to multiple entries (same pattern repeated in N similar
+  NVOs), list the secondary entries here. `pb-apply-plan` will
+  apply the fix to the primary `entry` first, then iterate
+  `also_in` in topological order between themselves. One body of
+  text covers the whole group; the YAML lists the spread.
+- `requires_discussion: true` — set when the fix is not a single
+  pre-decided patch but a **choice between alternatives** that the
+  user must make before any edit. Typically used together with
+  `decision_options:` below. `pb-apply-plan` will pause on this
+  voice and ask the user to pick (or skip), instead of presenting
+  one diff.
+- `decision_options: [{label, summary}, ...]` — when
+  `requires_discussion: true`, the candidate alternatives. Each
+  option is a short label plus one-line summary. The body of the
+  finding can expand each option in detail. The user's pick (a
+  label) becomes the actual fix to apply; `pb-apply-plan` records
+  it back into the voice as `chosen_option: <label>` when the user
+  decides.
 
 Confidence semantics:
 
-- `parsed`: dependencies came from `pb-context-build`'s heuristic
-  callee parser (Step 1).
-- `user-augmented`: dependencies came from the parser **plus**
-  edits the user made by hand.
-- `manual`: dependencies came entirely from the user's edits
-  (parser found none).
+- `parsed`: dependencies came from `pb-context-build`'s ORCA-sourced
+  outgoing refs (`pb_object_query_reference`).
+- `user-augmented`: dependencies came from ORCA **plus** edits the
+  user made by hand.
+- `manual`: dependencies came entirely from the user's edits (ORCA
+  found none, or the user overrode the ORCA result).
 
 ### CHANGELOG.md entry
 

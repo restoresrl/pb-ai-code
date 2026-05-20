@@ -38,6 +38,32 @@ run `/pb-review` first.
   configured target. If they disagree, stop and ask the user to
   reconcile.
 
+### Resume scenario — always re-do the pre-flight
+
+If the plan file already contains voices with `status: applied`,
+this is a **resume** of a previously-started apply loop (likely a
+different Claude Code session). The previous session's ORCA state
+is **not** carried over: the session handle, current application,
+and library list all live in-process and are gone the moment the
+previous Claude Code instance closed.
+
+So even though the plan-file looks "warm", you must rebuild the
+ORCA state from scratch:
+
+1. `pb_session_open` — new session handle.
+2. `pb_set_current_application` — re-bind to the plan's target.
+3. `pb_set_library_list` — re-configure the liblist.
+
+Then proceed to Step 1. The apply loop in Step 4 will automatically
+skip voices already at `status: applied` or `status: skipped` and
+resume on the first `status: pending` in topo-sort order.
+
+If the plan-file's `target` header references a workspace that the
+agent cannot bring up (DLL not found, x86 mismatch, target file
+missing), stop and report the diagnostic. Do **not** alter the
+plan-file's status fields as a workaround — the apply loop is the
+only writer.
+
 ## Step 1 — Parse the plan file
 
 Read the plan-file at the path passed in (or, if no path was
@@ -128,13 +154,52 @@ Wait for an explicit OK. This is the **handoff gate** mentioned in
 
 For each fix in topo-sorted order **whose `status` is `pending`**:
 
+### (a0) Pre-checks on optional YAML fields
+
+Before computing a diff, inspect the fix's YAML for two optional
+fields that change the flow:
+
+- **`requires_discussion: true`** — this fix is not a pre-decided
+  patch but a choice between alternatives. Do NOT generate a diff
+  yet. Read `decision_options:` (list of `{label, summary}` entries)
+  and present them to the user:
+
+  > "fix-08 — uniform `init()` signature across `n_logger` hierarchy
+  > **(requires discussion)**
+  >
+  > Option A — keep two-arg `init(string, n_target)`: ...
+  > Option B — promote to struct `init(s_log_init)`: ...
+  > Option C — overload, ship both: ...
+  >
+  > Quale option vuoi che imposti, o vuoi skippare per ora?"
+
+  Wait for the user's choice. Record it in the YAML as
+  `chosen_option: <label>` (new field, set by `pb-apply-plan`),
+  then proceed to (a) with that option treated as the canonical fix
+  body. If the user skips, go to (c).
+
+- **`also_in: [entry_triple, ...]`** — the same fix concept applies
+  to multiple entries. The primary `entry` is processed first
+  through (a)-(d) as usual, then `pb-apply-plan` iterates the
+  `also_in` entries one by one — each gets its own diff against
+  the on-disk source of that entry, its own confirmation, its own
+  apply. Topo-order the secondary entries among themselves using
+  the same inheritance + call-graph rules. The fix as a whole is
+  marked `applied` only when all members (primary + all `also_in`)
+  succeed; if any is skipped or fails, set
+  `status: partial` and record which members succeeded in a new
+  `applied_in: [...]` field.
+
+If neither field is present, proceed straight to (a).
+
 ### (a) Present the diff
 
 Read the current source of the target entry via
 `pb_library_entry_export` (do not trust the source captured in the
 plan-file's context pack — the file on disk is the truth). Compute
 a unified diff between current source and the patched source
-implied by the Suggested fix from the plan body.
+implied by the Suggested fix from the plan body (or, for a
+`requires_discussion` fix, the body of the chosen option).
 
 Show to the user:
 
@@ -155,20 +220,49 @@ Ask: "Applico questo fix?".
 
 ### (b) On user OK
 
-Invoke
+Apply the patched source via the single-call helper
+`pb_edit_and_import` (from sibling
 [`pb-workflow`](../../../../pb-orca-mcp/.claude/skills/pb-workflow/SKILL.md)
-(sibling `pb-orca-mcp`) for the edit-encoding loop:
+in `pb-orca-mcp`):
 
-1. Export current source.
-2. Apply the patch.
-3. Re-encode to UTF-16 LE BOM + CRLF (required by PB compiler).
-4. `pb_compile_entry_import` to write back into the `.pbl`.
-5. Capture any compile errors via `pb_get_last_compile_errors`.
+```jsonc
+pb_edit_and_import {
+  "lib_path":    "<lib_path from fix.entry>",
+  "entry_name":  "<entry_name from fix.entry>",
+  "entry_type":  "<entry_type from fix.entry>",
+  "syntax":      "<patched source body, no $PBExportHeader$ needed>",
+  "source_path": "<workspace>/ws_objects/<lib>.pbl.src/<entry_name>.<ext>",
+  "comments":    "fix-NN: <short title from plan body>"
+}
+```
 
-If the import succeeds with zero errors → mark the fix as
-**applied**. If errors come back → present them to the user, ask
-whether to back out (revert to current source), retry with a
-revised patch, or accept the error state and continue.
+The tool atomically:
+
+1. Writes the patched source to `source_path` in UTF-16 LE BOM +
+   CRLF (the canonical PB encoding). The on-disk SOT stays in sync
+   with what's about to be compiled.
+2. Auto-prepends `$PBExportHeader$<entry_name>.<ext>` if missing.
+3. Imports the source into `lib_path` via
+   `PBORCA_CompileEntryImport`, returning `{success, errors}`.
+
+If `success: true` and `errors: []` → mark the fix as **applied**.
+
+If errors come back → present them to the user, ask whether to
+back out (revert the SOT to the pre-fix source and re-import),
+retry with a revised patch, or accept the error state and
+continue. Note: a failed compile still leaves the new source on
+disk; the `.pbl` was NOT modified. The agent has to explicitly
+`pb_edit_and_import` again with the corrected source to converge.
+
+**Why not the three-step manual form?** Before
+`pb_edit_and_import` existed, the loop was: host-tool Edit (UTF-8)
+→ PowerShell re-encode to UTF-16 LE BOM → `pb_compile_entry_import`.
+Three tool calls per fix; 16 fixes meant 48 calls just for file
+plumbing, with the encoding pitfall and the `$PBExportHeader$`
+asymmetry on the agent's plate every time. The helper absorbs
+both and folds the three calls into one. Use the three-step form
+only when the SOT lives outside `ws_objects/` and you need
+finer control over where the on-disk write lands.
 
 ### (c) On user refusal (skip)
 
