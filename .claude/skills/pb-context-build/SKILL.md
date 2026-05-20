@@ -1,6 +1,6 @@
 ---
 name: pb-context-build
-description: Use this when you are about to read, review, or refactor PowerBuilder code in a monolithic legacy workspace and need to assemble a scoped context pack — a budgeted slice of entries (sources + dependency map) instead of dumping whole PBLs into the conversation. Orchestrates `pb-orca-mcp` primitives (`pb_target_info`, `pb_library_directory`, `pb_object_query_hierarchy`, `pb_object_query_reference`, `pb_library_entry_export`). Required pre-step for the `/pb-review` flow. v1.1 covers incoming references (callers) via ORCA and outgoing references (callees) via heuristic source parsing — dynamic calls are flagged but unresolved.
+description: Use this when you are about to read, review, or refactor PowerBuilder code in a monolithic legacy workspace and need to assemble a scoped context pack — a budgeted slice of entries (sources + dependency map) instead of dumping whole PBLs into the conversation. Orchestrates `pb-orca-mcp` primitives (`pb_target_info`, `pb_library_directory`, `pb_object_query_hierarchy`, `pb_object_query_reference`, `pb_library_entry_export`). Required pre-step for the `/pb-review` flow. v1.1 covers outgoing references (callees, ancestors used, types declared) natively via ORCA. Incoming references (callers) are not native to ORCA — they require an opt-in brute-force inversion of the library index and are off by default.
 ---
 
 # Building a scoped context pack for review / refactoring
@@ -44,15 +44,20 @@ This skill never replaces a primitive; it just sequences them.
 | `pb_target_info(path)` | Parse a `.pbt` (or `.pbw`) into liblist + app metadata | no |
 | `pb_library_directory(lib_path, entry_type?)` | List entries in a PBL, optionally filter by type | no |
 | `pb_object_query_hierarchy(lib_path, entry_name, entry_type)` | Inheritance chain (ancestors) of an entry | yes |
-| `pb_object_query_reference(lib_path, entry_name, entry_type)` | **Incoming** references to an entry (callers). `ref_type` ∈ {`simple`, `open`} | yes |
+| `pb_object_query_reference(lib_path, entry_name, entry_type)` | **Outgoing** refs of an entry (callees, ancestors used, types declared, windows opened). `ref_type` ∈ {`simple`, `open`} | yes |
 | `pb_library_entry_information(lib_path, entry_name, entry_type)` | Metadata for an entry (timestamps, size, base class, comment) | yes |
 | `pb_library_entry_export(lib_path, entry_name, entry_type)` | Full source of an entry as plain text | yes |
 
-ORCA does not expose outgoing references natively. To populate the
-`outgoing_refs` (callees) of each exported entry, this skill runs a
-heuristic source-parsing pass over `pb_library_entry_export` output
-(see "Callee discovery" below). Verification of each candidate uses
-`pb_library_directory` against the configured liblist.
+**Direction note**. ORCA's `PBORCA_ObjectQueryReference` returns
+**outgoing** refs of the queried object — what it calls/uses, not
+what uses it. The opposite direction (incoming refs, "who calls
+this") is **not exposed natively** by ORCA. Reconstructing it
+requires inverting the index: iterate every candidate caller in
+the library list, call `pb_object_query_reference` on each, and
+collect those whose result set contains the target entry. Costly
+(O(N) on liblist size), so it is offered only as an opt-in pass
+when the user explicitly asks for it (see "Caller discovery"
+below).
 
 To use the session-bound primitives, the agent must first open a
 session via `pb_session_open`, set the current application via
@@ -76,17 +81,20 @@ Default flow:
    Export every ancestor's source up to the budget depth (default 3
    levels; the topmost framework class — `window`,
    `nonvisualobject`, etc. — is the natural stop).
-3. Get the **callers** via `pb_object_query_reference` (depth 1 by
-   default). For each caller, get its metadata via
-   `pb_library_entry_information` to assess whether to expand it. By
-   default, expand only `ref_type=open` callers (those that
-   `Open()` the target) since they're the integration points;
-   `ref_type=simple` callers (typed references) you list but don't
-   expand unless budget allows.
-4. If budget allows and the user asked for transitive callers
-   (depth 2+), repeat step 3 on the depth-1 callers — but be
+3. Get the **outgoing refs** (callees, used types, opened windows)
+   via `pb_object_query_reference`. For each ref, get its metadata
+   via `pb_library_entry_information` to assess whether to expand
+   it. By default, expand only `ref_type=open` (windows the entry
+   opens — they're the integration boundary downstream);
+   `ref_type=simple` (functions called, types declared) you list
+   but don't expand unless budget allows.
+4. If budget allows and the user asked for transitive outgoing
+   refs (depth 2+), repeat step 3 on the depth-1 outgoing — but be
    aggressive about pruning: cap each level's expansion at ~5
    entries.
+5. **(Opt-in)** If the user asked for callers ("who calls this?"),
+   run the inversion pass — see "Caller discovery" below. Off by
+   default because it is O(N) on liblist size.
 
 ### Flavor B — target-driven (default for "review this `.pbt`")
 
@@ -136,81 +144,86 @@ Default flow:
    a summary and ask for refinement (single entry, or a sub-pattern
    match on entry name).
 
-## Callee discovery (v1.1)
+## Outgoing refs from ORCA (default, v1.1)
 
-After exporting each entry's source, run a heuristic parsing pass to
-populate the entry's `outgoing_refs` (callees). The MCP does not
-expose outgoing references natively, so this is a best-effort step
-verified against ORCA.
+For each exported entry, call `pb_object_query_reference` to get
+the `outgoing_refs` list — what the entry calls, opens, declares
+as a type, or otherwise references. This is the **native, exact**
+direction ORCA exposes and it is essentially free (one ORCA call
+per entry already in the pack).
 
-### Patterns the parser recognizes
+Each item comes back with `library`, `entry_name`, `entry_type`,
+and `ref_type` (`simple` for declarative refs, `open` for runtime
+window opens). Record them in the context pack with
+`confidence: high` — these come from ORCA's index, not from
+parsing.
 
-Run regex passes on the exported source, in this order:
-
-1. **Global function call**: `\bf_[a-z0-9_]+\s*\(` — PB convention,
-   global functions are commonly prefixed `f_`. Refine to the
-   project's actual convention if `pb_library_directory` reveals
-   a different prefix.
-2. **Method call on object reference**: `\b[a-z][a-z0-9_]*\.[a-z_]+\s*\(` —
-   captures `iuo_logger.write(...)`, `lnv_target.flush(...)`, etc.
-   Resolution of the receiver type requires reading declarations
-   (DECLARE/instance variables) higher up in the same source.
-3. **Ancestor / scoped call**: `\bCall\s+\w+::\w+`, `\bSuper::\w+`,
-   `\b\w+::\w+\s*\(` — explicit scoped invocation.
-4. **Event triggers**: `\b(Post|Trigger|Send)Event\b`,
-   `\bPostEvent\s*\(`, `\bTriggerEvent\s*\(` — event names follow
-   the open-paren or a comma after the target.
-5. **Type declarations**: `\b[a-z]+_\w+\s+\w+\s*$` — captures
-   `n_logger inv_log` or `u_dw_grid idw_main` declarations in
-   instance variable blocks. The type name is a callee dependency.
-6. **`Open()` / `OpenWithParm()` of windows**: captures the
-   first arg literal if present.
-
-### Filter step
-
-Discard candidates that are PowerScript keywords (`if`, `then`,
-`return`, `string`, …) or runtime built-ins. Use the
-[`appeon-query`](../appeon-query/SKILL.md) skill to check if an
-identifier matches a documented PowerScript function before treating
-it as a user-defined callee.
-
-### Verification step
-
-For each surviving candidate identifier:
-
-- Try `pb_library_directory` with each plausible `entry_type`
-  (`function`, `userobject`, `window`, `datawindow`, `menu`,
-  `structure`) against each PBL in the configured liblist. If found
-  → add to `outgoing_refs` with `confidence: high` and `kind`
-  resolved.
-- If matched in multiple PBLs (homonyms), record all matches with
-  `confidence: medium` — the agent or user will need to disambiguate.
-- If no match: drop the candidate silently (likely a local variable,
-  a builtin we missed, or a typo in the source).
-
-### Unresolvable patterns (flagged, not resolved)
-
-Mark these explicitly in the output as `confidence: low, kind:
-dynamic`:
+What ORCA **cannot** see:
 
 - `Dynamic Call`, `Dynamic Function`, `Dynamic Event` invocations.
 - DataWindow expression strings (`SetItem(row, "col", value)` where
   `"col"` could be anything at runtime).
-- Function name constructed at runtime via string concat:
+- Function names constructed at runtime via string concat:
   `f_call(name + "_handler")`.
 
-The downstream consumer (`/pb-review`, `pb-apply-plan`) treats
-`confidence: low` edges as warnings to surface to the user during
-topo-sort or impact-check, not as hard dependencies.
+For those, see the heuristic fallback pass below.
 
-### Editability contract
+## Caller discovery — opt-in inversion (off by default)
 
-The `outgoing_refs` produced by this pass are **proposals**, not
-truth. The downstream plan-file format (`.pb-review/<...>.md`,
-opzione 2+ YAML front-matter) allows the user to edit the
-`depends_on` field by hand. The user-augmented edges are marked
-`confidence: user-augmented` and override anything the parser
-suggested.
+ORCA has no native primitive for "who calls this entry". To compute
+incoming refs, the skill must invert the index: iterate the library
+list, and for each candidate caller call `pb_object_query_reference`,
+keeping those whose result set contains the target.
+
+This is **O(N) on liblist size** — for a Magware-class workspace
+(~6-12 PBLs × 100+ entries each) it can mean 1000+ ORCA calls per
+target entry. So it is **off by default**.
+
+Activate it only when the user explicitly asks ("who calls
+`n_logger.flush`?", "find all callers of `f_legacy_thing`") or when
+a downstream skill needs the caller set (e.g. `pb-impact-analysis`
+when scoped for blast-radius). When activated:
+
+1. Iterate every entry in the configured liblist via
+   `pb_library_directory(lib, "any")`. Skip entries already known to
+   be in the call-graph closure (avoid redundant queries).
+2. For each candidate, call `pb_object_query_reference(candidate)`
+   and check whether the target entry appears in its outgoing refs.
+3. Cap the work: stop after N candidates probed (default 500) or N
+   matches found (default 20), whichever first. Report honestly
+   ("scanned 500/2400 entries, found 12 callers; widening would
+   take ~5× longer").
+4. Mark each caller with `confidence: high` (it's ORCA — exact)
+   and the `ref_type` from the query.
+
+For very-base userobjects with hundreds of callers, do not chase
+the full set: list a count and the top-N by liblist proximity, and
+defer the full blast-radius to `pb-impact-analysis` (planned).
+
+## Heuristic fallback for dynamic patterns (optional)
+
+Some dependencies are invisible to ORCA's index because they are
+resolved at runtime (`Dynamic Call`, DW expressions, name concat).
+If the agent suspects a refactor crosses such a boundary, optionally
+run a regex pass on the exported source for the patterns above,
+flag the candidates as `confidence: low, kind: dynamic`, and present
+them to the user as "ORCA cannot confirm these edges; review by
+hand". Never treat them as hard topological constraints in
+`pb-apply-plan`.
+
+This pass is intentionally narrow: it covers only what ORCA cannot
+see. The bulk of the call-graph already comes from
+`pb_object_query_reference` above with `confidence: high`.
+
+## Editability contract
+
+The `outgoing_refs` from ORCA are facts; the heuristic dynamic-pattern
+fallback produces **proposals**. The downstream plan-file format
+(`.pb-review/<...>.md`, opzione 2+ YAML front-matter) allows the
+user to edit the `depends_on` field by hand. The user-augmented
+edges are marked `confidence: user-augmented` and override anything
+the heuristic pass suggested. ORCA-sourced edges marked
+`confidence: high` should not be edited away without good reason.
 
 ## Budget mechanics
 
@@ -222,20 +235,25 @@ work as starting points on Magware-class codebases:
   under cap.
 - **Soft cap on cumulative source size**: ~150 KB of plain text
   (~50 K tokens). Track as you go; if you cross it before reaching
-  step 3 (callers), stop and report what you have. The target
-  entry and its inheritance chain take precedence over callers.
-- **Default expansion depth**: ancestors = 3, callers = 1. Both
-  configurable per invocation.
+  the outgoing-refs expansion, stop and report what you have. The
+  target entry and its inheritance chain take precedence.
+- **Default expansion depth**: ancestors = 3, outgoing refs = 1.
+  Both configurable per invocation.
+- **Caller discovery (opt-in) caps**: max 500 ORCA queries on the
+  liblist, max 20 callers reported, whichever comes first. Always
+  honest about partial scans ("scanned 500/2400, found 12").
 - **Pruning order** when over budget: (a) drop `simple`-typed
-  callers first; (b) drop ancestors beyond depth 2; (c) drop
-  framework-level ancestors (`nonvisualobject`, `window`,
+  outgoing refs first (declarative refs are usually less load-bearing
+  than `open`-typed ones); (b) drop ancestors beyond depth 2; (c)
+  drop framework-level ancestors (`nonvisualobject`, `window`,
   `userobject`) since the agent knows them from
-  [`appeon-query`](../appeon-query/SKILL.md); (d) drop the lowest-
-  priority callers last.
+  [`appeon-query`](../appeon-query/SKILL.md); (d) skip the caller-
+  discovery opt-in pass entirely.
 
 These caps are starting points, not law. Adjust if the user signals
 they want a deeper or shallower view ("just the entry, no
-ancestors", "give me the full caller tree two levels deep").
+ancestors", "give me the full outgoing tree two levels deep",
+"include the caller set even if it's big").
 
 ## Output: the context pack shape
 
@@ -254,19 +272,20 @@ shape — flexible markdown, not a rigid schema:
 - ...
 - nonvisualobject — framework, not exported (see appeon-query)
 
-**Incoming refs (callers)** — via `pb_object_query_reference`,
-depth 1, N total, M exported:
-- caller_1 (lib, ref_type=open) — exported
-- caller_2 (lib, ref_type=simple) — listed, not exported (budget)
+**Outgoing refs** — via `pb_object_query_reference` (callees,
+ancestors used, types declared, windows opened), depth 1, N total,
+M exported:
+- ref_1 (lib, kind=function, ref_type=simple, confidence=high) — exported
+- ref_2 (lib, kind=window,   ref_type=open,   confidence=high) — exported
+- ref_3 (lib, kind=userobject, confidence=low, kind=dynamic) — Dynamic Call, flagged via heuristic fallback
 - ...
 
-**Outgoing refs (callees)** — via heuristic source parsing,
-verified against liblist, N total:
-- callee_1 (lib, kind=function, confidence=high)
-- callee_2 (lib, kind=userobject, confidence=high)
-- callee_3 (?, confidence=medium) — homonym in 2 PBLs, disambiguate
-- callee_4 (?, confidence=low, kind=dynamic) — Dynamic Call, flagged
-- ...
+**Incoming refs (callers)** — OPT-IN only, off by default; populated
+when the user asks. Via inversion of `pb_object_query_reference` on
+the liblist:
+- caller_1 (lib, ref_type=open, confidence=high)
+- caller_2 (lib, ref_type=simple, confidence=high)
+- ... (scanned N/M liblist entries; capped at 20 unless overridden)
 
 **Budget**: N entries exported, ~K tokens of source loaded.
 Pruned: <what was dropped and why>.
@@ -286,19 +305,21 @@ Pruned: <what was dropped and why>.
 
 The agent that receives the pack is then responsible for the
 downstream work (review, refactor, impact analysis). The pack is
-informational, not executable. The `outgoing_refs` confidence levels
-should be surfaced honestly — they are proposals, not facts.
+informational, not executable. ORCA-sourced edges are
+`confidence: high`; heuristic dynamic-pattern fallback edges are
+`confidence: low` and should be presented as warnings, not facts.
 
 ## v1.1 limitations (explicit non-goals)
 
-- **Callee discovery is heuristic, not exhaustive**. The parser
-  catches static call patterns (function calls, method calls,
-  ancestor scoped calls, event triggers, type declarations) and
-  verifies each candidate against the liblist via
-  `pb_library_directory`. Dynamic patterns (`Dynamic Call`, DW
-  expressions, runtime-constructed function names) are flagged with
-  `confidence: low` but not resolved. The downstream user can
-  augment `depends_on` manually in the plan-file YAML.
+- **Caller discovery is opt-in and capped**. Inverting ORCA's index
+  is O(N) on liblist size; default scan limits are 500 ORCA queries
+  / 20 callers reported. The skill is always honest about partial
+  scans. Activate only when the user explicitly requests callers.
+- **Dynamic patterns are flagged, not resolved**. `Dynamic Call`,
+  `Dynamic Function`, DW expression strings, and function names
+  constructed at runtime are invisible to ORCA's index. The optional
+  heuristic fallback marks them `confidence: low` for the user to
+  review; the agent never treats them as hard topological edges.
 - **No cross-target review**. If the workspace has multiple `.pbt`
   files (Magware: 13 targets) and the refactor would span them, v1.1
   does one target at a time. Cross-target is a future extension.
@@ -323,7 +344,7 @@ should be surfaced honestly — they are proposals, not facts.
   `pb_object_query_*` only sees entries in the configured liblist.
   Check `pb_set_library_list` was called with all relevant PBLs of
   the target.
-- **Huge caller set** (a base userobject used everywhere): truncate
+- **Huge incoming-ref set** during opt-in caller discovery (a base userobject used everywhere): truncate
   aggressively. Report the count honestly ("`u_base` has 487
   callers; showing the top 5 by recency, see
   [`pb-impact-analysis`](../pb-impact-analysis/SKILL.md) for the

@@ -73,16 +73,24 @@ Construct a directed graph where each node is a `fix-NN` and each
 edge `B → A` means "A must be applied before B" (i.e. `B.depends_on`
 includes `A`).
 
-Topo-sort with two tie-breaking rules:
+Topo-sort with three tie-breaking rules:
 
 1. **Inheritance order**: if two fixes touch entries in the same
    inheritance chain, the ancestor's fix goes first. (Determine
    ancestry via `pb_object_query_hierarchy` if not already in the
    plan's context pack.)
-2. **Call-graph order**: if A's entry is a callee of B's entry
-   (per the `outgoing_refs` produced by `pb-context-build` v1.1),
-   A goes before B.
-3. **Priority**: among nodes that are topologically equivalent,
+2. **Call-graph order (outgoing)**: if A's entry appears in the
+   `outgoing_refs` of B's entry (i.e. B calls/uses A — exact data
+   from `pb_object_query_reference` via `pb-context-build` v1.1),
+   A goes before B. This is the **default** call-graph direction
+   because outgoing refs are always present.
+3. **Call-graph order (incoming, opt-in)**: if the context pack
+   includes `incoming_refs` (callers — only present when
+   `pb-context-build` was invoked with caller-discovery opted in),
+   and A's entry is a caller of B's entry, then A goes **after** B
+   (B is the dependency, A is the consumer). This rule is applied
+   only when caller data is actually in the pack.
+4. **Priority**: among nodes that are topologically equivalent,
    apply `bug-risk` before `refactor` before `style`.
 
 ### Cycle detection

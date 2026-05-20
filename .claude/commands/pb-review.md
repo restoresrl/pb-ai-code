@@ -134,10 +134,15 @@ Invoke [`pb-context-build`](../skills/pb-context-build/SKILL.md)
 pack containing per entry:
 
 - The exported source.
-- Inheritance chain.
-- Incoming refs (callers, via `pb_object_query_reference`).
-- Outgoing refs (callees, via heuristic source parsing — confidence
-  levels: high / medium / low).
+- Inheritance chain (via `pb_object_query_hierarchy`).
+- Outgoing refs — callees, ancestors used, types declared, windows
+  opened — via `pb_object_query_reference`. Default direction, exact,
+  `confidence: high`. Optionally enriched with a heuristic fallback
+  pass for dynamic patterns (`Dynamic Call`, DW expressions) flagged
+  `confidence: low`.
+- Incoming refs (callers) — OPT-IN, off by default. If the user
+  asked for callers ("who calls this?"), the skill runs an O(N)
+  inversion over the liblist; otherwise this list is empty.
 - A budget summary (what was loaded, what was pruned).
 
 Keep an eye on the budget summary. If too much was pruned to do a
