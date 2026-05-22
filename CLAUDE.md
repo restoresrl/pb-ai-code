@@ -100,8 +100,22 @@ Linee guida sintetiche per coerenza con `pb-orca-mcp`:
   per preservare il transcript. Handoff memory solo come fallback per
   sessioni "sporche" o context near-limit.
 - **Encoding caveat per `.sr*`** (se le skill toccano file PB di test):
-  i source PB sono UTF-16 LE BOM + CRLF. Edit/Write su questi file li
-  flippa a UTF-8 BOM e PB li rifiuta. Riconvertire con
-  `[System.Text.Encoding]::Unicode` in PowerShell.
+  l'encoding dei file in `ws_objects/<lib>.pbl.src/` è quello indicato
+  dalla direttiva `DefaultExportEncode` del `.pbw` del workspace. PB
+  2022 accetta tre valori: `"UTF-8"` (BOM + CRLF), `"UTF-16BOM"`
+  (UTF-16 LE BOM + CRLF), `"ANSI"` (codepage di sistema + CRLF). Tutti
+  i workspace Restore surveyati (rstpb22, pbgettext22, pbunit22,
+  mw21r2 e le 11 customizzazioni Magware) usano oggi `"UTF-8"`. In
+  lettura PB rileva l'encoding via BOM detection, quindi è tollerante;
+  in scrittura conta matchare l'encoding del `.pbw` per evitare un
+  cascade di Refresh + Regenerate sul prossimo open dell'entry in IDE.
+  Il tool MCP `pb_edit_and_import` accetta un parametro `source_encoding`
+  con questi 3 valori (default `"UTF-8"`) — leggere `DefaultExportEncode`
+  dal `.pbw` e passarlo esplicitamente. Sui comment multi-riga: il tool
+  normalizza ogni stile di newline (CRLF / LF / CR) a CRLF prima di
+  storare nel `.pbl` e prima dell'escape PowerScript (`~r~n`). Senza
+  questa normalizzazione i comment multi-riga apparirebbero come
+  singola riga nel Library Painter Properties dialog di PB IDE — il
+  textbox Windows renderizza solo `\r\n` come line break visibile.
 - **Git**: mai `git commit` / `git push` senza conferma esplicita di
   Carlo (eredita regola CLAUDE.md root).
