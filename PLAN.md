@@ -50,8 +50,13 @@ Implications for the four pillars:
   skill. These three orchestrate existing ORCA primitives into the
   refactoring loop.
 - **Tier 2** (grows alongside Tier 1): Layer 2 wiki expansion on
-  real findings; optional `pb-style-guide` skill once the wiki has
-  critical mass.
+  real findings; **`pb-format` skill + L2 token-based PowerScript
+  formatter** in `pb-orca-mcp` (`pb_orca_mcp.format`, integrated
+  into `pb_edit_and_import` via `format="auto"`), config via
+  `.pb-format.toml` (design approved 2026-05-22, L1 doc/skill
+  surface shipped, L2 engine still to be written). Optional
+  `pb-style-guide` skill folded into `pb-format` and
+  `docs/pb-source-format/style-conventions.md`.
 - **Tier 3** (on-demand or deferred): scaffolding completion (3
   residual entry types); Pillar 2 testing; runtime trace logging;
   upfront pattern cookbook.
@@ -149,6 +154,16 @@ Active components driving the next slices of work:
 - **`pb-scaffold` skill + Layer 2 wiki** (existing, kept) — invariant
   for now. The wiki grows on-encounter during real review sessions
   (Tier 2). The 3 residual scaffold entry types are Tier 3, on-demand.
+- **`pb-format` skill + `/pb-format` slash command + Layer 2 wiki
+  page `style-conventions.md`** (new, Tier 2, L1 surface shipped
+  2026-05-22). Defines the four MVP style invariants (indent,
+  keyword case, operator spacing, line endings), the
+  `.pb-format.toml` config contract, and the boundaries with
+  `pb-src-format` (structure vs style) and `pb-scaffold` (templates
+  emit neutral style, formatter normalizes on import). The L2
+  engine that implements the contract lives in `pb-orca-mcp` under
+  `pb_orca_mcp.format` and is **not yet written** — the slash
+  command is a stub until the engine ships.
 - **`appeon-query` skill + `pb-appeon-index` MCP** (existing, kept) —
   the `/pb-review` flow calls into it for syntax / runtime API
   cross-reference.
@@ -339,6 +354,26 @@ discover the gaps before any public release pressure.
 Tier 2 work (Layer 2 wiki growth, style-guide skill) follows the
 first slice on-encounter. Tier 3 (testing, runtime trace, scaffold
 completion) remains deferred.
+
+**Formatter slice (2026-05-22, Tier 2)**:
+
+1. ✅ Wiki page `docs/pb-source-format/style-conventions.md`
+   defining the four MVP invariants.
+2. ✅ Skill `.claude/skills/pb-format/SKILL.md` + slash command
+   `.claude/commands/pb-format.md` (stub).
+3. ✅ Cross-link updates in `pb-src-format`, `pb-scaffold`,
+   `pb-apply-plan`.
+4. ⏳ L2 engine in `pb-orca-mcp` under `pb_orca_mcp.format/`
+   (lexer + 4 normalizer rules + config + tests + CLI `pb-format
+   detect`).
+5. ⏳ Integration: `pb_edit_and_import` gains
+   `format: Literal["auto", True, False] = "auto"` with
+   `.pb-format.toml` discovery walking up from `source_path`.
+6. ⏳ End-to-end validation on a real workspace (compile invariance
+   and idempotency).
+7. ⏳ L3 (AST-based via tree-sitter) deferred — trigger:
+   `pb-shrugged/tree-sitter-powerscript` ships v1.0.0, or ≥ 3 issue
+   reports the token-based L2 cannot resolve.
 
 **`pb-orca-mcp` pre-flight already done** (commit `876c34d`, 2026-05-14):
 PyPI name verified free, recipe export/import asymmetry documented,

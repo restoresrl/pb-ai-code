@@ -41,6 +41,15 @@ driven encoding (UTF-8 BOM / UTF-16BOM / ANSI) + CRLF +
 `$PBExportHeader$` / `$PBExportComments$` rules — they apply to every
 entry type.
 
+The second cross-cutting page is
+[`style-conventions.md`](../../../docs/pb-source-format/style-conventions.md):
+indent character, keyword case, operator spacing inside the body.
+Those concerns are **out of scope for this skill** — they are
+normalized at-import by the formatter (see
+[`pb-format`](../pb-format/SKILL.md)) when the workspace ships a
+`.pb-format.toml`. Produce a body whose **structure** is canonical
+per the entry-type page; the formatter handles the surface style.
+
 ## The flow (read-consult-write-grow)
 
 1. **Identify the entry type** by extension (`.sru` → userobject,
@@ -98,6 +107,20 @@ content into a `.pbl` (via `pb_compile_entry_import` and, on git
 projects, keeping `ws_objects/` and the `.pbl` in sync) is the job
 of `pb-workflow` in `pb-orca-mcp`. Hand off to that skill once you
 have the right bytes on disk.
+
+## Boundary with `pb-format`
+
+This skill answers "*where do blocks go in the file*" (structure).
+[`pb-format`](../pb-format/SKILL.md) answers "*how do tokens look*"
+(style: tab vs spaces, `if` vs `IF`, `a = b` vs `a=b`). They are
+deliberately split so the writing flow has one place to look for
+each question.
+
+When you write a `.sr*` body, produce structurally correct text per
+the entry-type wiki page; do **not** hand-tune the surface style.
+`pb_edit_and_import` runs the formatter on its way to the `.pbl`
+when the workspace ships a `.pb-format.toml`. If the workspace does
+not opt in, the body passes through unchanged — same as today.
 
 ## Boundary with the Appeon docs
 

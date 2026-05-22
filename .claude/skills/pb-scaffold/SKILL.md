@@ -57,6 +57,22 @@ Not covered:
 4. Check the returned `success` flag. On failure, inspect the `errors`
    list — diagnostics include line + column.
 
+## A note on the template surface style
+
+The templates below use 4-space indent and lowercase PowerScript
+keywords. That choice is **cosmetic to the skill**, not normative
+for the codebase: it keeps the templates readable inline in this
+Markdown file. When you scaffold into a workspace that ships a
+`.pb-format.toml`, the body is automatically re-styled by the
+formatter at the next `pb_edit_and_import` call (indent character,
+keyword case, operator spacing) — see [`pb-format`](../pb-format/SKILL.md).
+When the workspace does not ship a config, the template's surface
+style is what lands on disk (same as today).
+
+In either case, **do not hand-tune the template's surface to match
+a target style** — emit the natural template and let the formatter
+do its job.
+
 The first line `$PBExportHeader$<name>.<ext>` is **optional** for the
 ORCA API (entry name and type are passed as separate parameters) but
 **required** if you write the body to a `.sr*` file on disk. Include
@@ -403,6 +419,16 @@ non-default property values, …). When you need to *read* or *edit*
 a real-world object, [`pb-src-format`](../pb-src-format/SKILL.md)
 documents observed variants and points at the per-type wiki pages
 under `docs/pb-source-format/`.
+
+## Boundary with `pb-format`
+
+`pb-scaffold` produces the **structural body** of a new entry. The
+surface style (indent character, keyword case, operator spacing) is
+[`pb-format`](../pb-format/SKILL.md)'s responsibility, applied at
+import time by `pb_edit_and_import` when the workspace has a
+`.pb-format.toml`. Do not pre-format the scaffold output to match
+the workspace style — emit the template, let the formatter
+normalize it on its way to the `.pbl`.
 
 ## Boundary with `appeon-query`
 

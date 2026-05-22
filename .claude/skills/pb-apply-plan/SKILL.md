@@ -239,19 +239,28 @@ pb_edit_and_import {
 
 The tool atomically:
 
-1. Writes the patched source to `source_path` with the workspace's
-   `DefaultExportEncode` (UTF-8 BOM / UTF-16BOM / ANSI) plus CRLF.
-   `"UTF-8"` is the default and the value observed across every
-   Restore workspace surveyed — pass the explicit value when
-   targeting a workspace that overrides the default. Wrong
-   encoding silently triggers a PB IDE Refresh cascade.
-2. Rebuilds the canonical PB IDE header block:
+1. **Normalizes style** (when the workspace ships a `.pb-format.toml`
+   and `format` is left at its default `"auto"`): indent character,
+   keyword case, operator spacing, body line endings — see
+   [`pb-format`](../pb-format/SKILL.md) and
+   [`docs/pb-source-format/style-conventions.md`](../../../docs/pb-source-format/style-conventions.md).
+   If no config is found, the body passes through unchanged. The
+   `apply-plan` loop never sets `format` explicitly — let `"auto"`
+   decide based on the workspace.
+2. Writes the (possibly style-normalized) source to `source_path`
+   with the workspace's `DefaultExportEncode` (UTF-8 BOM / UTF-16BOM
+   / ANSI) plus CRLF. `"UTF-8"` is the default and the value
+   observed across every Restore workspace surveyed — pass the
+   explicit value when targeting a workspace that overrides the
+   default. Wrong encoding silently triggers a PB IDE Refresh
+   cascade.
+3. Rebuilds the canonical PB IDE header block:
    `$PBExportHeader$<entry_name>.<ext>` on line 1 and (if `comments`
    is non-empty) `$PBExportComments$<escaped>` on line 2. The
    comment is normalized to CRLF newlines and PowerScript-escaped
    (`~r~n`, `~r`, `~n`, `~t`, `~~`) so the Library Painter
    Properties dialog renders multi-line comments correctly.
-3. Imports the source into `lib_path` via
+4. Imports the source into `lib_path` via
    `PBORCA_CompileEntryImport`, returning `{success, errors}`.
 
 If `success: true` and `errors: []` → mark the fix as **applied**.
@@ -384,6 +393,13 @@ flag.
   per fix in Step 4 (b).
 - [`pb-src-format`](../pb-src-format/SKILL.md) — consulted when a
   fix touches an entry type whose on-disk format has variants.
+- [`pb-format`](../pb-format/SKILL.md) — style normalization (indent,
+  keyword case, operator spacing) applied transparently by
+  `pb_edit_and_import(format="auto")` when the workspace ships a
+  `.pb-format.toml`. If a `/pb-review` finding is **pure style**
+  (e.g. lowercasing keywords across an entry), skip the fix here
+  and run `/pb-format` once over the affected entry instead — the
+  formatter handles it in one pass.
 - `pb-review-versioning` / `pb-version-local` (optional, consumer-
   local) — invoked at promotion time in Step 5 to apply project-
   specific versioning conventions.

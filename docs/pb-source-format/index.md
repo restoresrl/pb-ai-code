@@ -37,6 +37,7 @@ One page per entry type:
 Plus cross-cutting concerns:
 
 - [encoding](encoding.md) — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`. Read this first.
+- [style-conventions](style-conventions.md) — indent character, keyword case, operator spacing, line endings. The four invariants the planned formatter normalizes via `.pb-format.toml`.
 - [patterns/](patterns/) — recurring blocks that appear in multiple entry types: `forward`, `type variables`, `event`, `on …` blocks, etc.
 
 ## Page conventions
