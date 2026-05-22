@@ -124,6 +124,6 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 ## Cross-references
 
 - [[index]] — wiki entry point.
-- [[encoding]] — UTF-16 LE BOM + CRLF + `$PBExportHeader$` rules.
+- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
 - [[window]] — menus are typically attached to windows.
 - [[patterns/event-syntax]] — TBD.

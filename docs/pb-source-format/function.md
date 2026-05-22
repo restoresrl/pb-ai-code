@@ -101,6 +101,6 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 ## Cross-references
 
 - [[index]] — wiki entry point.
-- [[encoding]] — UTF-16 LE BOM + CRLF + `$PBExportHeader$` rules.
+- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
 - [[userobject]] — userobject member functions share the body syntax
   but live in a different file structure.

@@ -138,7 +138,7 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 ## Cross-references
 
 - [[index]] — wiki entry point.
-- [[encoding]] — UTF-16 LE BOM + CRLF + `$PBExportHeader$` rules.
+- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
 - [[userobject]] — windows often inherit from custom userobjects;
   shared structural blocks.
 - [[datawindow]] — embedded DataWindow controls.

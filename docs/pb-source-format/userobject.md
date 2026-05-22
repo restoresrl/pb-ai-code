@@ -142,7 +142,7 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 ## Cross-references
 
 - [[index]] — wiki entry point.
-- [[encoding]] — UTF-16 LE BOM + CRLF + `$PBExportHeader$` rules.
+- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
 - [[window]] — windows commonly inherit from visual userobjects.
 - [[function]] — userobject functions are structurally similar to
   global functions but live inside the type block.

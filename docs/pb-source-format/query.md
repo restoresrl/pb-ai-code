@@ -27,5 +27,5 @@ type; often a thin wrapper around a `SELECT` statement.
 ## Cross-references
 
 - [[index]] — wiki entry point.
-- [[encoding]] — UTF-16 LE BOM + CRLF + `$PBExportHeader$` rules.
+- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
 - [[datawindow]] — DataWindows can reference a stored query.

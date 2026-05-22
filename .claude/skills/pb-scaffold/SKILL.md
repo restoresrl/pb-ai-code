@@ -63,10 +63,14 @@ ORCA API (entry name and type are passed as separate parameters) but
 it by default: it costs nothing and keeps the body valid for both
 code paths.
 
-For the encoding rules that apply when writing to disk (UTF-16 LE BOM
-+ CRLF), see [`docs/pb-source-format/encoding.md`](../../../docs/pb-source-format/encoding.md).
+For the encoding rules that apply when writing to disk (the file
+encoding follows the workspace `DefaultExportEncode` — UTF-8 BOM,
+UTF-16BOM, or ANSI — always with CRLF), see
+[`docs/pb-source-format/encoding.md`](../../../docs/pb-source-format/encoding.md).
 When calling `pb_compile_entry_import`, pass a plain Python `str`
-without BOM — the MCP tool handles the UTF-16 conversion internally.
+without BOM — ORCA is encoding-agnostic at the C ABI (strings cross as
+wide chars). When you need the file *also* persisted on disk, prefer
+`pb_edit_and_import` with the matching `source_encoding` parameter.
 
 ## Templates
 

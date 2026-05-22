@@ -227,21 +227,30 @@ in `pb-orca-mcp`):
 
 ```jsonc
 pb_edit_and_import {
-  "lib_path":    "<lib_path from fix.entry>",
-  "entry_name":  "<entry_name from fix.entry>",
-  "entry_type":  "<entry_type from fix.entry>",
-  "syntax":      "<patched source body, no $PBExportHeader$ needed>",
-  "source_path": "<workspace>/ws_objects/<lib>.pbl.src/<entry_name>.<ext>",
-  "comments":    "fix-NN: <short title from plan body>"
+  "lib_path":         "<lib_path from fix.entry>",
+  "entry_name":       "<entry_name from fix.entry>",
+  "entry_type":       "<entry_type from fix.entry>",
+  "syntax":           "<patched source body, no $PBExportHeader$ needed>",
+  "source_path":      "<workspace>/ws_objects/<lib>.pbl.src/<entry_name>.<ext>",
+  "comments":         "fix-NN: <short title from plan body>",
+  "source_encoding":  "UTF-8"   // read from .pbw DefaultExportEncode
 }
 ```
 
 The tool atomically:
 
-1. Writes the patched source to `source_path` in UTF-16 LE BOM +
-   CRLF (the canonical PB encoding). The on-disk SOT stays in sync
-   with what's about to be compiled.
-2. Auto-prepends `$PBExportHeader$<entry_name>.<ext>` if missing.
+1. Writes the patched source to `source_path` with the workspace's
+   `DefaultExportEncode` (UTF-8 BOM / UTF-16BOM / ANSI) plus CRLF.
+   `"UTF-8"` is the default and the value observed across every
+   Restore workspace surveyed — pass the explicit value when
+   targeting a workspace that overrides the default. Wrong
+   encoding silently triggers a PB IDE Refresh cascade.
+2. Rebuilds the canonical PB IDE header block:
+   `$PBExportHeader$<entry_name>.<ext>` on line 1 and (if `comments`
+   is non-empty) `$PBExportComments$<escaped>` on line 2. The
+   comment is normalized to CRLF newlines and PowerScript-escaped
+   (`~r~n`, `~r`, `~n`, `~t`, `~~`) so the Library Painter
+   Properties dialog renders multi-line comments correctly.
 3. Imports the source into `lib_path` via
    `PBORCA_CompileEntryImport`, returning `{success, errors}`.
 
@@ -255,14 +264,16 @@ disk; the `.pbl` was NOT modified. The agent has to explicitly
 `pb_edit_and_import` again with the corrected source to converge.
 
 **Why not the three-step manual form?** Before
-`pb_edit_and_import` existed, the loop was: host-tool Edit (UTF-8)
-→ PowerShell re-encode to UTF-16 LE BOM → `pb_compile_entry_import`.
-Three tool calls per fix; 16 fixes meant 48 calls just for file
-plumbing, with the encoding pitfall and the `$PBExportHeader$`
-asymmetry on the agent's plate every time. The helper absorbs
-both and folds the three calls into one. Use the three-step form
-only when the SOT lives outside `ws_objects/` and you need
-finer control over where the on-disk write lands.
+`pb_edit_and_import` existed, the loop was: host-tool Edit (UTF-8
+no BOM) → PowerShell re-encode to the workspace's encoding →
+`pb_compile_entry_import`. Three tool calls per fix; 16 fixes meant
+48 calls just for file plumbing, with the encoding pitfall, the
+`$PBExportHeader$` asymmetry, and the `$PBExportComments$` +
+PowerScript-escape choreography on the agent's plate every time.
+The helper absorbs all of it and folds the three calls into one.
+Use the three-step form only when the SOT lives outside
+`ws_objects/` and you need finer control over where the on-disk
+write lands.
 
 ### (c) On user refusal (skip)
 
@@ -349,10 +360,11 @@ flag.
   to rerun `/pb-review`.
 - **Plan target doesn't match current ORCA session**: stop, ask
   user to switch session or pick a different plan.
-- **Edit-encoding loop in `pb-workflow` fails** (UTF-16 BOM lost,
-  CRLF stripped, etc.): surface the diagnostic, do not retry
-  silently. The sibling skill has its own troubleshooting; refer
-  to it.
+- **Edit-encoding loop in `pb-workflow` fails** (encoding mismatch
+  with the workspace `DefaultExportEncode`, CRLF stripped,
+  `PB_ORCA_MCP_ENCODINGERROR` on out-of-codepage chars under ANSI,
+  etc.): surface the diagnostic, do not retry silently. The sibling
+  skill has its own troubleshooting; refer to it.
 - **Compile errors after import**: do not auto-rollback. Present
   errors to user and ask: revert / retry / accept.
 - **CHANGELOG.md modified externally between status updates**:

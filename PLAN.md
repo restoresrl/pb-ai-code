@@ -77,8 +77,10 @@ PowerBuilder project:
    patterns, scaffold new objects (windows, userobjects, datawindows,
    functions, menus) from minimal templates.
 2. **Coding** — write valid PowerScript that respects PB semantics,
-   propagate edits to `.pbl` with proper encoding (UTF-16 LE BOM + CRLF
-   + `$PBExportHeader$`), iterate on compile errors.
+   propagate edits to `.pbl` with proper encoding (the workspace
+   `DefaultExportEncode` — UTF-8 BOM, UTF-16BOM, or ANSI — plus CRLF
+   and `$PBExportHeader$` / `$PBExportComments$`), iterate on compile
+   errors.
 3. **Testing** — write tests, compile a test runner, execute it,
    capture and parse structured results, correlate failures back to
    source entries.
@@ -95,7 +97,7 @@ PowerBuilder project:
 | **Design** — know which PB patterns to use | — | Style/architecture-guide skill + Appeon docs context |
 | **Design** — scaffold new entries (PBL, app, window, userobject, …) | `pb_library_create`, `pb_compile_entry_import` with minimal syntax (Application has a known catch-22) | Skill carrying the correct minimal template per `entry_type` |
 | **Coding** — know PowerScript syntax + PB runtime API | — | **Appeon documentation ingested** (priority) |
-| **Coding** — edit `.sr*` respecting encoding | `pb-workflow` skill in the MCP repo (UTF-16 LE BOM + CRLF + `$PBExportHeader$`) | Already covered |
+| **Coding** — edit `.sr*` respecting encoding | `pb-workflow` skill in the MCP repo (`DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`, via `pb_edit_and_import` `source_encoding`) | Already covered |
 | **Coding** — propagate to `.pbl` and read errors | `pb_compile_entry_import{,_list}`, `pb_scc_refresh_target`, `pb_get_last_compile_errors` | — |
 | **Testing** — decide/write tests | — | Skill that knows the chosen test framework(s) — agnostic with adapters |
 | **Testing** — compile the test runner | `pb_executable_create` | — |

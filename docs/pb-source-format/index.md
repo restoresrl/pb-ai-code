@@ -36,7 +36,7 @@ One page per entry type:
 
 Plus cross-cutting concerns:
 
-- [encoding](encoding.md) — UTF-16 LE BOM + CRLF + `$PBExportHeader$`. Read this first.
+- [encoding](encoding.md) — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`. Read this first.
 - [patterns/](patterns/) — recurring blocks that appear in multiple entry types: `forward`, `type variables`, `event`, `on …` blocks, etc.
 
 ## Page conventions

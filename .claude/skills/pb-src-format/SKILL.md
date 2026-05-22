@@ -36,8 +36,10 @@ entry type:
 | `.srj` | [project](../../../docs/pb-source-format/project.md) |
 
 Read [`encoding.md`](../../../docs/pb-source-format/encoding.md)
-first if you are not yet familiar with the UTF-16 LE BOM + CRLF +
-`$PBExportHeader$` rules — they apply to every entry type.
+first if you are not yet familiar with the `DefaultExportEncode`-
+driven encoding (UTF-8 BOM / UTF-16BOM / ANSI) + CRLF +
+`$PBExportHeader$` / `$PBExportComments$` rules — they apply to every
+entry type.
 
 ## The flow (read-consult-write-grow)
 
@@ -58,8 +60,13 @@ first if you are not yet familiar with the UTF-16 LE BOM + CRLF +
 
 4. **Write the file** following the canonical form. Respect the
    encoding rules from [encoding](../../../docs/pb-source-format/encoding.md):
-   UTF-16 LE BOM (`FF FE` as first two bytes), CRLF line endings,
-   `$PBExportHeader$<name>.<ext>` as the first text line.
+   match the workspace `DefaultExportEncode` (UTF-8 BOM with `EF BB
+   BF`, UTF-16 LE BOM with `FF FE`, or ANSI with no BOM), CRLF line
+   endings, `$PBExportHeader$<name>.<ext>` on line 1, and (if the
+   entry has a non-empty comment) `$PBExportComments$<escaped>` on
+   line 2. Easier path: hand off to `pb_edit_and_import` in
+   `pb-workflow`, which rebuilds the canonical header block and
+   honors `source_encoding` for you.
 
 5. **Grow the wiki as a side-effect.** After you have produced a
    file that compiles successfully (verified via
