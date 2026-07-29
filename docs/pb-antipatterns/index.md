@@ -88,10 +88,10 @@ e.g. same misunderstanding of PB semantics>
 
 ## Cross-references
 
-- [`/pb-review`](../../.claude/commands/pb-review.md) — Step 2b
+- [`/pb-review`](../../commands/pb-review.md) — Step 2b
   consults this catalog during the bug-risk pass.
 - [`pb-src-format`](../pb-source-format/) — sibling reference for
   the on-disk layout of `.sr*` files.
-- [`appeon-query`](../../.claude/skills/appeon-query/SKILL.md) —
+- [`appeon-query`](../../skills/appeon-query/SKILL.md) —
   when the antipattern hinges on a specific PowerScript function
   or runtime behavior, link to the Appeon doc via this skill.

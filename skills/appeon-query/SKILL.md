@@ -60,8 +60,8 @@ need to compare versions or pin to a specific one, pass the
   total ~300-600 tokens.
 - `appeon_get` returns one full record, typically ~300-500 tokens.
 - A typical "I need to know how `Foo()` works" exchange costs
-  ~400-800 tokens vs ~3000-10000 tokens for a `WebFetch` of the
-  same content. Use the index first; reserve `WebFetch` for cases
+  ~400-800 tokens vs ~3000-10000 tokens for a live web fetch of the
+  same content. Use the index first; reserve a live web fetch for cases
   where the index returns nothing and you need to confirm a guess.
 
 ## Boundary with `pb-src-format`
@@ -78,5 +78,5 @@ switch skills.
 If `appeon_search` returns an error like "database not found" or the
 MCP server isn't connected, the local index hasn't been built yet
 on this machine. Tell the user; do not silently fall back to
-`WebFetch`. The user can run `pb-appeon-index update` to populate
+fetching the page live. The user can run `pb-appeon-index update` to populate
 the index — instructions live in `docs/appeon-index/README.md`.

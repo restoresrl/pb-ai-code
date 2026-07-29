@@ -1,8 +1,8 @@
 # Appeon doc index — Layer 1 of the pb-ai-code knowledge architecture
 
 A searchable, token-efficient index of Appeon's PowerBuilder
-documentation, exposed to an MCP-capable agent (Claude Code in
-first instance) as four tools:
+documentation, exposed to any MCP-capable coding assistant as four
+tools:
 
 - `appeon_search(query, version?, limit?)` — FTS5 keyword search.
 - `appeon_get(name, version?)` — full structured page record.
@@ -10,7 +10,7 @@ first instance) as four tools:
 - `appeon_list_versions()` — versions present in the DB.
 
 The agent-side flow is driven by the
-[`appeon-query`](../../.claude/skills/appeon-query/SKILL.md) skill.
+[`appeon-query`](../../skills/appeon-query/SKILL.md) skill.
 
 ## What it replaces
 
@@ -108,9 +108,10 @@ Inputs and outputs:
 
 ## Wiring up the MCP server
 
-The repo ships a project-level `.mcp.json` at the root, which Claude
-Code picks up automatically when its cwd is inside the project. It
-points to the venv-resident Python so no PATH activation is needed:
+The repo ships a project-level `.mcp.json` at the root. Claude Code
+reads that file directly; for another client, copy the block into
+whatever MCP config it uses (see [`docs/install.md`](../install.md)).
+It points at the venv-resident Python so no PATH activation is needed:
 
 ```jsonc
 {
@@ -126,13 +127,15 @@ points to the venv-resident Python so no PATH activation is needed:
 Prereq for this form: a Python virtualenv at `.venv/` with
 `pb_appeon_index` installed (`pip install -e ".[dev]"`).
 
-No env var is needed: the server falls back to
-`./docs/appeon-index/index.db` (relative to cwd), and Claude Code
-launches MCP servers with cwd set to the project root. If you keep
-the DB elsewhere, set `PB_APPEON_INDEX_DB` to its absolute path.
+The relative paths in that block assume the client launches the server
+with the project root as its working directory, which is the usual
+behaviour; the server falls back to `./docs/appeon-index/index.db` on
+the same assumption. If either does not hold for your client, use
+absolute paths for `command` and set `PB_APPEON_INDEX_DB` to the DB's
+absolute path.
 
-User-level Claude Code config works too if you prefer not to commit
-the server entry — the JSON shape is the same.
+A user-level config works too if you would rather not commit the
+server entry — the JSON shape is the same.
 
 Once the server is connected, the agent calls `appeon_search` /
 `appeon_get` / `appeon_list_topics` / `appeon_list_versions` as
@@ -156,7 +159,7 @@ fast, and `INSERT OR REPLACE` handles the changed rows.
 
 - The textual format of `.sr*` source files. That's Layer 2 — see
   the [`pb-source-format` wiki](../pb-source-format/index.md) and
-  the [`pb-src-format`](../../.claude/skills/pb-src-format/SKILL.md) skill.
+  the [`pb-src-format`](../../skills/pb-src-format/SKILL.md) skill.
 - Project-specific codebase patterns (naming conventions, internal
   libraries, idiomatic flow for a given product). That's Layer 3 — deferred.
 - License-restricted content. Each developer rebuilds the index

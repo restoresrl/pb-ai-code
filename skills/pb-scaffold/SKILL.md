@@ -1,13 +1,21 @@
 ---
 name: pb-scaffold
-description: Use this when you need to create a new PowerBuilder object from scratch — a window, userobject, function, datawindow, menu, or structure — and want a minimal body that the ORCA compiler accepts on the first try. Provides validated inline templates plus the rules for the one entry type the API cannot bootstrap (`application`). Pairs with `pb-workflow` (propagation into a `.pbl`) and `pb-src-format` (variants observed in real codebases).
+description: Use this when you need to create a new PowerBuilder object from scratch — a window, userobject, function, datawindow, menu, or structure — and want a minimal body that the ORCA compiler accepts on the first try. Provides validated inline templates plus the rules for the one entry type the API cannot bootstrap (`application`). Pairs with pb-src-format (variants observed in real codebases) and pb-format (surface style).
+metadata:
+  version: "1.1.0"
 ---
 
 # Scaffolding new PowerBuilder objects
 
 Use this skill when you need to **create a new PB object**: emit the
 minimal body for one of the supported entry types and feed it to
-`pb_compile_entry_import` (or write it to a `.sr*` on disk).
+`pb_compile_entry_import`.
+
+A new entry is the one case where there is nothing to export first, so
+it is also the one case where the body has to come from somewhere
+other than ORCA. Everything else — editing an object that already
+exists — goes through the export/edit/import loop instead; see
+[`pb-apply-plan`](../pb-apply-plan/SKILL.md).
 
 ## When to invoke this skill
 
@@ -15,7 +23,6 @@ minimal body for one of the supported entry types and feed it to
   menu / structure (by name or by purpose).
 - You are about to construct the `syntax` argument for
   `pb_compile_entry_import` from scratch.
-- You are about to write a new `.sr*` file under `ws_objects/`.
 
 If you are *editing* an existing object's body, you do not need this
 skill — use [`pb-src-format`](../pb-src-format/SKILL.md) instead.
@@ -54,39 +61,42 @@ Not covered:
    - `entry_name`: the object name (lowercase, no extension).
    - `entry_type`: the type string (`"function"`, `"window"`, …).
    - `syntax`: the template body.
-4. Check the returned `success` flag. On failure, inspect the `errors`
-   list — diagnostics include line + column.
+4. Read the response. Branch on `"error" in response` first — that is a
+   tool or state failure (session not configured, library not in the
+   list). Otherwise check `success`: `false` with a populated `errors`
+   array is **compile diagnostics, not a tool failure**, and each item
+   carries `message_number`, `message_text`, `line` and `column`. Fix
+   the body and re-import the whole thing.
 
 ## A note on the template surface style
 
 The templates below use 4-space indent and lowercase PowerScript
-keywords. That choice is **cosmetic to the skill**, not normative
-for the codebase: it keeps the templates readable inline in this
-Markdown file. When you scaffold into a workspace that ships a
-`.pb-format.toml`, the body is automatically re-styled by the
-formatter at the next `pb_edit_and_import` call (indent character,
-keyword case, operator spacing) — see [`pb-format`](../pb-format/SKILL.md).
-When the workspace does not ship a config, the template's surface
-style is what lands on disk (same as today).
+keywords. That choice is **cosmetic to the skill**, not normative for
+any codebase: it keeps the templates readable inline in this Markdown
+file. **Do not hand-tune a template's surface to match a target
+style.** If the workspace opted into a house style (it ships a
+`.pb-format.toml`), run the formatter over the file once it is on
+disk — see [`pb-format`](../pb-format/SKILL.md). Where it did not, the
+template's own style is what lands, and that is fine.
 
-In either case, **do not hand-tune the template's surface to match
-a target style** — emit the natural template and let the formatter
-do its job.
+## On `$PBExportHeader$`
 
-The first line `$PBExportHeader$<name>.<ext>` is **optional** for the
-ORCA API (entry name and type are passed as separate parameters) but
-**required** if you write the body to a `.sr*` file on disk. Include
-it by default: it costs nothing and keeps the body valid for both
-code paths.
+The first line `$PBExportHeader$<name>.<ext>` is **not required by the
+import**: ORCA ignores header lines in the syntax it is given, and the
+entry name and type travel as separate parameters. It is required in a
+`.sr*` **file** on disk, because that is how the IDE locates the
+entry — but you should not be writing those files by hand anyway (see
+below).
 
-For the encoding rules that apply when writing to disk (the file
-encoding follows the workspace `DefaultExportEncode` — UTF-8 BOM,
-UTF-16BOM, or ANSI — always with CRLF), see
-[`docs/pb-source-format/encoding.md`](../../../docs/pb-source-format/encoding.md).
-When calling `pb_compile_entry_import`, pass a plain Python `str`
-without BOM — ORCA is encoding-agnostic at the C ABI (strings cross as
-wide chars). When you need the file *also* persisted on disk, prefer
-`pb_edit_and_import` with the matching `source_encoding` parameter.
+Including the header in the template costs nothing and keeps the body
+valid on both paths, so the templates keep it.
+
+Two related facts, since they used to be believed otherwise: ORCA is
+encoding-agnostic at the C ABI (strings cross as wide chars), so pass
+a plain `str` with no BOM to `pb_compile_entry_import`; and a compile
+error on first import is almost never about the header. For the
+on-disk encoding rules see
+[`docs/pb-source-format/encoding.md`](../../docs/pb-source-format/encoding.md).
 
 ## Templates
 
@@ -263,7 +273,7 @@ Notes:
   DPI. Override for your case.
 - Controls (buttons, datawindows, etc.) go inside the `global type`
   block, after the property assignments and before `end type`. See
-  [`docs/pb-source-format/window.md`](../../../docs/pb-source-format/window.md)
+  [`docs/pb-source-format/window.md`](../../docs/pb-source-format/window.md)
   for the control-block format.
 
 ### userobject (`.sru`)
@@ -372,7 +382,7 @@ Notes:
   shows it. Both refer to each other by `name` (here, `col1`).
 - For a DataWindow with a DB-backed source instead of external, add
   `retrieve="<sql>"` to the `table(…)` block. See
-  [`docs/pb-source-format/datawindow.md`](../../../docs/pb-source-format/datawindow.md)
+  [`docs/pb-source-format/datawindow.md`](../../docs/pb-source-format/datawindow.md)
   for retrieve syntax and other presentation modes.
 
 ## The application catch-22
@@ -394,21 +404,41 @@ The only ways out of this knot:
   any `.pbl` with an application object, you can export its `.sra` and
   import it into the target with `pb_compile_entry_import` — but only
   after `set_current_application` has been pointed at *that* existing
-  app. The `pb-orca-mcp` test fixture `tests/fixtures/tiny_app/genapp.pbl`
-  ships an empty application named `genapp` for exactly this purpose.
+  app. [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) ships
+  a test fixture with an empty application object for exactly this
+  purpose.
 
 For a fresh project, the IDE path is the only practical workflow.
 This skill does not attempt to script it.
 
 ## After the import succeeds
 
-`pb_compile_entry_import` only writes the compiled object into the
-`.pbl` binary. On git-tracked projects that mirror the `.pbl` into
-`ws_objects/`, you also need to update the corresponding `.sr*` source
-file so the next checkout sees the new object. That propagation is the
-job of the [`pb-workflow`](../../../../pb-orca-mcp/.claude/skills/pb-workflow/SKILL.md)
-skill in the sibling `pb-orca-mcp` repo. Hand off to it once the entry
-exists in the `.pbl`.
+`pb_compile_entry_import` writes the compiled object into the `.pbl`
+**and**, when the project keeps a `ws_objects/` text projection, writes
+the matching `.sr*` file in the same call. The response says what it
+touched: `sync: "ok"` with `synced_files`, or `sync:
+"not_applicable"` when the project keeps no projection. So there is no
+propagation step to remember, and no second file to keep aligned by
+hand.
+
+Two things are still yours:
+
+- **Check `sync`.** `sync: "failed"` (with `sync_error`) means the
+  `.pbl` has the new object but the text file was not written. Surface
+  it; the two forms now disagree.
+- **Decide the commit.** The server never stages and never commits, and
+  whether the `.pbl` is tracked varies by project. `git status` shows
+  what the repository actually does.
+
+One thing worth checking on a new object: some workspaces keep a
+`.pbg` file listing which object belongs to which library. ORCA does
+not manage it. If the project has one, adding an entry may mean
+updating it.
+
+If the workspace has no projection yet and you want one,
+`pb_library_export_sources(lib_path)` writes every entry in the library
+out as text in a single call — that is the bootstrap from a
+binary-only project to a reviewable one.
 
 ## Boundary with `pb-src-format`
 
@@ -424,11 +454,12 @@ under `docs/pb-source-format/`.
 
 `pb-scaffold` produces the **structural body** of a new entry. The
 surface style (indent character, keyword case, operator spacing) is
-[`pb-format`](../pb-format/SKILL.md)'s responsibility, applied at
-import time by `pb_edit_and_import` when the workspace has a
-`.pb-format.toml`. Do not pre-format the scaffold output to match
-the workspace style — emit the template, let the formatter
-normalize it on its way to the `.pbl`.
+[`pb-format`](../pb-format/SKILL.md)'s responsibility. Do not
+pre-format the scaffold output to match a workspace style: import the
+template as it is, and when the workspace opted into a house style
+(it ships a `.pb-format.toml`), run `pb-format format` over the
+resulting `.sr*` and re-import. The formatter is a separate, optional
+tool; without it nothing here changes.
 
 ## Boundary with `appeon-query`
 

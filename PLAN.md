@@ -7,7 +7,7 @@ text sources PB exports (`.sra`/`.srf`/`.srw`/`.sru`/...), but it cannot
 compile, validate, or build them, nor can it autonomously design, test,
 or debug PowerBuilder code without external help.
 
-The sibling project [`pb-orca-mcp`](../pb-orca-mcp/) closes the
+The sibling project [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) closes the
 infrastructure gap: it exposes PowerBuilder's ORCA API (`pborc.dll`) as
 MCP tools so an agent can act on `.pbl` libraries — create, modify,
 compile, build EXE/PBD, navigate inheritance hierarchies and
@@ -16,6 +16,87 @@ cross-references.
 **`pb-ai-code` is the layer above it**: the knowledge, skills, and
 orchestration needed to actually *do* agentic PB development — design,
 write, test, and debug — using `pb-orca-mcp` as the foundation tool.
+
+## Realignment 2026-07-29 — decoupling, and agent-agnostic for real
+
+The sections below are dated design records; read them as history. This
+section is what is true now. Three things changed, none of them a change
+of direction.
+
+**1. The `pb-orca-mcp` surface moved, and the skills followed.** The
+server was reworked in June-July 2026: `pb_edit_and_import` — the
+single-call write helper this kit was built around — no longer exists,
+and the edit loop is now two calls on a file:
+
+```text
+pb_object_export_file(lib, entry, type)   -> ORCA writes the .sr*
+edit the file with ordinary text tools
+pb_object_import_file(path, lib)          -> compile + sync in one call
+```
+
+The consequences went beyond a rename. **The text projection is updated
+in the same call that writes the `.pbl`**, so every "remember to
+propagate to `ws_objects/`" step and every "commit both files" checklist
+was deleted rather than rewritten — the skills got shorter. The caller
+no longer chooses an encoding either: ORCA writes the file, byte
+identical to the IDE's. Three new tools are now load-bearing:
+`pb_workspace_info` (project shape, encoding, git, and
+`outside_source_tree` — with no ORCA session and no PB install), which
+is the first call of every flow; `pb_library_export_sources` (a whole
+library to disk in one call), which turns "who calls this" from 1000
+ORCA queries into a grep; and the `pb-orca-mcp check <target>` CLI as
+the diagnostic prerequisite when bring-up fails.
+
+Two beliefs baked into the old docs were also wrong and are now
+corrected: `$PBExportHeader$` is **not** required on import (ORCA
+ignores header lines; the `C0114` that suggested otherwise came from a
+size argument counted in characters instead of bytes), and the binary
+tail some `.sr*` files carry comes **only** from OLE/ActiveX controls,
+not from DataWindow pictures.
+
+**2. The formatter is a separate project.** The 2026-05-22 design put
+the PowerScript normalizer inside `pb-orca-mcp`, reached through a
+`format="auto"` parameter on the write tool, on a choke-point argument.
+That lost to a stronger one: the ORCA bridge should contain no
+PowerScript knowledge at all. The engine now lives in
+[`pb-format`](https://github.com/restoresrl/pb-format) — a standalone
+CLI and library, ORCA-independent, working on files on disk on any OS —
+and it plugs into the edit loop as one optional step between the edit
+and the import. It is genuinely optional: with no `.pb-format.toml` in
+the tree, or no tool installed, the kit does not format and nothing else
+changes.
+
+**3. Agent-agnostic became structural, not aspirational.** "Agent
+agnostic by design" was in the README from day one while every artefact
+lived under `.claude/`, the MCP config pointed at a `.venv-x86` inside a
+sibling checkout, and eleven files linked across repositories by
+relative path. All three made the project unusable by anyone whose
+directory layout differed from ours. Now:
+
+- Canonical, committed: `skills/<name>/SKILL.md` (Agent Skills format),
+  `commands/<name>.md` (thin wrappers that delegate to the skill of the
+  same name), `harness/<harness>/` (per-assistant config).
+- Generated and gitignored: `.claude/` and anything else an install
+  produces. `scripts/install-skills.ps1` materializes the canonical
+  files into whatever directory an assistant reads — including into this
+  repository itself — with a marker file recording the source commit.
+- `pb-orca-mcp` is consumed as any other user would consume it:
+  `uvx --from git+https://github.com/restoresrl/pb-orca-mcp`. No
+  editable install, no sibling-directory assumption.
+- Cross-repository links are URLs. Interactive prompts inside skills are
+  written in neutral English, with the standing instruction to speak the
+  user's language.
+- The `/pb-review` flow moved out of the command file into
+  `skills/pb-review/SKILL.md`, so an assistant with no slash commands
+  and no skill discovery can still be pointed at the file and follow it.
+- [`docs/install.md`](docs/install.md) is new: the per-client setup, and
+  what to do when a client has neither commands nor discovery.
+
+**Still open after this pass**: end-to-end validation of `/pb-review`
+against a real target (the point of the whole exercise, and the next
+thing to do); `pb-impact-analysis`, never started; `pb-format` has no
+remote and is not published, so the install instructions for it name a
+repository that does not exist yet.
 
 ## Re-prioritization 2026-05-19 — refactoring-first
 
@@ -50,12 +131,10 @@ Implications for the four pillars:
   skill. These three orchestrate existing ORCA primitives into the
   refactoring loop.
 - **Tier 2** (grows alongside Tier 1): Layer 2 wiki expansion on
-  real findings; **`pb-format` skill + L2 token-based PowerScript
-  formatter** in `pb-orca-mcp` (`pb_orca_mcp.format`, integrated
-  into `pb_edit_and_import` via `format="auto"`), config via
-  `.pb-format.toml` (design approved 2026-05-22, L1 doc/skill
-  surface shipped, L2 engine still to be written). Optional
-  `pb-style-guide` skill folded into `pb-format` and
+  real findings; the **`pb-format` skill**, driving the standalone
+  [`pb-format`](https://github.com/restoresrl/pb-format) tool, with
+  config via `.pb-format.toml`. Optional `pb-style-guide` skill folded
+  into `pb-format` and
   `docs/pb-source-format/style-conventions.md`.
 - **Tier 3** (on-demand or deferred): scaffolding completion (3
   residual entry types); Pillar 2 testing; runtime trace logging;
@@ -74,9 +153,10 @@ out inline.
 > set by the [Re-prioritization 2026-05-19](#re-prioritization-2026-05-19--refactoring-first)
 > section above. Read both together.
 
-The goal is to let a coding agent (Claude Code in first instance, but
-agent-agnostic by design) handle the full development loop on a
-PowerBuilder project:
+The goal is to let a coding agent — any client, any model; see the
+[2026-07-29 realignment](#realignment-2026-07-29--decoupling-and-agent-agnostic-for-real)
+for what that took — handle the full development loop on a PowerBuilder
+project:
 
 1. **Design** — read existing architecture, follow PB-idiomatic
    patterns, scaffold new objects (windows, userobjects, datawindows,
@@ -102,7 +182,7 @@ PowerBuilder project:
 | **Design** — know which PB patterns to use | — | Style/architecture-guide skill + Appeon docs context |
 | **Design** — scaffold new entries (PBL, app, window, userobject, …) | `pb_library_create`, `pb_compile_entry_import` with minimal syntax (Application has a known catch-22) | Skill carrying the correct minimal template per `entry_type` |
 | **Coding** — know PowerScript syntax + PB runtime API | — | **Appeon documentation ingested** (priority) |
-| **Coding** — edit `.sr*` respecting encoding | `pb-workflow` skill in the MCP repo (`DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`, via `pb_edit_and_import` `source_encoding`) | Already covered |
+| **Coding** — edit `.sr*` respecting encoding | Entirely covered: ORCA writes the file (`pb_object_export_file`) and reads it back (`pb_object_import_file`), keeping the text projection in step in the same call | Nothing: the caller never picks an encoding |
 | **Coding** — propagate to `.pbl` and read errors | `pb_compile_entry_import{,_list}`, `pb_scc_refresh_target`, `pb_get_last_compile_errors` | — |
 | **Testing** — decide/write tests | — | Skill that knows the chosen test framework(s) — agnostic with adapters |
 | **Testing** — compile the test runner | `pb_executable_create` | — |
@@ -116,13 +196,13 @@ PowerBuilder project:
 
 - **Required dependency**: `pb-ai-code` does not duplicate any ORCA
   primitive. Every action on a `.pbl` goes through `pb-orca-mcp` tools.
-- **Versioning**: during the current **internal dogfooding phase**
-  (both repos private), `pb-ai-code` depends on an **editable install**
-  of the local sibling — `pip install -e ../pb-orca-mcp`. When both
-  repos flip to public and `pb-orca-mcp` ships on PyPI, this switches
-  to versioned `pb-orca-mcp>=0.1.0` to avoid drift between releases.
-  The editable mode is acceptable now because both projects are
-  Carlo-only or restore-team-only.
+- **Consumption model**: `pb-orca-mcp` is consumed as an **MCP
+  server, from its GitHub repository** (`uvx --from
+  git+https://github.com/restoresrl/pb-orca-mcp`), exactly as any other
+  user would. It is not a Python dependency of this project, and no
+  longer an editable install of a local checkout — that coupling was
+  removed 2026-07-29 because it made `pb-ai-code` unusable by anyone
+  whose directory layout differed from ours.
 - **Audience overlap, but distinct scope**: both repos target anyone
   who develops PB. `pb-orca-mcp` is the engine; `pb-ai-code` is the
   workflow + knowledge + orchestration. Either can be adopted
@@ -155,15 +235,14 @@ Active components driving the next slices of work:
   for now. The wiki grows on-encounter during real review sessions
   (Tier 2). The 3 residual scaffold entry types are Tier 3, on-demand.
 - **`pb-format` skill + `/pb-format` slash command + Layer 2 wiki
-  page `style-conventions.md`** (new, Tier 2, L1 surface shipped
-  2026-05-22). Defines the four MVP style invariants (indent,
-  keyword case, operator spacing, line endings), the
-  `.pb-format.toml` config contract, and the boundaries with
+  page `style-conventions.md`** (Tier 2). Defines the four style
+  invariants (indent, line endings, keyword case, operator spacing),
+  the `.pb-format.toml` config contract, and the boundaries with
   `pb-src-format` (structure vs style) and `pb-scaffold` (templates
-  emit neutral style, formatter normalizes on import). The L2
-  engine that implements the contract lives in `pb-orca-mcp` under
-  `pb_orca_mcp.format` and is **not yet written** — the slash
-  command is a stub until the engine ships.
+  emit a neutral style; the formatter normalizes afterwards). The
+  engine is the standalone
+  [`pb-format`](https://github.com/restoresrl/pb-format) tool: a
+  separate repository, optional, ORCA-independent.
 - **`appeon-query` skill + `pb-appeon-index` MCP** (existing, kept) —
   the `/pb-review` flow calls into it for syntax / runtime API
   cross-reference.
@@ -177,8 +256,9 @@ section, or are deferred. Kept here as reference.
 
 The repo contains a mix of artifacts:
 
-1. **Skills** (`.claude/skills/<name>/SKILL.md` format) — one skill per
-   workflow that needs the agent to follow a specific pattern:
+1. **Skills** (`skills/<name>/SKILL.md`, Agent Skills format) — one
+   skill per workflow that needs the agent to follow a specific
+   pattern:
    - Scaffolding skills (new application / window / userobject / …)
    - Style and architecture guide for idiomatic PowerScript
    - Test orchestration skill (writing tests + invoking the runner)
@@ -203,7 +283,7 @@ The repo contains a mix of artifacts:
      language-reference doc-sites — see
      [the Appeon index README](docs/appeon-index/README.md)
      for the replacement design and the
-     [`appeon-query`](.claude/skills/appeon-query/SKILL.md) skill
+     [`appeon-query`](skills/appeon-query/SKILL.md) skill
      for agent-side usage.
 
    - **Layer 2 — `.sr*` source-file format (reverse-engineered)**:
@@ -230,8 +310,8 @@ The repo contains a mix of artifacts:
 3. **Test orchestration — framework-agnostic with adapters**:
    - A common interface "run test suite, return structured results"
      (suite name → list of tests → outcome + error per test).
-   - Adapters per framework: probably **pbunit first** (knowledge
-     readily available in the Restore stack), then others. The first
+   - Adapters per framework: probably **pbunit first** (the one we
+     have ground truth on), then others. The first
      adapter informs the abstraction; we do not freeze the interface
      until we have at least one working adapter.
    - The MCP only provides the build primitive (`pb_executable_create`);
@@ -244,12 +324,12 @@ The repo contains a mix of artifacts:
      proposes a structured logging convention (JSON-lines is the
      candidate; format TBD) and ships a parser the agent can call to
      correlate trace entries with source files.
-   - Restore's `n_logger` in `rstpb22` is a candidate reusable
-     **pattern** (not the object itself — the dev kit is public and
-     vendor-neutral).
+   - A logging NVO from a private framework is the candidate reusable
+     **pattern** (the pattern, never the object: this repo is public
+     and vendor-neutral).
 
-5. **Slash commands** (`.claude/commands/<name>.md`) — entry points that
-   compose multiple skills + MCP tools into named flows. Candidates:
+5. **Slash commands** (`commands/<name>.md`) — thin entry points that
+   delegate to the skill of the same name. Candidates:
    - `/pb-new-userobject <name>` (scaffolding)
    - `/pb-run-tests` (test orchestration)
    - `/pb-trace <log-file>` (post-mortem)
@@ -267,9 +347,9 @@ The repo contains a mix of artifacts:
 | Repo location | Public, separate from `pb-orca-mcp` | International audience; no Restore-internal references; clean LICENSE story for Appeon docs mirror |
 | Project name | **`pb-ai-code`** | Self-explanatory ("AI coding assistant for PB"); pairs naturally with `pb-orca-mcp` (engine + experience); agent-agnostic in name (no "claude" in the slug) |
 | Appeon docs | Hybrid: core pages mirrored, rest via WebFetch | Balances offline friendliness, context cost, and freshness — **superseded 2026-05-15, see below** |
-| Test framework | Agnostic via adapters; first adapter pbunit | Audience is broader than Restore; first adapter is the one we have ground truth on |
+| Test framework | Agnostic via adapters; first adapter pbunit | The audience is broader than any one shop; the first adapter is the one we have ground truth on |
 | Debugging scope | Four levels: compile-time (already MCP) + failing-test + runtime trace/log parsing + impact analysis | All four are realistic for PB given no DAP exists |
-| Sequencing relative to `pb-orca-mcp` PyPI publish | **Internal dogfooding first** — both repos private; active dev on `pb-ai-code` can start whenever Carlo wants, using editable install of the local sibling. PyPI versioning + public flip when dogfooding confirms stability | Decouples scope readiness from external release pressure |
+| Sequencing relative to `pb-orca-mcp` PyPI publish | **Internal dogfooding first** — both repos private; active dev on `pb-ai-code` can start whenever Carlo wants, using an editable install of the local sibling. PyPI versioning + public flip when dogfooding confirms stability - **the editable-install part superseded 2026-07-29, see the realignment section** | Decouples scope readiness from external release pressure |
 
 ### Knowledge architecture revision (2026-05-15)
 
@@ -306,22 +386,21 @@ outside.
    the leading candidate. The format must be (a) easy to emit from
    PowerScript (no JSON-stringify dependency), (b) easy to parse
    line-by-line in a Python tool, (c) self-describing enough for the
-   agent to correlate events with source. Restore's `n_logger` pattern
-   in `rstpb22` is a candidate inspiration.
+   agent to correlate events with source. A structured-logging NVO from
+   a private framework is the candidate inspiration.
 3. **First testing adapter** — **pbunit-first** is concrete and
-   leverages existing Restore knowledge, but ties the abstraction to
+   leverages knowledge we already have, but ties the abstraction to
    one framework. The alternative — design the abstraction agnostic
    from day one — produces upfront work without proof it's the right
    shape. Default: pbunit-first, extract the abstraction *from* it
    once it works.
-4. **Distribution model for `pb-ai-code`** — **partially settled
-   2026-05-15**: the repo carries Python (`tools/pb-source-analyzer/`,
-   exposed as console script `pb-source-analyzer`), Markdown wiki
-   (`docs/pb-source-format/`), skills (`.claude/skills/`), and a
-   cli-printing-press recipe (`docs/appeon-cli/`). Distribution
-   model still TBD: PyPI is now justified by the Python component
-   but git-clone-into-workspace remains viable for the
-   skill/wiki side. Final call deferred to public-flip time.
+4. **Distribution model for `pb-ai-code`** — **settled 2026-07-29**:
+   git-clone plus `scripts/install-skills.ps1`, which materializes
+   `skills/` + `commands/` + `harness/<harness>/` into whatever
+   directory the assistant reads, in the target project or in this repo
+   itself. PyPI would still make sense for the two Python tools
+   (`pb-source-analyzer`, `pb-appeon-index`) but is not the delivery
+   mechanism for the skills.
 5. **Name availability verification** — check that
    `github.com/restoresrl/pb-ai-code` is free (very likely) and, if
    the distribution model ends up using PyPI, that `pb-ai-code` is
@@ -329,21 +408,17 @@ outside.
 
 ## Sequencing
 
-**Current phase — internal dogfooding (both repos private)**:
-`pb-ai-code` development can start whenever Carlo wants. The
-`pb-orca-mcp` foundation (v0.1.0, 107 pytest green, compile loop
-validated via Claude Code) is already usable via editable install. The
-goal is to drive real Restore Magware work through this stack and
+**Current phase — internal dogfooding (both repos private)**: the
+`pb-orca-mcp` foundation is usable straight from its GitHub repository
+via `uvx`. The goal is to drive real work through this stack and
 discover the gaps before any public release pressure.
 
 **Next slice (2026-05-19, refactoring-first re-prioritization)**:
 
-1. Write `pb-context-build` skill (`.claude/skills/pb-context-build/SKILL.md`).
-2. Write `/pb-review` slash command, Phase A only — report-only
-   (`.claude/commands/pb-review.md`).
-3. Validate end-to-end on a small target in `magware/mw21r2/` or a
-   customization. Measure context-build cost, signal/noise of
-   findings, scoping efficacy.
+1. Write `pb-context-build` skill.
+2. Write the `pb-review` flow, Phase A only — report-only.
+3. Validate end-to-end on a small real target. Measure context-build
+   cost, signal/noise of findings, scoping efficacy.
 4. Iterate on `pb-context-build` heuristics based on real findings,
    *not* upfront on hypotheses.
 5. Add `pb-impact-analysis` skill once `/pb-review` has shaped the
@@ -355,31 +430,27 @@ Tier 2 work (Layer 2 wiki growth, style-guide skill) follows the
 first slice on-encounter. Tier 3 (testing, runtime trace, scaffold
 completion) remains deferred.
 
-**Formatter slice (2026-05-22, Tier 2)**:
+**Formatter slice (started 2026-05-22, Tier 2)**:
 
-1. ✅ Wiki page `docs/pb-source-format/style-conventions.md`
-   defining the four MVP invariants.
-2. ✅ Skill `.claude/skills/pb-format/SKILL.md` + slash command
-   `.claude/commands/pb-format.md` (stub).
-3. ✅ Cross-link updates in `pb-src-format`, `pb-scaffold`,
-   `pb-apply-plan`.
-4. ⏳ L2 engine in `pb-orca-mcp` under `pb_orca_mcp.format/`
-   (lexer + 4 normalizer rules + config + tests + CLI `pb-format
-   detect`).
-5. ⏳ Integration: `pb_edit_and_import` gains
-   `format: Literal["auto", True, False] = "auto"` with
-   `.pb-format.toml` discovery walking up from `source_path`.
+1. ✅ Wiki page `docs/pb-source-format/style-conventions.md` defining
+   the four invariants.
+2. ✅ Skill `skills/pb-format/` + command `commands/pb-format.md`.
+3. ✅ Cross-links in `pb-src-format`, `pb-scaffold`, `pb-apply-plan`.
+4. ✅ The engine, shipped as the standalone
+   [`pb-format`](https://github.com/restoresrl/pb-format) project
+   (token lexer + the four rules + `.pb-format.toml` + CLI
+   `detect` / `format` / `check` / `write`) — **not** inside
+   `pb-orca-mcp` as originally designed. The choke-point argument for
+   putting it in the write tool lost to the argument for keeping
+   PowerScript knowledge out of the ORCA bridge entirely.
+5. ✅ Integration rewritten accordingly: the formatter is a step in the
+   edit loop (`export_file` → edit → `pb-format format` →
+   `import_file`), not a parameter of a write tool.
 6. ⏳ End-to-end validation on a real workspace (compile invariance
    and idempotency).
-7. ⏳ L3 (AST-based via tree-sitter) deferred — trigger:
-   `pb-shrugged/tree-sitter-powerscript` ships v1.0.0, or ≥ 3 issue
-   reports the token-based L2 cannot resolve.
-
-**`pb-orca-mcp` pre-flight already done** (commit `876c34d`, 2026-05-14):
-PyPI name verified free, recipe export/import asymmetry documented,
-tool count aligned 23→29 with SCC group, Restore-internal references
-scrubbed from public-facing docs, wheel + sdist built locally in
-`dist/`.
+7. ⏳ An AST-based layer stays deferred — trigger: a maintained
+   PowerScript grammar cutting a real 1.0, or three concrete cases the
+   token-based approach cannot resolve.
 
 **Public release path (deferred, no deadline)** — when dogfooding has
 confirmed stability:
@@ -388,10 +459,10 @@ confirmed stability:
    reflects dogfooding phase).
 2. `gh repo edit restoresrl/pb-orca-mcp --visibility public --accept-visibility-change-consequences`.
 3. `twine upload "dist/*"` for `pb-orca-mcp`.
-4. Switch `pb-ai-code` dependency from editable install to versioned
-   PyPI: `pip install pb-orca-mcp>=0.1.0`.
-5. Flip `restoresrl/pb-ai-code` to public when its design phase
-   matures into something with usable skills / docs.
+4. Flip `restoresrl/pb-ai-code` to public once dogfooding on real
+   targets confirms the skills hold up.
+5. Publish `restoresrl/pb-format`, which today exists only as a local
+   repository with no remote.
 
 ## Out of scope
 
@@ -401,9 +472,9 @@ confirmed stability:
 - **Production build pipelines**: `pb-ai-code` is a development tool,
   not a release-build runner. PowerGen / OrcaScript / custom batch
   scripts remain the way to produce tagged-release artifacts.
-- **A new UI / dashboard**: this is a Claude-Code-shaped repo (skills,
-  slash commands, docs, occasional Python helpers). It has no UI of
-  its own.
+- **A new UI / dashboard**: this is a skills-and-docs repo (plus a
+  couple of Python helpers). It has no UI of its own, and no runtime
+  beyond what the assistant provides.
 - **Generic MCP servers unrelated to PB development**: in-scope MCP
   servers are limited to the PB-dev stack (`pb-orca-mcp` for ORCA,
   `pb-appeon-index` for Appeon docs). New MCP servers are built only
@@ -415,7 +486,10 @@ confirmed stability:
 ## References
 
 - Sibling project: [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)
-  (currently private; will flip to public before its PyPI publish).
+  (currently private; will flip to public before its PyPI publish). Its
+  `docs/integrating.md` is the contract this project is built against.
+- Sibling project: [`pb-format`](https://github.com/restoresrl/pb-format)
+  - the optional PowerScript formatter (local-only for now).
 - Appeon PowerBuilder docs (the documentation source we'll ingest):
   https://docs.appeon.com/
 - PowerScript Language Reference (the priority mirror candidate):

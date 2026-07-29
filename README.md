@@ -1,64 +1,102 @@
 # pb-ai-code
 
-Agentic dev kit for PowerBuilder — sibling project to
-[`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp).
+An agentic dev kit for **PowerBuilder**: skills, ingested
+documentation, and named flows that let an AI coding assistant read,
+review, refactor and extend a real PB codebase.
 
-Where `pb-orca-mcp` exposes PowerBuilder's ORCA API to a coding agent
-as MCP tools (the engine), `pb-ai-code` is the layer above: skills,
-ingested Appeon documentation, test orchestration, debugging patterns
-and slash commands that let a coding agent — Claude Code in first
-instance, agent-agnostic by design — do full agentic PB development:
-design, code, test, debug.
+Where [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)
+exposes PowerBuilder's ORCA API as MCP tools — the engine —
+`pb-ai-code` is the layer above it: what to do with those tools, in
+what order, and what to know before touching a 25-year-old monolith.
 
-## Status
+It is **assistant-agnostic and model-agnostic by construction.** The
+skills are plain Markdown in the [Agent Skills](https://agentskills.io)
+`SKILL.md` format, they name MCP tools rather than client features, and
+an installer materializes them into whatever directory your assistant
+reads. Nothing here assumes a particular vendor.
 
-**WIP — design phase.** No scaffolding yet. The vision, decisions, and
-open questions are in [`PLAN.md`](PLAN.md).
+## What it does
 
-Active development on this repo starts **after** `pb-orca-mcp` is
-published to PyPI as a stable, versioned dependency (currently
-`v0.1.0`; target `pb-orca-mcp>=0.1.0`).
+The primary use case is **code review and refactoring of legacy
+PowerBuilder**. Greenfield PB development is rare; the realistic
+audience is people maintaining decades-old monolithic applications.
 
-## What it will contain
+The main flow, `/pb-review`, goes: frame the scope with you → build a
+*budgeted* context pack from the PBLs (you cannot read a monolith all
+at once) → state its understanding and wait for you to confirm it →
+review against a catalog of PB-specific hazards → write a plan file and
+a CHANGELOG entry that outlive the session → apply the fixes one at a
+time, each with a visible diff and a compile check.
 
-- **Skills** — workflow patterns (scaffolding, idiomatic PowerScript,
-  test orchestration, debugging) that the agent follows.
-- **Layer 1 — Appeon doc index (`tools/pb-appeon-index/`)** —
-  a Python tool that scrapes `docs.appeon.com` once into a local
-  SQLite FTS5 database and exposes it as an MCP server with four
-  tools (`appeon_search`, `appeon_get`, `appeon_list_topics`,
-  `appeon_list_versions`). Multi-version by design — a TOML config
-  lists the PB versions to index, and `pb-appeon-index update` is
-  idempotent and incremental. A typical lookup costs ~400 tokens vs
-  ~3000-10000 for a live `WebFetch`. See
-  [`docs/appeon-index/README.md`](docs/appeon-index/README.md) for
-  setup.
-- **Layer 2 — `.sr*` source-file format wiki** — a Karpathy-style
-  ["LLM Wiki"](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
-  under `docs/pb-source-format/` documenting the textual layout of
-  each PB entry type (`.sra`/`.srw`/`.sru`/`.srf`/`.srd`/`.srm`/
-  `.srs`/`.srq`/`.srj`). Pre-populated by `pb-source-analyzer`
-  (Python tool in `tools/`) from a real `.sr*` corpus, then grows
-  incrementally during agent work — when the agent meets an
-  undocumented variant, it appends an entry.
-- **Test orchestration, framework-agnostic via adapters** — first
-  adapter likely pbunit, abstraction extracted from there.
-- **Structured logging pattern for runtime debugging** — PB has no DAP,
-  so debugging is post-mortem; a structured-log convention plus a
-  parser the agent can call.
-- **Slash commands** — named flows that compose skills + MCP tools
-  (e.g. `/pb-new-userobject`, `/pb-run-tests`, `/pb-trace`,
-  `/pb-impact`).
+Two properties it is built around: **it stops before spending your
+budget**, and **its output persists**. A plan file can be edited by
+hand, committed, and resumed by a different assistant days later.
 
-See [`PLAN.md`](PLAN.md) for the full design.
+## Contents
+
+| | |
+| --- | --- |
+| [`skills/`](skills/) | The flows. `pb-review` (structured review), `pb-apply-plan` (the edit loop), `pb-context-build` (scoped context from a monolith), `pb-scaffold` (new objects), `pb-src-format` (the `.sr*` format), `pb-format` (style), `appeon-query` (language lookups). |
+| [`commands/`](commands/) | Slash-command wrappers — thin; each delegates to the skill of the same name. |
+| [`docs/pb-source-format/`](docs/pb-source-format/) | A wiki on the textual layout of each `.sr*` entry type. No upstream spec exists, so it is reverse-engineered and grows as cases are met. |
+| [`docs/pb-antipatterns/`](docs/pb-antipatterns/) | PB-specific hazards with reproductions and idiomatic fixes — the bugs that compile fine and bite in production. |
+| [`tools/pb-appeon-index/`](tools/pb-appeon-index/) | Scrapes `docs.appeon.com` once into a local SQLite FTS5 database and serves it as four MCP tools. A language lookup costs ~400 tokens instead of a few thousand. |
+| [`tools/pb-source-analyzer/`](tools/pb-source-analyzer/) | Bootstraps the format wiki from a real `.sr*` corpus, anonymizing project-specific identifiers on the way in. |
+
+## Install
+
+Three steps, in order: connect the MCP server, install the skills, and
+optionally add the doc index and the formatter.
+
+```pwsh
+git clone https://github.com/restoresrl/pb-ai-code
+cd pb-ai-code
+.\scripts\install-skills.ps1 -Target ..\my-pb-app -Bundle review
+```
+
+**The full walkthrough, per assistant, is
+[`docs/install.md`](docs/install.md).** Start there — it covers the
+`mcpServers` block (including the one flag you cannot get wrong), where
+it goes for each client, how to verify the stack before trusting it, and
+what to do when your assistant has no slash commands or no skill
+discovery.
 
 ## Dependencies
 
-- [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) (required) —
-  every action on `.pbl` libraries goes through its MCP tools. No ORCA
-  primitive is reimplemented here.
-- Claude Code (or another MCP-capable coding agent) to consume the
-  skills and slash commands.
+- **[`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)** —
+  required. Every `.pbl` operation goes through it; no ORCA primitive is
+  reimplemented here. Consumed like any other MCP server, from its
+  GitHub repository.
+- **[`pb-format`](https://github.com/restoresrl/pb-format)** — optional.
+  A standalone PowerScript style formatter. Without it, the dev kit
+  simply does not normalize style.
+- **The Appeon doc index** — optional, built locally from
+  [`tools/pb-appeon-index/`](tools/pb-appeon-index/). Without it, the
+  `appeon-query` skill says so instead of guessing.
+- **An MCP-capable assistant.** Skill auto-discovery is a bonus, not a
+  requirement.
+
+## Requirements
+
+Windows and a PowerBuilder **IDE** install (2019 or later) for anything
+that touches a `.pbl` — ORCA is a Windows DLL, and runtime-only packages
+do not ship it. Classic workspaces only, not the PB 2025 solution
+format. The knowledge pages and the formatter work anywhere.
+
+## Status
+
+Alpha, in internal dogfooding. The review flow and the knowledge base
+are written and being exercised against real codebases; the repository
+is private until real use confirms the shape. Testing orchestration and
+runtime trace analysis are designed but deferred — see
+[`PLAN.md`](PLAN.md).
+
+## Contributing
+
+The knowledge base is the part most worth contributing to, and it needs
+no AI: a corrected format page, a new antipattern with a reproduction,
+or a variant the wiki has not seen are all directly useful. If you are
+an agent working on this repository, read [`AGENTS.md`](AGENTS.md).
 
 ## License
 

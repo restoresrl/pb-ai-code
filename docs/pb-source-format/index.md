@@ -37,7 +37,7 @@ One page per entry type:
 Plus cross-cutting concerns:
 
 - [encoding](encoding.md) — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`. Read this first.
-- [style-conventions](style-conventions.md) — indent character, keyword case, operator spacing, line endings. The four invariants the planned formatter normalizes via `.pb-format.toml`.
+- [style-conventions](style-conventions.md) — indent character, keyword case, operator spacing, line endings. The four invariants the optional [`pb-format`](https://github.com/restoresrl/pb-format) tool normalizes when a workspace opts in with a `.pb-format.toml`.
 - [patterns/](patterns/) — recurring blocks that appear in multiple entry types: `forward`, `type variables`, `event`, `on …` blocks, etc.
 
 ## Page conventions
@@ -92,15 +92,18 @@ Two channels:
    doing the work.
 
 The skill that triggers this behavior is
-[`pb-src-format`](../../.claude/skills/pb-src-format/SKILL.md).
+[`pb-src-format`](../../skills/pb-src-format/SKILL.md).
 
 ## What this wiki is not
 
-- Not a PowerScript language reference. For that, use the docs Appeon
-  publishes (consumed via the layer-1 mechanism — see the project
-  `PLAN.md`).
-- Not a workflow guide for propagating edits into a `.pbl`. That's the
-  job of the sibling skill `pb-workflow` in `pb-orca-mcp`.
+- Not a PowerScript language reference. For that, use the indexed
+  Appeon documentation via the
+  [`appeon-query`](../../skills/appeon-query/SKILL.md) skill.
+- Not a workflow guide for getting edits into a `.pbl`. That is
+  [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)'s job: it
+  exports the file, compiles it back, and keeps the text projection in
+  step. The pages here describe what the text inside that file looks
+  like.
 - Not project-specific. Conventions, naming, and patterns specific to
   one codebase belong outside this wiki (layer 3 — deferred).
 

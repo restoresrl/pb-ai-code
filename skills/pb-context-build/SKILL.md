@@ -1,0 +1,408 @@
+---
+name: pb-context-build
+description: Use this when you are about to read, review, or refactor PowerBuilder code in a monolithic legacy workspace and need to assemble a scoped context pack — a budgeted slice of entries (sources + dependency map) instead of dumping whole PBLs into the conversation. Orchestrates pb-orca-mcp primitives (pb_workspace_info, pb_target_info, pb_library_directory, pb_object_query_hierarchy, pb_object_query_reference, pb_library_entry_export, pb_library_export_sources). Required pre-step for the pb-review flow. Covers outgoing references (callees, ancestors used, types declared) natively via ORCA. Incoming references (callers) are not native to ORCA — they require an opt-in brute-force inversion of the library index and are off by default.
+metadata:
+  version: "1.2.0"
+---
+
+# Building a scoped context pack for review / refactoring
+
+Use this skill any time you are about to **work on PowerBuilder code
+in a real codebase** (not a fresh empty `.pbl`) and need to load
+enough — but not too much — context.
+
+PowerBuilder PBLs are physical containers, not logical modules. Real
+legacy apps hold thousands of entries spread across dozens of PBLs.
+Reading them all at once is impossible; reading the single target
+entry in isolation misses parents and callers. This skill bridges the
+gap: it explores the dependency neighborhood of a chosen target,
+respects a budget, and returns a structured **context pack** for the
+work downstream.
+
+## When to invoke this skill
+
+- The user asks for code review, refactoring, bug-fix, or extension
+  on an existing PowerBuilder workspace.
+- The [`pb-review`](../pb-review/SKILL.md) flow invokes you as its
+  context-building step.
+- You are about to export more than one entry and the choice of which
+  entries to export is not obvious.
+- You want to understand the blast-radius of a potential change
+  (although for *that* specific question prefer `pb-impact-analysis`
+  — a more focused report — once it exists).
+
+If the workspace is a brand-new `.pbl` you just created and you only
+need to scaffold a fresh entry, this skill is overkill — go straight
+to [`pb-scaffold`](../pb-scaffold/SKILL.md).
+
+## The MCP primitives this skill orchestrates
+
+All from [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp).
+This skill never replaces a primitive; it sequences them.
+
+| Primitive | Purpose | Needs ORCA session? |
+|---|---|---|
+| `pb_workspace_info(lib_path)` | Project shape, projection directory, source encoding, git root, `outside_source_tree` | no — and no PB install either |
+| `pb_target_info(path)` | Parse a `.pbt` (or `.pbw`) into liblist + app metadata | no |
+| `pb_library_directory(lib_path, entry_type?)` | List entries in a PBL, optionally filter by type | no |
+| `pb_object_query_hierarchy(lib_path, entry_name, entry_type)` | Inheritance chain (ancestors) of an entry | yes |
+| `pb_object_query_reference(lib_path, entry_name, entry_type)` | **Outgoing** refs of an entry (callees, ancestors used, types declared, windows opened). `ref_type` ∈ {`simple`, `open`} | yes |
+| `pb_library_entry_information(lib_path, entry_name, entry_type)` | Metadata for an entry (timestamps, size, base class, comment) | yes |
+| `pb_library_entry_export(lib_path, entry_name, entry_type)` | Source **body** of one entry, as a string in the response | yes |
+| `pb_library_export_sources(lib_path)` | Every entry in the library written out as `.sr*` files, in one call | yes |
+
+**Direction note.** ORCA's `PBORCA_ObjectQueryReference` returns
+**outgoing** refs of the queried object — what it calls and uses, not
+what uses it. The opposite direction (incoming refs, "who calls
+this") is **not exposed natively** by ORCA. Reconstructing it means
+inverting the index: iterate every candidate caller in the library
+list, query each, and keep those whose result set contains the
+target. Costly (O(N) on liblist size), so it is offered only as an
+opt-in pass — see [Caller discovery](#caller-discovery--opt-in-inversion-off-by-default).
+
+**Which read primitive to use.** `pb_library_entry_export` puts the
+body straight into your context and is the right default for the
+handful of entries in a pack. `pb_library_export_sources` writes a
+whole library to disk in one call — reach for it when you want to
+**grep** across a library rather than read it (every caller of a
+name, every `Dynamic Call`, every use of a literal), and when the
+library is large enough that per-entry calls would dominate. Bear in
+mind it materializes files: on a `pbl_only` project it *creates* a
+source projection that did not exist, which changes the shape of the
+repository. Say so before running it there.
+
+## Step 0 — Ask the workspace what it is
+
+Before any session bring-up, call `pb_workspace_info(lib_path)` on
+one library of the target. One call, no ORCA session, no PB install
+required. Three fields change how the rest of the work proceeds:
+
+- **`mode`** — `ws_objects` (the project keeps `.sr*` text sources
+  next to the `.pbl`, and those are the source of truth) or
+  `pbl_only` (the `.pbl` is everything). It decides what a fix will
+  touch and what the user commits at the end.
+- **`encoding`** — the workspace's `DefaultExportEncode`. You never
+  have to act on it (ORCA writes the files), but it belongs in the
+  pack: it is what makes a hand-edited file look out-of-sync to the
+  IDE.
+- **`outside_source_tree`** — libraries that sit inside the project
+  but outside its source tree. **This one is load-bearing for a
+  review.** A library flagged this way is a vendored dependency
+  snapshot or a third-party component: it gets replaced wholesale by
+  whatever produced it, so a refactoring proposed inside it will be
+  overwritten at the next update of that dependency. Either exclude
+  it from scope, or tell the user plainly that the finding belongs
+  upstream, in the project that owns that library.
+
+Record all three at the top of the context pack.
+
+## Session bring-up
+
+The session-bound primitives need, in order: `pb_session_open`
+(`pb_version` or `install_path` is **required** — there is no
+auto-pick, because `.pbt`/`.pbw` files do not record a PB release;
+list the options with `pb_discover_pb_install` and say which you
+chose), then `pb_set_library_list`, then
+`pb_set_current_application`.
+
+Two things to keep in mind:
+
+- `pb_set_current_application` **may rewrite the `.pbw`** as a side
+  effect. If the session ends with the user looking at `git status`,
+  advise reverting that file unless a target was really added or
+  removed.
+- Sessions are not cheap to churn. Open one per unit of work, not one
+  per object.
+
+When bring-up fails, `pb-orca-mcp check <.pbw|.pbt|.pbl>` is a CLI
+that validates the whole stack against the real project with no MCP
+in the way. Use it as the diagnostic prerequisite instead of
+guessing.
+
+## Three scope flavors
+
+Pick the smallest one that matches the user's request.
+
+### Flavor A — entry-driven (default for "review this object")
+
+Input: one entry triple `(lib_path, entry_name, entry_type)`.
+
+1. Export the target entry's source (`pb_library_entry_export`).
+2. Get the **inheritance chain** via `pb_object_query_hierarchy`.
+   Export every ancestor up to the budget depth (default 3 levels;
+   the topmost framework class — `window`, `nonvisualobject`, … — is
+   the natural stop).
+3. Get the **outgoing refs** (callees, used types, opened windows)
+   via `pb_object_query_reference`. For each, read its metadata via
+   `pb_library_entry_information` to decide whether to expand it. By
+   default expand only `ref_type=open` (windows the entry opens —
+   they are the integration boundary downstream); list
+   `ref_type=simple` (functions called, types declared) without
+   expanding unless budget allows.
+4. If budget allows and the user asked for transitive outgoing refs
+   (depth 2+), repeat step 3 on the depth-1 set — but prune
+   aggressively: cap each level's expansion at ~5 entries.
+5. **(Opt-in)** If the user asked for callers, run the inversion
+   pass. Off by default because it is O(N) on liblist size.
+
+### Flavor B — target-driven (default for "review this `.pbt`")
+
+Input: a `.pbt` (or `.pbw`) path.
+
+1. `pb_target_info(path)` → `lib_list` and `app_name`. Cheap, no
+   enumeration.
+2. **Immediately** show the PBL list to the user, marking any library
+   that `pb_workspace_info` reported as `outside_source_tree`, then
+   ask which PBL or entry-name pattern to focus on.
+3. Only after the user has chosen a sub-scope (a single PBL → Flavor
+   C; a single entry → Flavor A; a name pattern → filtered Flavor C)
+   run `pb_library_directory` on that scope.
+
+**Why not sweep first?** On real legacy targets (~6-12 PBLs × 100+
+entries each) enumerating every PBL costs many round-trips and almost
+always ends in "too big, refine". Skipping the sweep reaches the same
+refinement turn one step earlier.
+
+**Opt-in full sweep**: if the user explicitly asks for a complete
+overview ("give me a count by entry type for the whole target"),
+enumerate all PBLs, aggregate, and return a summary ("1834 entries
+total: 1240 functions, 312 userobjects, …; largest PBLs by entry
+count: …"). Then ask for refinement before any export.
+
+This flavor's job is **orientation**, not export. Exporting at target
+level is almost always a budget violation.
+
+### Flavor C — PBL-driven (default for "review this PBL")
+
+Input: one `lib_path`.
+
+1. `pb_library_directory(lib_path, "any")` → list of entries.
+2. Small count (≤ ~20 entries): export all of them in order. This is
+   "review the whole PBL".
+3. Moderate count (~20-100): filter by `entry_type` if the user named
+   one ("review the userobjects in `core.pbl`"), then apply step 2 to
+   the filtered set.
+4. Large count (> ~100): refuse to export en masse. Return a summary
+   and ask for refinement (single entry, or a pattern on entry name).
+   If what the user actually wants is a *search* across the library
+   rather than a read of it, that is the case for
+   `pb_library_export_sources` plus grep.
+
+## Outgoing refs from ORCA (default)
+
+For each exported entry, call `pb_object_query_reference` to get the
+`outgoing_refs` list — what the entry calls, opens, declares as a
+type, or otherwise references. This is the **native, exact**
+direction ORCA exposes and it is essentially free (one call per entry
+already in the pack).
+
+Each item comes back with `library`, `entry_name`, `entry_type` and
+`ref_type` (`simple` for declarative refs, `open` for runtime window
+opens). Record them `confidence: high` — they come from ORCA's index,
+not from parsing.
+
+What ORCA **cannot** see:
+
+- `Dynamic Call`, `Dynamic Function`, `Dynamic Event` invocations.
+- DataWindow expression strings (`SetItem(row, "col", value)` where
+  `"col"` could be anything at runtime).
+- Function names built at runtime by concatenation:
+  `f_call(name + "_handler")`.
+
+For those, see the heuristic fallback below.
+
+## Caller discovery — opt-in inversion (off by default)
+
+ORCA has no native primitive for "who calls this entry". To compute
+incoming refs the skill must invert the index: iterate the library
+list, query each candidate caller, keep those whose result set
+contains the target.
+
+This is **O(N) on liblist size** — on a monolith (~6-12 PBLs × 100+
+entries each) it can mean 1000+ ORCA calls per target entry. Hence
+**off by default**.
+
+Activate it only when the user explicitly asks ("who calls
+`n_logger.flush`?", "find all callers of `f_legacy_thing`") or when a
+downstream skill needs the caller set. When activated:
+
+1. Iterate every entry in the configured liblist via
+   `pb_library_directory(lib, "any")`, skipping entries already known
+   to be in the call-graph closure.
+2. For each candidate call `pb_object_query_reference(candidate)` and
+   check whether the target appears in its outgoing refs.
+3. Cap the work: stop after N candidates probed (default 500) or N
+   matches found (default 20), whichever comes first. Report honestly
+   ("scanned 500/2400 entries, found 12 callers; widening would take
+   roughly 5× longer").
+4. Mark each caller `confidence: high` (it is ORCA — exact) with the
+   `ref_type` from the query.
+
+**The cheaper alternative worth offering first.** If the question is
+"who mentions this name", `pb_library_export_sources` on the
+candidate libraries plus a grep over the resulting files answers it
+in a couple of calls instead of a thousand. Being textual, it also
+catches the dynamic invocations ORCA cannot see — and it will produce
+false positives (comments, similarly-named identifiers). Offer it as
+the fast pass; reserve the inversion for when exactness matters.
+
+For very-base userobjects with hundreds of callers, do not chase the
+full set: give a count and the top-N by liblist proximity.
+
+## Heuristic fallback for dynamic patterns (optional)
+
+Some dependencies are invisible to ORCA's index because they resolve
+at runtime. If you suspect a refactor crosses such a boundary, run a
+regex pass over the exported source for the patterns above, flag the
+candidates `confidence: low, kind: dynamic`, and present them as
+"ORCA cannot confirm these edges; review by hand". Never treat them
+as hard topological constraints downstream.
+
+This pass is intentionally narrow: it covers only what ORCA cannot
+see. The bulk of the call-graph already comes from
+`pb_object_query_reference` with `confidence: high`.
+
+## Editability contract
+
+The `outgoing_refs` from ORCA are facts; the heuristic
+dynamic-pattern fallback produces **proposals**. The downstream
+plan-file format lets the user edit the `depends_on` field by hand.
+User-added edges are marked `confidence: user-augmented` and override
+anything the heuristic pass suggested. ORCA-sourced edges marked
+`confidence: high` should not be edited away without good reason.
+
+## Budget mechanics
+
+Judgment-based, not a strict counter. Defaults that work as starting
+points on monolithic codebases:
+
+- **Hard cap on exported entries**: 20 per invocation. If the natural
+  flow would exceed it, prune (depth, then breadth) until under cap.
+- **Soft cap on cumulative source size**: ~150 KB of plain text
+  (~50 K tokens). Track as you go; if you cross it before reaching
+  the outgoing-refs expansion, stop and report what you have. The
+  target entry and its inheritance chain take precedence.
+- **Default expansion depth**: ancestors = 3, outgoing refs = 1. Both
+  configurable per invocation.
+- **Caller discovery (opt-in) caps**: max 500 ORCA queries on the
+  liblist, max 20 callers reported, whichever comes first. Always
+  honest about partial scans.
+- **Pruning order** when over budget: (a) drop `simple`-typed
+  outgoing refs first (declarative refs are usually less load-bearing
+  than `open`-typed ones); (b) drop ancestors beyond depth 2; (c)
+  drop framework-level ancestors (`nonvisualobject`, `window`,
+  `userobject`) since the language reference covers them — see
+  [`appeon-query`](../appeon-query/SKILL.md); (d) skip the
+  caller-discovery pass entirely.
+
+These caps are starting points, not law. Adjust if the user signals
+they want a deeper or shallower view.
+
+## Output: the context pack shape
+
+Return a structured summary to whoever called you (usually
+[`pb-review`](../pb-review/SKILL.md), but a direct user invocation is
+fine). Recommended shape — flexible markdown, not a rigid schema:
+
+```
+## Context pack: <target description>
+
+**Workspace** (from `pb_workspace_info`): mode=<ws_objects|pbl_only>,
+encoding=<DefaultExportEncode>, git=<yes|no>,
+outside_source_tree=<libraries, or none>
+
+**Target**: `lib_path` :: `entry_name` (`entry_type`)
+
+**Inheritance chain** (depth: N exported, M skipped):
+- ancestor_1 (lib) — exported
+- ancestor_2 (lib) — exported
+- nonvisualobject — framework, not exported (see appeon-query)
+
+**Outgoing refs** — via `pb_object_query_reference` (callees,
+ancestors used, types declared, windows opened), depth 1, N total,
+M exported:
+- ref_1 (lib, kind=function,   ref_type=simple, confidence=high) — exported
+- ref_2 (lib, kind=window,     ref_type=open,   confidence=high) — exported
+- ref_3 (lib, kind=userobject, confidence=low,  kind=dynamic)    — Dynamic Call, heuristic
+
+**Incoming refs (callers)** — OPT-IN, off by default; populated only
+when the user asks. Via inversion of `pb_object_query_reference`
+over the liblist:
+- caller_1 (lib, ref_type=open, confidence=high)
+- ... (scanned N/M liblist entries; capped at 20 unless overridden)
+
+**Budget**: N entries exported, ~K tokens of source loaded.
+Pruned: <what was dropped and why>.
+
+## Sources
+
+### `lib_path` :: `entry_name` (target)
+
+<full source>
+
+### `lib_path` :: `ancestor_1`
+
+<full source>
+```
+
+The pack is informational, not executable. ORCA-sourced edges are
+`confidence: high`; heuristic dynamic-pattern edges are
+`confidence: low` and belong in the output as warnings, not facts.
+
+## Limitations (explicit non-goals)
+
+- **Caller discovery is opt-in and capped.** Inverting ORCA's index
+  is O(N) on liblist size. The skill is always honest about partial
+  scans.
+- **Dynamic patterns are flagged, not resolved.** `Dynamic Call`,
+  `Dynamic Function`, DW expression strings and runtime-built names
+  are invisible to ORCA's index. The optional heuristic pass marks
+  them `confidence: low`; never treat them as hard edges.
+- **No cross-target review.** If the workspace has multiple `.pbt`
+  files and the refactor would span them, this skill does one target
+  at a time.
+- **No caching of context packs between sessions.** Every invocation
+  rebuilds from scratch. Caching is a future optimization if review
+  latency becomes painful.
+- **No automatic bulk sweep.** Manual-assist by design: the user
+  picks the target, the skill helps understand it.
+
+## Failure modes to handle gracefully
+
+Every tool returns one of exactly two shapes: a success payload, or a
+single `error` envelope (`{"error": {"code", "name", "message"}}`).
+Branch on `"error" in response` first. Read success payloads
+defensively — index by key, do not assume a fixed field set.
+
+- **Session not open**: the session-bound primitives fail with a
+  state-guard error. Bring the session up rather than retrying.
+- **Entry not found**: `pb_object_query_*` errors when the entry is
+  not in the library list. Verify via `pb_library_directory` first,
+  then guide the user to the right spelling or PBL.
+- **PBL not in library list**: even when the file exists on disk,
+  `pb_object_query_*` only sees entries in the configured liblist.
+  Check that `pb_set_library_list` covered every relevant PBL.
+- **Wrong architecture / DLL not found**: the server's Python must
+  match `pborc.dll` (x86 through PB 2025). `pb-orca-mcp doctor`
+  reports the whole picture; do not work around it.
+- **Huge incoming-ref set** during opt-in caller discovery (a base
+  userobject used everywhere): truncate aggressively and report the
+  count honestly.
+
+## Boundaries with sibling skills
+
+- `pb-impact-analysis` (planned): when the question is specifically
+  "what breaks if I touch X", that skill will produce a tighter,
+  blast-radius-focused report. This one is broader: it loads context
+  for *any* downstream task.
+- [`pb-scaffold`](../pb-scaffold/SKILL.md): unrelated — that one
+  *creates* new entries; this one helps *understand* existing ones.
+- [`appeon-query`](../appeon-query/SKILL.md): for questions about
+  PowerScript syntax or runtime API, not project-specific code.
+  Complementary: this skill loads the project context, that one loads
+  the language context.
+- [`pb-src-format`](../pb-src-format/SKILL.md): once you have the
+  exported source, its wiki pages explain the file format if you need
+  to edit it.
+- [`pb-review`](../pb-review/SKILL.md) is the primary consumer:
+  context-build → review → plan file → apply loop.

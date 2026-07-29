@@ -32,9 +32,14 @@ htmlcov/
 Thumbs.db
 .DS_Store
 
-# Local Claude Code config (per-machine paths)
-.claude/mcp.json
-.claude/settings.local.json
+# Harness-specific installs. The canonical skills / commands / settings live
+# in skills/, commands/ and harness/<harness>/; scripts/install-skills.ps1
+# materializes them into the directory the assistant actually reads. Those
+# copies are build artefacts — regenerate them, never edit them in place.
+.claude/
+.cursor/
+.codex/
+.github/copilot-instructions.md
 
 # Layer 1 — Appeon docs index (HTML cache + SQLite FTS5 DB)
 # Mirror artefacts are user-side, not committed. Only the source

@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [
     { name = "Carlo Torrese", email = "carlo.torrese@re-store.it" },
 ]
-keywords = ["powerbuilder", "agentic", "claude", "mcp", "pb", "ai", "coding"]
+keywords = ["powerbuilder", "agentic", "agent-skills", "mcp", "pb", "ai", "coding"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
@@ -62,8 +62,12 @@ include = [
     "tools/pb-source-analyzer",
     "tools/pb-appeon-index",
     "docs",
-    ".claude/skills",
+    "skills",
+    "commands",
+    "harness",
+    "scripts",
     "README.md",
+    "AGENTS.md",
     "CLAUDE.md",
     "LICENSE",
     "PLAN.md",
@@ -76,7 +80,10 @@ testpaths = [
     "tools/pb-source-analyzer/tests",
     "tools/pb-appeon-index/tests",
 ]
-addopts = "-ra --strict-markers"
+# --import-mode=importlib: both tools ship a tests/ package, and under the
+# default "prepend" mode the second one to be collected shadows the first
+# (same package name), so a plain `pytest` fails in collection.
+addopts = "-ra --strict-markers --import-mode=importlib"
 
 [tool.ruff]
 line-length = 100
