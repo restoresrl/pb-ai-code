@@ -44,7 +44,7 @@ This skill never replaces a primitive; it sequences them.
 |---|---|---|
 | `pb_workspace_info(lib_path)` | Project shape, projection directory, source encoding, git root, `outside_source_tree` | no — and no PB install either |
 | `pb_target_info(path)` | Parse a `.pbt` (or `.pbw`) into liblist + app metadata | no |
-| `pb_library_directory(lib_path, entry_type?)` | List entries in a PBL, optionally filter by type | no |
+| `pb_library_directory(lib_path, entry_type?)` | List entries in a PBL, optionally filter by type | **yes** |
 | `pb_object_query_hierarchy(lib_path, entry_name, entry_type)` | Inheritance chain (ancestors) of an entry | yes |
 | `pb_object_query_reference(lib_path, entry_name, entry_type)` | **Outgoing** refs of an entry (callees, ancestors used, types declared, windows opened). `ref_type` ∈ {`simple`, `open`} | yes |
 | `pb_library_entry_information(lib_path, entry_name, entry_type)` | Metadata for an entry (timestamps, size, base class, comment) | yes |
@@ -59,6 +59,31 @@ inverting the index: iterate every candidate caller in the library
 list, query each, and keep those whose result set contains the
 target. Costly (O(N) on liblist size), so it is offered only as an
 opt-in pass — see [Caller discovery](#caller-discovery--opt-in-inversion-off-by-default).
+
+Only the first two work before `pb_session_open`. Everything else,
+`pb_library_directory` included, fails with a state guard until the
+session is up.
+
+**"Nothing to report" arrives in two different shapes, and one of them
+looks like a failure.** Both query tools can answer "empty" with an
+`error` envelope instead of an empty list:
+
+| Response | Means |
+| --- | --- |
+| `{references: [], count: 0}` | no outgoing refs |
+| `PBORCA_OBJHASNOREFS (-15)` | no outgoing refs — same thing |
+| `PBORCA_OBJHASNOANCS (-14)` | no ancestors |
+
+Which shape you get is not predictable from the entry type: in one
+library a window with no refs returned the empty list while a datawindow
+with no refs returned `-15`. And `-14` is the **normal** answer for any
+object deriving straight from a built-in class (`window`,
+`nonvisualobject`, …), which in most codebases is a large fraction of
+them.
+
+So treat `-14` and `-15` as **empty, not broken**. Record "no ancestors"
+or "no outgoing refs" in the pack and move on. Do not report them to the
+user as errors, do not retry them, and do not let them abort the walk.
 
 **Which read primitive to use.** `pb_library_entry_export` puts the
 body straight into your context and is the right default for the
@@ -378,7 +403,9 @@ defensively — index by key, do not assume a fixed field set.
   state-guard error. Bring the session up rather than retrying.
 - **Entry not found**: `pb_object_query_*` errors when the entry is
   not in the library list. Verify via `pb_library_directory` first,
-  then guide the user to the right spelling or PBL.
+  then guide the user to the right spelling or PBL. Do not confuse this
+  with `-14` / `-15`, which mean the entry was found and has nothing to
+  report.
 - **PBL not in library list**: even when the file exists on disk,
   `pb_object_query_*` only sees entries in the configured liblist.
   Check that `pb_set_library_list` covered every relevant PBL.

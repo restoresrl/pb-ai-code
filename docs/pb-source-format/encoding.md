@@ -129,6 +129,24 @@ breakage is silent, because the text looks identical on screen.
 
 The same goes for writing: preserve the BOM and the CRLF you found.
 
+**And do not measure line endings with a text-mode tool.** Anything that
+opens these files as text may translate newlines on the way in, so it
+reports what it produced rather than what is on disk — `grep -c $'\r$'`
+under Git Bash counts a CR on lines that carry a bare LF, which is how a
+file that is 100% LF gets misread as 100% CRLF. Count bytes in binary
+mode: `open(path, 'rb')`, then compare occurrences of `\r\n` against
+occurrences of `\n`. The difference is your bare-LF count.
+
+The same caution applies to git. With `core.autocrlf = true` and no
+`.gitattributes`, git normalizes these files on the way into the index and
+converts back on checkout, so **a line-ending change produces no diff and
+`git status` stays clean**. `git ls-files --eol` shows the truth
+(`i/lf w/crlf` means the index and the working tree disagree by
+normalization), and `git add --renormalize <dir>` brings the index onto
+the real bytes. Marking `*.sr*` and `*.pbl` as `binary` in
+`.gitattributes` stops the normalization for good, which is what makes
+drift visible in the first place.
+
 ## Who writes these files — and why it should not be you
 
 **ORCA writes them.** `pb-orca-mcp` exposes the export in

@@ -182,6 +182,15 @@ assumptions you are making about its role. Present it as a gate:
 > Have I got it right, or is there something to correct before I
 > review?"
 
+**Say what the confirmation authorizes.** "Have I got it right?" on its
+own invites the reasonable reply "proceed to do what?". Name the three
+things that follow, concretely: the findings get written (Step 2b), two
+files are created in the reviewed project — the plan file and a
+CHANGELOG entry (Step 3) — and then you offer the apply loop, which is
+the only part that modifies a `.pbl` (Step 4). If the review is likely to
+yield one or two findings, say that too: it changes whether the user
+wants the full flow or a shortcut.
+
 Wait for explicit confirmation. **Do not run the review until the user
 has acknowledged the understanding.** If they correct it, regenerate
 and ask again.
