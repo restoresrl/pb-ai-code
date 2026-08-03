@@ -1,0 +1,28 @@
+# Normalize text in the repository rather than relying on each contributor's
+# core.autocrlf. Without this the behaviour of a clone depends on a global
+# git setting, which is how a projection and its .pbl can drift in line
+# endings while `git status` stays clean — see
+# docs/pb-source-format/encoding.md.
+* text=auto eol=lf
+
+# PowerBuilder artefacts must never be normalized: the .pbl stores source
+# bytes as given, so a line-ending conversion on the way in or out of git
+# silently changes what the compiler sees. No .sr* files live here today;
+# this is here so that the first one to arrive is safe.
+*.sra binary
+*.srf binary
+*.srw binary
+*.srm binary
+*.sru binary
+*.srd binary
+*.srq binary
+*.srs binary
+*.srp binary
+*.srj binary
+*.pbl binary
+*.pbd binary
+
+# Scraped HTML cache and the generated FTS index.
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
