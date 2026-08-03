@@ -71,11 +71,31 @@ operator knows the primary log is disabled.
 
 ## Where it has been seen
 
-- `rstpb22` chain of `n_logger` (review run 2026-05-20): the
-  file-based log target opened the log file without checking the
-  handle, then wrote to it. When the log directory was locked or
-  missing, the logger was silently dead for the lifetime of the
-  process.
+- **Appeon's own SDI application template** — the code the PowerBuilder
+  "Quick Application" wizard generates, so every application scaffolded
+  from it carries this. The same hazard on a different API: the `clicked`
+  event of the generated `m_print` menu item does
+
+  ```pb
+  ll_job = PrintOpen ( )
+  lw_main.Print ( ll_job, 1, 1 )
+  PrintClose ( ll_job )
+  ```
+
+  `PrintOpen()` returns `-1` when it cannot start a job — no printer, no
+  default printer, spooler unavailable — and both following calls then run
+  against an invalid handle and do nothing. The user clicks Print and
+  nothing happens, with no error anywhere.
+
+  The template gets it right one item over: `m_print_query.clicked` guards
+  with `if ll_job <> -1`. Two adjacent menu items, inconsistent handling of
+  the same sentinel. Observed on the PB 2022 R3 wizard output, review run
+  2026-07-29.
+
+- The logging chain of a private PB framework (review run 2026-05-20): the
+  file-based log target opened the log file without checking the handle,
+  then wrote to it. When the log directory was locked or missing, the
+  logger was silently dead for the lifetime of the process.
 
 ## Related
 

@@ -108,7 +108,8 @@ brainstorming) the primary use case has been sharpened:
 > **`pb-ai-code` is, first and foremost, a code-review assistant for
 > refactoring legacy PowerBuilder codebases.** Greenfield PB development
 > is rare; the realistic audience is people maintaining decades-old
-> monolithic PB applications (Magware-class, PB ports from 1995+) who
+> monolithic PB applications — hundreds to thousands of objects across
+> dozens of PBLs, ported forward since the 1990s — who
 > need to read, understand, refactor, bug-fix, and extend existing
 > code.
 
@@ -344,7 +345,7 @@ The repo contains a mix of artifacts:
 
 | Aspect | Choice | Rationale |
 |---|---|---|
-| Repo location | Public, separate from `pb-orca-mcp` | International audience; no Restore-internal references; clean LICENSE story for Appeon docs mirror |
+| Repo location | Public, separate from `pb-orca-mcp` | International audience; no vendor-internal references; clean LICENSE story for Appeon docs mirror |
 | Project name | **`pb-ai-code`** | Self-explanatory ("AI coding assistant for PB"); pairs naturally with `pb-orca-mcp` (engine + experience); agent-agnostic in name (no "claude" in the slug) |
 | Appeon docs | Hybrid: core pages mirrored, rest via WebFetch | Balances offline friendliness, context cost, and freshness — **superseded 2026-05-15, see below** |
 | Test framework | Agnostic via adapters; first adapter pbunit | The audience is broader than any one shop; the first adapter is the one we have ground truth on |

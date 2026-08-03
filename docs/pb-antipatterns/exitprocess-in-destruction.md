@@ -67,10 +67,10 @@ from a destructor.
 
 ## Where it has been seen
 
-- `rstpb22` chain of `n_logger` (review run 2026-05-20): a
-  shutdown helper invoked `exitprocess(0)` thinking it was closing
-  the logger; the host process died on the first sample log
-  failure, leaving no diagnostics for the operator.
+- The logging chain of a private PB framework (review run
+  2026-05-20): a shutdown helper invoked `exitprocess(0)` thinking
+  it was closing the logger; the host process died on the first
+  sample log failure, leaving no diagnostics for the operator.
 
 ## Related
 

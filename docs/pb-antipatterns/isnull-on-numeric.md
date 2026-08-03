@@ -81,10 +81,27 @@ explicitly null'd via `SetNull()`. If neither, the check is dead.
 
 ## Where it has been seen
 
-- `rstpb22` (review run 2026-05-20): file handle defended with
-  `IsNull(lul_handle)` after a Win32 wrapper that returned
-  `0xFFFFFFFF` on failure; the guard never fired and the next
-  write blew up downstream.
+- **Appeon's own SDI application template** — the code the PowerBuilder
+  "Quick Application" wizard generates. The `clicked` event of the
+  generated `m_print_query` menu item does
+
+  ```pb
+  long ll_job
+  ll_job = PrintOpen ("", true )
+  if ll_job <> -1 and not IsNull(ll_job) then
+  ```
+
+  `ll_job` is a `long`, so `not IsNull(ll_job)` is a constant `true` and
+  the clause contributes nothing; the `<> -1` test does all the work.
+  Harmless at runtime, but it reads as though `PrintOpen` might return
+  null, which it cannot — and it is exactly the kind of guard a maintainer
+  copies into code where the sentinel check is then forgotten. Observed on
+  the PB 2022 R3 wizard output, review run 2026-07-29.
+
+- A private PB framework (review run 2026-05-20): a file handle defended
+  with `IsNull(lul_handle)` after a Win32 wrapper that returned
+  `0xFFFFFFFF` on failure; the guard never fired and the next write blew
+  up downstream.
 
 ## Related
 

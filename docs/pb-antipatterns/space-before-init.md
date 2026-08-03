@@ -74,11 +74,12 @@ Win32 W call should be inspected for the missing first call.
 
 ## Where it has been seen
 
-- `rstpb22` (review run 2026-05-20): a wrapper around a Win32
-  W-suffix API allocated `space(buf_len)` with `buf_len` still at
-  its default `0`. The wrapper "worked" in development because
-  the test data happened to fit in the zero-length write (or
-  silently dropped); customer-side runs with longer strings broke.
+- A private PB framework (review run 2026-05-20): a wrapper around
+  a Win32 W-suffix API allocated `space(buf_len)` with `buf_len`
+  still at its default `0`. The wrapper "worked" in development
+  because the test data happened to fit in the zero-length write
+  (or was silently dropped); customer-side runs with longer strings
+  broke.
 
 ## Related
 

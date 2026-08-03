@@ -61,11 +61,11 @@ and from global auto-instances.
 
 ## Where it has been seen
 
-- `rstpb22` chain of `n_logger` (review run 2026-05-20): private
-  field shared the name `n_logger` with the global auto-instance;
-  `destroy n_logger` in the destructor chain killed the global,
-  causing subsequent log calls in unrelated modules to fail with
-  a null reference.
+- The logging chain of a private PB framework (review run
+  2026-05-20): a private field shared its name with the global
+  auto-instance, so `destroy <name>` in the destructor chain killed
+  the global, and subsequent log calls in unrelated modules failed
+  with a null reference.
 
 ## Related
 

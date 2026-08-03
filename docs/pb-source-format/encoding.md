@@ -21,7 +21,7 @@ accepts three values:
 
 | `DefaultExportEncode` | First bytes | Typical use |
 |---|---|---|
-| `"UTF-8"` | `EF BB BF` | PB 2022 default; observed across every Restore workspace surveyed |
+| `"UTF-8"` | `EF BB BF` | PB 2022 default; the only value seen in the survey below |
 | `"UTF-16BOM"` | `FF FE` | PB legacy default (pre-2019) |
 | `"ANSI"` | (no BOM) | Older Windows workspaces, system codepage |
 
@@ -193,7 +193,7 @@ Re-exporting is almost always the better answer.
 Pick the snippet that matches the workspace `DefaultExportEncode`:
 
 ```pwsh
-# UTF-8 BOM (PB 2022 default, all Restore workspaces)
+# UTF-8 BOM (the PB 2022 default)
 $content = Get-Content -Raw -Encoding UTF8 path\to\file.sru
 [System.IO.File]::WriteAllText('path\to\file.sru', $content, [System.Text.UTF8Encoding]::new($true))
 ```
@@ -248,9 +248,10 @@ through a conversation as a tool argument.
   `.sru`/`.srf`/`.srd`/`.srm`/`.srs`/`.srj` files in a real
   `ws_objects/` mirror to be UTF-8 BOM + CRLF, not UTF-16 LE BOM.
   This is the consequence of `DefaultExportEncode "UTF-8"` in the
-  `.pbw` — the PB 2022 default. Survey of 24 `.pbw` files across the
-  Restore stack (rstpb22, pbgettext22, pbunit22, mw21r2 and all 11
-  Magware customizations) returned `"UTF-8"` in every case.
+  `.pbw` — the PB 2022 default. A survey of 24 `.pbw` files across one
+  organisation's PB stack — three shared framework libraries, one
+  enterprise product and its eleven customer variants — returned
+  `"UTF-8"` in every case.
 
   Practical consequence for agents: when editing a file under
   `ws_objects/`, *preserve the BOM you find*. Re-encoding a UTF-8 BOM

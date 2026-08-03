@@ -94,11 +94,12 @@ subtype as `<subtype>`. If it returns the base type, flag it.
 
 ## Where it has been seen
 
-- `rstpb22` chain of `n_logger` (review run 2026-05-20): the
-  DB-aware logger wrapped every `n_ex_db` it caught into a plain
-  `n_ex` via a factory. Callers further up could not distinguish
-  DB failures from other logger failures and ended up retrying
-  the operation indiscriminately.
+- The logging chain of a private PB framework (review run
+  2026-05-20): the DB-aware log target wrapped every DB exception
+  it caught into the framework's plain base exception via a
+  factory. Callers further up could not distinguish DB failures
+  from other logger failures, and ended up retrying the operation
+  indiscriminately.
 
 ## Related
 
