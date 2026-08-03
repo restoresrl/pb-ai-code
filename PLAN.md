@@ -121,7 +121,7 @@ Implications for the four pillars:
 | 1. Design — *scaffold new entries* | **Demoted to on-demand**. Refactoring rarely creates new top-level objects. The 6-entry-type MVP done 2026-05-19 is enough; the 3 residual types (`application`, `query`, `project`) are not blocking. |
 | 1. Design — *idiomatic patterns* | **Promoted, but bottom-up**. The Layer 2 wiki grows from real review sessions, not as an upfront cookbook. |
 | 2. Coding | **Foundation, unchanged**. Edit + propagate + compile-error loop is already covered by `pb-orca-mcp` (`pb-workflow` skill + ORCA primitives). |
-| 3. Testing | **Deferred**. PB testing (both unit and UAT) is structurally hard. The pbunit22 architectural work (SPEC.md, 2026-05-19) remains valid as a future direction but is not driving immediate development. |
+| 3. Testing | **Deferred**. PB testing (both unit and UAT) is structurally hard. The architectural work done on a private xUnit-style PB test framework (2026-05-19) remains valid as a future direction but is not driving immediate development. |
 | 4. Debugging — *impact analysis* | **Promoted**. Refactoring without blast-radius analysis is unsafe; `pb_object_query_reference` orchestration becomes a Tier-1 skill. |
 | 4. Debugging — *runtime trace logging* | **Deferred**. Useful for live debugging but not for the static-review primary loop. |
 
