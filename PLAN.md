@@ -20,8 +20,9 @@ write, test, and debug — using `pb-orca-mcp` as the foundation tool.
 ## Realignment 2026-07-29 — decoupling, and agent-agnostic for real
 
 The sections below are dated design records; read them as history. This
-section is what is true now. Three things changed, none of them a change
-of direction.
+section describes the last change of shape — three things, none of them a
+change of direction — and closes with what happened in the days after.
+Where an older section contradicts it, this one wins.
 
 **1. The `pb-orca-mcp` surface moved, and the skills followed.** The
 server was reworked in June-July 2026: `pb_edit_and_import` — the
@@ -79,7 +80,10 @@ directory layout differed from ours. Now:
 - Generated and gitignored: `.claude/` and anything else an install
   produces. `scripts/install-skills.ps1` materializes the canonical
   files into whatever directory an assistant reads — including into this
-  repository itself — with a marker file recording the source commit.
+  repository itself — with a marker file recording the source commit. It
+  also vendors `docs/pb-antipatterns/` and `docs/pb-source-format/`
+  beside the skills and rewrites their links, because a review skill
+  whose antipattern catalog is missing cannot do its job.
 - `pb-orca-mcp` is consumed as any other user would consume it:
   `uvx --from git+https://github.com/restoresrl/pb-orca-mcp`. No
   editable install, no sibling-directory assumption.
@@ -92,11 +96,27 @@ directory layout differed from ours. Now:
 - [`docs/install.md`](docs/install.md) is new: the per-client setup, and
   what to do when a client has neither commands nor discovery.
 
-**Still open after this pass**: end-to-end validation of `/pb-review`
-against a real target (the point of the whole exercise, and the next
-thing to do); `pb-impact-analysis`, never started; `pb-format` has no
-remote and is not published, so the install instructions for it name a
-repository that does not exist yet.
+**What happened after this pass** (2026-08-03/04, same direction):
+
+- `/pb-review` was run end to end on a small real workspace. It completed,
+  and it found four defects in its own instructions — among them that
+  `pb_library_directory` needs an ORCA session, and that ORCA reports
+  "nothing to report" as an error envelope (`-14` / `-15`) which a caller
+  must read as *empty*, not *broken*.
+- The three repositories were cloned into an empty directory and the
+  documentation followed as written. **They were not usable.** The
+  headline: the documented install command failed on any machine without a
+  warm cache, because `cryptography` stopped publishing 32-bit Windows
+  wheels at 49.0 and this stack must run x86 for `pborc.dll`. Also fixed:
+  a half-broken committed `.mcp.json`, no mention anywhere that the
+  repositories are private, and 28 unresolved links in a vendored install
+  because the knowledge base was not being copied with the skills.
+- `pb-format` got its remote: `restoresrl/pb-format`, private.
+
+**Still open**: `/pb-review` against a real *legacy* target — the small
+workspace exercised the machinery, not the scale, so
+`outside_source_tree`, the budget cap under pressure and caller discovery
+at size remain untested. And `pb-impact-analysis`, never started.
 
 ## Re-prioritization 2026-05-19 — refactoring-first
 
@@ -127,10 +147,10 @@ Implications for the four pillars:
 
 **Three-tier priority for the new direction**:
 
-- **Tier 1** (active development): `pb-context-build` skill +
-  `/pb-review` slash command (report-only v1) + `pb-impact-analysis`
-  skill. These three orchestrate existing ORCA primitives into the
-  refactoring loop.
+- **Tier 1**: `pb-context-build` + the `pb-review` flow + `pb-apply-plan`
+  are **written**, and exercised end to end once on a small workspace.
+  `pb-impact-analysis` is **not started**. These orchestrate existing ORCA
+  primitives into the refactoring loop; none of them reimplements one.
 - **Tier 2** (grows alongside Tier 1): Layer 2 wiki expansion on
   real findings; the **`pb-format` skill**, driving the standalone
   [`pb-format`](https://github.com/restoresrl/pb-format) tool, with
@@ -162,11 +182,12 @@ project:
 1. **Design** — read existing architecture, follow PB-idiomatic
    patterns, scaffold new objects (windows, userobjects, datawindows,
    functions, menus) from minimal templates.
-2. **Coding** — write valid PowerScript that respects PB semantics,
-   propagate edits to `.pbl` with proper encoding (the workspace
-   `DefaultExportEncode` — UTF-8 BOM, UTF-16BOM, or ANSI — plus CRLF
-   and `$PBExportHeader$` / `$PBExportComments$`), iterate on compile
-   errors.
+2. **Coding** — write valid PowerScript that respects PB semantics, get
+   it into the `.pbl`, and iterate on compile errors. The encoding, the
+   CRLF and the `$PBExport*` header block are **not** the caller's
+   problem: ORCA writes the file and reads it back, byte-identical to the
+   IDE. (The 2026-05 drafts of this document had the agent doing that work
+   by hand.)
 3. **Testing** — write tests, compile a test runner, execute it,
    capture and parse structured results, correlate failures back to
    source entries.
@@ -216,22 +237,31 @@ project:
 
 Active components driving the next slices of work:
 
-- **`pb-context-build` skill** (new, Tier 1) — orchestrates ORCA
-  primitives (`pb_target_info`, `pb_library_directory`,
-  `pb_object_query_hierarchy`, `pb_object_query_reference`,
-  `pb_library_entry_export`) to assemble a scoped context pack from a
-  monolithic PB workspace, respecting a token / depth budget. v1: only
-  incoming references (callers); callees via source parsing deferred.
-- **`/pb-review` slash command** (new, Tier 1) — two-phase
-  refactoring loop. Phase A: invoke `pb-context-build`, run review,
-  emit structured report (bug-risk, refactoring-opportunities,
-  style-issues). Phase B: confirmed edits applied via `pb-workflow`
-  (sibling) → `pb_compile_entry_import` → `pb_get_last_compile_errors`.
-  v1 = Phase A only (report-only).
-- **`pb-impact-analysis` skill** (new, Tier 1) — pre-flight
-  blast-radius report for any non-trivial refactor, built on
-  `pb_object_query_reference` with `ref_type` (`simple` vs `open`)
-  interpretation.
+- **`pb-context-build` skill** (Tier 1, shipped) — orchestrates ORCA
+  primitives (`pb_workspace_info`, `pb_target_info`,
+  `pb_library_directory`, `pb_object_query_hierarchy`,
+  `pb_object_query_reference`, `pb_library_entry_export`,
+  `pb_library_export_sources`) to assemble a scoped context pack from a
+  monolithic PB workspace, respecting a token / depth budget.
+  **Note the direction**: `pb_object_query_reference` returns **outgoing**
+  refs — what the entry calls, opens and declares. Incoming refs
+  ("who calls this") are not native to ORCA and need an opt-in inversion
+  of the index, so they are off by default. An earlier draft of this line
+  had it backwards, which is the mistake to keep watching for.
+- **`pb-review` flow** (Tier 1, shipped) — two phases, both written.
+  Phase A frames the scope with the user, invokes `pb-context-build`,
+  gates on a stated understanding, then emits a persistent plan file
+  (one YAML-tagged finding per fix) plus a CHANGELOG entry. Phase B is
+  the separate `pb-apply-plan` skill: topo-sorted queue, and per fix
+  `pb_object_export_file` → edit → `pb_object_import_file` with a diff
+  and a confirmation. The flow lives in `skills/pb-review/SKILL.md`;
+  `commands/pb-review.md` is a thin wrapper, so an assistant with no
+  slash commands can still be pointed at the skill.
+- **`pb-impact-analysis` skill** (Tier 1, **not started**) — pre-flight
+  blast-radius report for any non-trivial refactor. It rests on caller
+  discovery, which is the expensive direction, so it waits for a real
+  legacy target to show whether the index inversion or the
+  `pb_library_export_sources` + grep shortcut is the right default.
 - **`pb-scaffold` skill + Layer 2 wiki** (existing, kept) — invariant
   for now. The wiki grows on-encounter during real review sessions
   (Tier 2). The 3 residual scaffold entry types are Tier 3, on-demand.
@@ -365,24 +395,28 @@ conflated three distinct needs:
 | 3 | Codebase-specific patterns / style | LLM Wiki or semantic RAG (TBD) | no — per-workspace, gitignored |
 
 Rationales: Layer 1 → FTS suffices for reference-style queries on
-already-curated docs; cli-printing-press generates the MCP for free.
-Layer 2 → no upstream documentation exists; the wiki has to be built
-ex nihilo and grows incrementally. Layer 3 → vendor-neutral repo
-constraint plus genuine project-specific knowledge, so it lives
-outside.
+already-curated docs, and the scrape-index-serve pipeline is small enough
+to own (the original hope of generating the MCP for free died with
+cli-printing-press). Layer 2 → no upstream documentation exists; the wiki
+has to be built ex nihilo and grows incrementally. Layer 3 →
+vendor-neutral repo constraint plus genuine project-specific knowledge, so
+it lives outside.
 
-## Residual decisions (to settle before active development starts)
+## Residual decisions
+
+Active development started long ago; what is left here is the subset
+still genuinely undecided.
 
 1. ~~Which Appeon pages go into the static mirror~~ — **closed
-   2026-05-15**: superseded by the layer-1 design. There is no
-   Markdown mirror; `cli-printing-press` ingests the whole
-   relevant subtree of `docs.appeon.com/pb2022` into a local
-   SQLite+FTS DB and exposes search via an MCP server. The
-   recipe (`docs/appeon-cli/recipe.json`) lists exactly which
-   URLs are ingested — start with `powerscript_reference` and
-   expand as gaps surface during dogfooding. The Appeon
-   license / attribution check remains a blocker for
-   *distributing* the generated DB, not for the design.
+   2026-05-15**. There is no Markdown mirror, and no
+   `cli-printing-press` either: that tool was tried and abandoned the
+   same day, once the POC showed it is built for REST API docs rather
+   than language-reference sites. What shipped instead is a purpose-built
+   scraper and indexer, `tools/pb-appeon-index/`, configured by
+   `tools/pb-appeon-index/config.toml` — which lists the versions and the
+   URL subtrees to ingest — and serving the result as four MCP tools. The
+   Appeon license / attribution check remains a blocker for
+   *distributing* the generated database, not for the design.
 2. **Structured logging format for runtime trace** — JSON-lines is
    the leading candidate. The format must be (a) easy to emit from
    PowerScript (no JSON-stringify dependency), (b) easy to parse
@@ -402,16 +436,16 @@ outside.
    itself. PyPI would still make sense for the two Python tools
    (`pb-source-analyzer`, `pb-appeon-index`) but is not the delivery
    mechanism for the skills.
-5. **Name availability verification** — check that
-   `github.com/restoresrl/pb-ai-code` is free (very likely) and, if
-   the distribution model ends up using PyPI, that `pb-ai-code` is
-   free on PyPI too.
+5. ~~Name availability verification~~ — **closed**.
+   `github.com/restoresrl/pb-ai-code` exists. If the two Python tools
+   ever go to PyPI, check the names then.
 
 ## Sequencing
 
-**Current phase — internal dogfooding (both repos private)**: the
-`pb-orca-mcp` foundation is usable straight from its GitHub repository
-via `uvx`. The goal is to drive real work through this stack and
+**Current phase — internal dogfooding, all three repositories private**
+(`pb-ai-code`, `pb-orca-mcp`, `pb-format`): the `pb-orca-mcp` foundation
+installs straight from its GitHub repository via `uvx`, verified from an
+empty cache. The goal is to drive real work through this stack and
 discover the gaps before any public release pressure.
 
 **Next slice (2026-05-19, refactoring-first re-prioritization)**:
@@ -462,8 +496,9 @@ confirmed stability:
 3. `twine upload "dist/*"` for `pb-orca-mcp`.
 4. Flip `restoresrl/pb-ai-code` to public once dogfooding on real
    targets confirms the skills hold up.
-5. Publish `restoresrl/pb-format`, which today exists only as a local
-   repository with no remote.
+5. Publish `pb-format` to PyPI. The repository exists
+   (`restoresrl/pb-format`, private since 2026-08-04); until it is on PyPI
+   the install instructions point at the git URL.
 
 ## Out of scope
 
@@ -487,10 +522,13 @@ confirmed stability:
 ## References
 
 - Sibling project: [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)
-  (currently private; will flip to public before its PyPI publish). Its
-  `docs/integrating.md` is the contract this project is built against.
+  — private during internal dogfooding. Its `docs/integrating.md` is the
+  contract this project is built against. (What happens to visibility and
+  to PyPI is one plan, under "Public release path" in Sequencing; it does
+  not need restating here.)
 - Sibling project: [`pb-format`](https://github.com/restoresrl/pb-format)
-  - the optional PowerScript formatter (local-only for now).
+  - the optional PowerScript formatter. Private, and not on PyPI, so it
+  installs from its git URL.
 - Appeon PowerBuilder docs (the documentation source we'll ingest):
   https://docs.appeon.com/
 - PowerScript Language Reference (the priority mirror candidate):
