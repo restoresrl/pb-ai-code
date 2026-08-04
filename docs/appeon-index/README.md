@@ -108,34 +108,39 @@ Inputs and outputs:
 
 ## Wiring up the MCP server
 
-The repo ships a project-level `.mcp.json` at the root. Claude Code
-reads that file directly; for another client, copy the block into
-whatever MCP config it uses (see [`docs/install.md`](../install.md)).
-It points at the venv-resident Python so no PATH activation is needed:
+This server is **not** in the repository's committed `.mcp.json`, and
+deliberately so: it needs a Python environment and a database that only
+exist once you have built them, so shipping it would hand every fresh
+clone one server that works and one that fails to start. Add it yourself,
+once the index exists.
+
+Point `command` at the interpreter of the virtualenv you installed
+`pb_appeon_index` into, with **absolute** paths:
 
 ```jsonc
 {
   "mcpServers": {
     "pb-appeon-index": {
-      "command": ".venv/Scripts/python.exe",
-      "args": ["-m", "pb_appeon_index", "serve-mcp"]
+      "command": "C:\\path\\to\\pb-ai-code\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "pb_appeon_index", "serve-mcp"],
+      "env": {
+        "PB_APPEON_INDEX_DB": "C:\\path\\to\\pb-ai-code\\docs\\appeon-index\\index.db"
+      }
     }
   }
 }
 ```
 
-Prereq for this form: a Python virtualenv at `.venv/` with
-`pb_appeon_index` installed (`pip install -e ".[dev]"`).
+On macOS or Linux the interpreter is `.venv/bin/python`.
 
-The relative paths in that block assume the client launches the server
-with the project root as its working directory, which is the usual
-behaviour; the server falls back to `./docs/appeon-index/index.db` on
-the same assumption. If either does not hold for your client, use
-absolute paths for `command` and set `PB_APPEON_INDEX_DB` to the DB's
-absolute path.
+Relative paths do work when the client launches servers with the
+repository as their working directory — the server itself falls back to
+`./docs/appeon-index/index.db` on that assumption — but which clients do
+that is not something to rely on. Absolute paths cost nothing and remove
+the question.
 
-A user-level config works too if you would rather not commit the
-server entry — the JSON shape is the same.
+Where the block goes depends on the client:
+[`docs/install.md`](../install.md) has the table.
 
 Once the server is connected, the agent calls `appeon_search` /
 `appeon_get` / `appeon_list_topics` / `appeon_list_versions` as

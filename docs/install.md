@@ -21,6 +21,21 @@ differs per client, the difference is called out.
 | PowerBuilder | An **IDE** install, 2019 or later. Runtime-only packages do not ship `pborc.dll`. Classic workspaces only — not the PB 2025 solution format. |
 | Assistant | Anything that speaks MCP and can follow a Markdown instruction file. Skill auto-discovery is a bonus, not a requirement. |
 | `uv` | Recommended, for `uvx`. [Install it](https://docs.astral.sh/uv/getting-started/installation/) or substitute your own Python environment management. |
+| Python | 3.10+, only for the two local tools in [`tools/`](../tools/). `uv` fetches its own for everything else. |
+| PowerShell | Only to run `scripts/install-skills.ps1`. `pwsh` runs on macOS and Linux too, and the script's job is copying two directories — doing it by hand is a fine substitute. |
+
+### These repositories are private
+
+`pb-orca-mcp`, `pb-format` and this repository are private during internal
+dogfooding. Every `git+https://github.com/restoresrl/...` URL below is
+therefore an **authenticated** fetch: `uv` shells out to `git`, so it uses
+whatever credential helper your `git` already uses. If you can
+`git clone` the repository, `uvx` can fetch it.
+
+If you have not authenticated to GitHub on this machine, the first `uvx`
+command fails with a git authentication error rather than anything about
+PowerBuilder. `git clone https://github.com/restoresrl/pb-orca-mcp` once,
+let the credential helper store the result, and retry.
 
 ## 1. Connect `pb-orca-mcp`
 
@@ -50,12 +65,15 @@ Where the block goes:
 
 | Client | Location |
 | --- | --- |
-| Claude Code | `.mcp.json` at the project root (shared, committable), or `~/.claude/mcp.json` (user-level) |
+| Claude Code | `.mcp.json` at the project root — shared and committable. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you. |
 | Cursor | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user) |
 | Codex CLI, Gemini CLI, Copilot, others | that client's MCP config file — the JSON shape is the same |
 
-This repository ships a working `.mcp.json` at its root with both
-servers wired up. Copy from it.
+This repository ships a working `.mcp.json` at its root with exactly that
+one server in it. Copy from it. The optional Appeon index in step 3 is
+deliberately **not** in there: it needs a local Python environment and a
+database you build yourself, so shipping it in the committed config would
+give every fresh clone one server that works and one that fails to start.
 
 **Verify before going further.** `pb-orca-mcp` has two CLI commands
 that need no MCP client at all:
@@ -151,10 +169,35 @@ and served as four MCP tools. It makes a language lookup cost ~400
 tokens instead of a few thousand. Without it, the `appeon-query` skill
 tells you it is not built rather than guessing.
 
-Setup — including how to build the DB — is in
-[`appeon-index/README.md`](appeon-index/README.md). The database is
-never redistributed: each developer builds it locally from the live
-site.
+It takes two steps you have to do yourself, which is why it is not in the
+committed `.mcp.json`:
+
+```pwsh
+# 1. A Python environment with this repository's tools installed
+uv venv
+uv pip install -e ".[dev]"
+
+# 2. Scrape and index (idempotent — re-run it to pick up doc changes)
+.venv\Scripts\pb-appeon-index update
+```
+
+Then add a second server entry, pointing at that interpreter. Use an
+**absolute** path unless you are certain your client launches servers with
+the repository as their working directory:
+
+```json
+"pb-appeon-index": {
+  "command": "C:\\path\\to\\pb-ai-code\\.venv\\Scripts\\python.exe",
+  "args": ["-m", "pb_appeon_index", "serve-mcp"],
+  "env": { "PB_APPEON_INDEX_DB": "C:\\path\\to\\pb-ai-code\\docs\\appeon-index\\index.db" }
+}
+```
+
+On macOS or Linux the interpreter is `.venv/bin/python` instead.
+
+The database is never redistributed: each developer builds it locally from
+the live site. Full detail, including the multi-version config, is in
+[`appeon-index/README.md`](appeon-index/README.md).
 
 ## 4. Optional: the `pb-format` formatter
 
