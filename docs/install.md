@@ -163,8 +163,12 @@ PowerScript style (indent, keyword case, operator spacing, line
 endings). It is a standalone CLI, independent of PowerBuilder and ORCA.
 
 ```pwsh
-uv tool install pb-format      # or: pipx install pb-format
+uv tool install git+https://github.com/restoresrl/pb-format
 ```
+
+It is not on PyPI yet, so it installs from its repository — the same
+arrangement as `pb-orca-mcp` above. Once it is published, `uv tool install
+pb-format` (or `pipx install pb-format`) will be the shorter form.
 
 It only does anything where a workspace has opted in with a
 `.pb-format.toml` — generate a starter with `pb-format detect

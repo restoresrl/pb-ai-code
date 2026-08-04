@@ -26,8 +26,10 @@ in `pb-orca-mcp` parses PowerScript, and the formatter does not talk
 to a `.pbl`. They meet on a file.
 
 ```pwsh
-uv tool install pb-format      # or: pipx install pb-format
+uv tool install git+https://github.com/restoresrl/pb-format
 ```
+
+Not on PyPI yet, hence the repository URL.
 
 **It is optional, and its absence is not an error.** If
 `pb-format --version` does not resolve, say so once and carry on
