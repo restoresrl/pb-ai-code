@@ -124,6 +124,14 @@ Two cross-cutting pages apply to every entry type:
    that does not exist yet is a *signal*, not an error: it marks
    something worth writing.
 
+   **Where to write it matters.** If these pages arrived as
+   `pb-ai-code-docs/` beside the skills, you are looking at a vendored
+   **snapshot**: the next install overwrites it, so an addition made there
+   is lost. Make it in the `pb-ai-code` repository and re-install. When the
+   upstream repository is not at hand, write the finding into the review's
+   plan file under "Notes for the wiki" instead — that is what the section
+   is for, and it survives.
+
 6. **Update the page `status`** in the frontmatter when it changes:
    `stub` → `seeded` (canonical form filled in), `seeded` →
    `populated` (variants documented from real cases).

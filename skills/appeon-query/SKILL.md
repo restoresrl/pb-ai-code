@@ -79,4 +79,6 @@ If `appeon_search` returns an error like "database not found" or the
 MCP server isn't connected, the local index hasn't been built yet
 on this machine. Tell the user; do not silently fall back to
 fetching the page live. The user can run `pb-appeon-index update` to populate
-the index — instructions live in `docs/appeon-index/README.md`.
+the index — the instructions are in `docs/appeon-index/README.md` in the
+[`pb-ai-code`](https://github.com/restoresrl/pb-ai-code) repository, which is
+not part of a vendored install.

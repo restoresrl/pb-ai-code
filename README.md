@@ -51,7 +51,7 @@ optionally add the doc index and the formatter.
 ```pwsh
 git clone https://github.com/restoresrl/pb-ai-code
 cd pb-ai-code
-.\scripts\install-skills.ps1 -Target ..\my-pb-app -Bundle review
+.\scripts\install-skills.ps1 -Target ..\my-pb-app
 ```
 
 **The full walkthrough, per assistant, is

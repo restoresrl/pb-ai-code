@@ -96,6 +96,8 @@ The canonical copies live in agent-neutral directories:
 ```text
 skills/<name>/SKILL.md      Agent Skills (agentskills.io) format
 commands/<name>.md          slash-command wrappers
+docs/pb-antipatterns/       the knowledge the skills consult
+docs/pb-source-format/
 harness/<harness>/          per-assistant config (permissions, ...)
 ```
 
@@ -107,8 +109,8 @@ every tool:
 # Into this repository itself, to work on the skills:
 .\scripts\install-skills.ps1
 
-# Into a PowerBuilder workspace, review bundle only:
-.\scripts\install-skills.ps1 -Target ..\my-pb-app -Bundle review
+# Into a PowerBuilder workspace:
+.\scripts\install-skills.ps1 -Target ..\my-pb-app
 
 # Anything else: point it at the directory your assistant reads
 .\scripts\install-skills.ps1 -Target ..\my-pb-app -Harness generic -SkillsDir .agent\skills
@@ -122,9 +124,25 @@ every tool:
 `-Harness generic` writes wherever you point it and skips the
 assistant-specific settings file.
 
-`-Bundle review` installs only what a code review needs (`pb-review`,
-`pb-context-build`, `pb-apply-plan`, `appeon-query`, `pb-src-format`);
-`-Bundle full` — the default — installs everything.
+**The install also vendors the knowledge base**, as `pb-ai-code-docs/` beside
+the skills, and rewrites the links inside the installed skills to point at it.
+Without that, `pb-review` would tell the assistant to work through an
+antipattern catalog that is not there, and `pb-src-format` — which is almost
+entirely pointers into the format wiki — would be inert.
+
+It lands beside the skills rather than in the project's own `docs/`, which
+belongs to the host project. And it happens on a self-install too, not only
+when vendoring: the installed tree is one level deeper than the canonical one
+either way, so `../../docs/` — correct from `skills/<name>/` — would resolve
+to a `docs/` inside the harness directory once installed.
+
+That copy is a **snapshot**. When a skill grows the wiki, the change belongs
+upstream in this repository; an edit inside an installed `pb-ai-code-docs/` is
+discarded by the next install.
+
+Every skill is installed, not a subset: a skill left out is a dangling
+cross-reference in the ones that ship, and the saving is a handful of
+Markdown files.
 
 Two things the script does deliberately:
 
@@ -225,7 +243,7 @@ for the rules.
 Two working arrangements, both fine:
 
 **From the PowerBuilder workspace.** Install the skills there
-(`-Bundle review`), put the MCP config there, and work with the project
+there, put the MCP config there, and work with the project
 as the working directory. This is the natural setup for day-to-day work,
 and it is what lets `.pb-review/` plan files and `CHANGELOG.md` land in
 the right repository.

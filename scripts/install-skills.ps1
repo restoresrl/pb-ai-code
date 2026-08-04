@@ -1,23 +1,32 @@
 <#
 .SYNOPSIS
-    Install the pb-ai-code skills + commands into the directory an AI coding
-    assistant actually reads.
+    Install the pb-ai-code skills, commands and knowledge base into the
+    directory an AI coding assistant actually reads.
 
 .DESCRIPTION
     The canonical copies live in this repository, in agent-neutral locations:
 
         skills/<name>/SKILL.md      Agent Skills (agentskills.io) format
         commands/<name>.md          slash-command wrappers
+        docs/pb-antipatterns/       the knowledge the skills consult
+        docs/pb-source-format/
         harness/<harness>/          harness-specific config (permissions, ...)
 
-    No assistant reads those paths directly. This script copies them into the
-    layout a given harness expects, so one source of truth serves every tool.
-    It is used two ways:
+    No assistant reads those paths. This script copies them into the layout a
+    given harness expects, so one source of truth serves every tool. It is
+    used two ways:
 
       * on this repository, to make the skills usable while developing them
         (the generated directory is gitignored - regenerate, never hand-edit);
-      * on a consumer project (a PowerBuilder workspace), as a vendored
+      * on a consumer project - a PowerBuilder workspace - as a vendored
         snapshot, matching the drop-in convention PB projects already use.
+
+    Installing into a consumer also copies the two documentation trees the
+    skills link to, because a review skill whose antipattern catalog is
+    missing cannot do its job. They land beside the skills, as
+    `pb-ai-code-docs/`, and the links inside the installed skills are
+    rewritten to point at them. They deliberately do NOT land in the
+    consumer's own `docs/`, which belongs to the host project.
 
     A marker file records the source commit so drift is auditable: fix things
     in pb-ai-code and re-run, do not patch the installed copy.
@@ -36,16 +45,10 @@
     else use -Harness generic and point it at the right directory; see
     docs/install.md.
 
-.PARAMETER Bundle
-    Which subset to install.
-
-        full     every skill and command (default)
-        review   the code-review bundle only: pb-review, pb-context-build,
-                 pb-apply-plan, appeon-query, pb-src-format
-
 .PARAMETER SkillsDir
     -Harness generic only: destination directory for skills, relative to
-    Target or absolute. Required in generic mode.
+    Target or absolute. Required in generic mode. The knowledge base lands in
+    its parent directory, which is what the rewritten links expect.
 
 .PARAMETER CommandsDir
     -Harness generic only: destination directory for command files. Omit to
@@ -56,11 +59,11 @@
 
 .EXAMPLE
     .\install-skills.ps1
-    Install everything into this repository's own .claude/ directory.
+    Install into this repository's own .claude/ directory.
 
 .EXAMPLE
-    .\install-skills.ps1 -Target ..\my-pb-app -Bundle review
-    Vendor the review bundle into a PowerBuilder workspace.
+    .\install-skills.ps1 -Target ..\my-pb-app
+    Vendor the whole bundle into a PowerBuilder workspace.
 
 .EXAMPLE
     .\install-skills.ps1 -Target ..\my-pb-app -Harness generic -SkillsDir .agent\skills
@@ -72,9 +75,6 @@ param(
     [ValidateSet('claude-code', 'generic')]
     [string]$Harness = 'claude-code',
 
-    [ValidateSet('full', 'review')]
-    [string]$Bundle = 'full',
-
     [string]$SkillsDir,
 
     [string]$CommandsDir,
@@ -83,6 +83,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Documentation trees the skills link to. Vendored into a consumer so the
+# bundle is self-contained; not copied on a self-install, where the repository's
+# own docs/ already sits where the links point.
+$docTrees = @('pb-antipatterns', 'pb-source-format')
+$docsFolderName = 'pb-ai-code-docs'
 
 # --- Resolve source + target ---
 $source = (Get-Item (Join-Path $PSScriptRoot '..')).FullName
@@ -120,21 +126,22 @@ switch ($Harness) {
     }
 }
 
-# --- Bundle contents ---
-# pb-scaffold and pb-format are deliberately absent from 'review': reviewing
-# existing code rarely creates new top-level objects, and pb-format needs the
-# separate, optional pb-format tool installed. Skills that cross-reference a
-# skill that was not installed say so rather than failing.
-if ($Bundle -eq 'review') {
-    $skills = @('pb-review', 'pb-context-build', 'pb-apply-plan', 'appeon-query', 'pb-src-format')
-    $commandFiles = @('pb-review.md')
+# The knowledge base goes in the skills directory's parent, because a skill at
+# <skills>/<name>/SKILL.md reaches it as ../../<docsFolderName>/.
+$docsParentRel = Split-Path -Parent $skillsRel
+$docsRel = if ([string]::IsNullOrWhiteSpace($docsParentRel)) {
+    $docsFolderName
 }
 else {
-    $skills = @(Get-ChildItem -LiteralPath (Join-Path $source 'skills') -Directory |
-        Select-Object -ExpandProperty Name)
-    $commandFiles = @(Get-ChildItem -LiteralPath (Join-Path $source 'commands') -Filter '*.md' -File |
-        Select-Object -ExpandProperty Name)
+    Join-Path $docsParentRel $docsFolderName
 }
+
+# --- Contents: everything. A skill left out is a dangling cross-reference in
+# the ones that ship, and the saving is a handful of Markdown files. ---
+$skills = @(Get-ChildItem -LiteralPath (Join-Path $source 'skills') -Directory |
+    Select-Object -ExpandProperty Name)
+$commandFiles = @(Get-ChildItem -LiteralPath (Join-Path $source 'commands') -Filter '*.md' -File |
+    Select-Object -ExpandProperty Name)
 
 # --- Source repo metadata ---
 $sha = (& git -C $source rev-parse --short HEAD).Trim()
@@ -154,7 +161,7 @@ if ($selfInstall) {
 else {
     Write-Host "Target:  $target"
 }
-Write-Host "Harness: $Harness      Bundle: $Bundle"
+Write-Host "Harness: $Harness"
 Write-Host ""
 
 $skillsTarget = Join-Path $target $skillsRel
@@ -187,6 +194,13 @@ elseif ($commandFiles.Count -gt 0) {
     Write-Host "      Every flow is also reachable as a skill of the same name." -ForegroundColor Yellow
     Write-Host ""
 }
+foreach ($d in $docTrees) {
+    $src = Join-Path $source "docs\$d"
+    if (-not (Test-Path -LiteralPath $src)) {
+        throw "Source docs tree missing: $src"
+    }
+    $plan += [pscustomobject]@{ Op = 'docs'; Src = $src; Dst = (Join-Path (Join-Path $target $docsRel) $d) }
+}
 if ($settingsSrc) {
     if (-not (Test-Path -LiteralPath $settingsSrc)) {
         throw "Harness settings file missing: $settingsSrc"
@@ -200,6 +214,7 @@ foreach ($p in $plan) {
     Write-Host ("{0,-9} {1} -> {2}" -f $p.Op, $srcShort, $dstShort)
 }
 Write-Host ("{0,-9} {1}" -f 'marker', $markerPath.Replace($target, '<dst>'))
+Write-Host ("{0,-9} ../../docs/ -> ../../{1}/  in the installed skills" -f 'rewrite', $docsFolderName)
 Write-Host ""
 
 if ($DryRun) {
@@ -213,7 +228,7 @@ foreach ($p in $plan) {
     if (-not (Test-Path -LiteralPath $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
-    if ($p.Op -eq 'skill') {
+    if ($p.Op -eq 'skill' -or $p.Op -eq 'docs') {
         if (Test-Path -LiteralPath $p.Dst) {
             Remove-Item -LiteralPath $p.Dst -Recurse -Force
         }
@@ -225,14 +240,34 @@ foreach ($p in $plan) {
     Write-Host ("Installed {0,-9} {1}" -f $p.Op, (Split-Path -Leaf $p.Dst)) -ForegroundColor Green
 }
 
+# --- Rewrite the knowledge-base links in the installed skills ---
+# In the repository, skills/<name>/SKILL.md reaches the docs as ../../docs/,
+# because two levels up from skills/<name>/ is the repository root. Installed,
+# two levels up from <harness>/skills/<name>/ is the harness directory instead —
+# so the same link would point at a docs/ that is not there. This applies to a
+# self-install exactly as much as to a consumer: the installed tree is one level
+# deeper than the canonical one either way.
+$rewritten = 0
+foreach ($s in $skills) {
+    $file = Join-Path (Join-Path $skillsTarget $s) 'SKILL.md'
+    if (-not (Test-Path -LiteralPath $file)) { continue }
+    $text = [System.IO.File]::ReadAllText($file)
+    $new = $text.Replace('../../docs/', "../../$docsFolderName/")
+    if ($new -ne $text) {
+        [System.IO.File]::WriteAllText($file, $new)
+        $rewritten++
+    }
+}
+Write-Host ("Rewrote knowledge-base links in {0} skill file(s)." -f $rewritten) -ForegroundColor Green
+
 # --- Marker file (UTF-8, CRLF, so other tools and git diff it cleanly) ---
 $markerLines = @(
-    "# Skills and commands installed from pb-ai-code. Generated file - do not edit.",
+    "# Skills, commands and knowledge base installed from pb-ai-code.",
+    "# Generated - do not edit. Change things in pb-ai-code and re-run.",
     "#",
     "# Installed: $now",
     "# Source:    pb-ai-code @ $sha ($branch)",
-    "# Harness:   $Harness",
-    "# Bundle:    $Bundle"
+    "# Harness:   $Harness"
 )
 if ($isDirty) {
     $markerLines += "# WARN: source repo had uncommitted changes at install time."
@@ -243,9 +278,15 @@ foreach ($p in $plan) {
 }
 $markerLines += @(
     "#",
+    "# The knowledge base above is a SNAPSHOT. The skills grow it as they meet",
+    "# undocumented cases - do that in pb-ai-code, not here, or the next",
+    "# install discards it."
+)
+$markerLines += @(
+    "#",
     "# Source of truth: https://github.com/restoresrl/pb-ai-code",
     "# To update: from a pb-ai-code checkout, run",
-    "#   scripts\install-skills.ps1 -Target <this-project> -Harness $Harness -Bundle $Bundle",
+    "#   scripts\install-skills.ps1 -Target <this-project> -Harness $Harness",
     "# Make changes in pb-ai-code, not here."
 )
 $markerParent = Split-Path -Parent $markerPath
