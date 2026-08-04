@@ -38,7 +38,13 @@ harness/<harness>/        per-assistant config (e.g. Claude Code
 docs/                     the knowledge base (see below)
 tools/                    two local Python tools
 scripts/install-skills.ps1
+.mcp.json                 the one required MCP server, wired through uvx
 ```
+
+`.mcp.json` deliberately carries only `pb-orca`. The optional Appeon index
+needs a Python environment and a database that a fresh clone does not have, so
+it is documented in [`docs/install.md`](docs/install.md) rather than shipped —
+a committed config should not contain an entry that cannot start.
 
 Generated, **gitignored**, never hand-edited: `.claude/`, `.cursor/`,
 and anything else an install produces. The installer materializes the

@@ -68,7 +68,6 @@ include = [
     "scripts",
     "README.md",
     "AGENTS.md",
-    "CLAUDE.md",
     "LICENSE",
     "PLAN.md",
     "pyproject.toml",

@@ -456,7 +456,7 @@ completion) remains deferred.
 **Public release path (deferred, no deadline)** — when dogfooding has
 confirmed stability:
 
-1. Update the "Stato" line in `pb-orca-mcp/CLAUDE.md` (currently
+1. Update the status line in `pb-orca-mcp`'s own docs (currently
    reflects dogfooding phase).
 2. `gh repo edit restoresrl/pb-orca-mcp --visibility public --accept-visibility-change-consequences`.
 3. `twine upload "dist/*"` for `pb-orca-mcp`.
