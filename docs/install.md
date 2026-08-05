@@ -5,9 +5,10 @@ small local tools. It has no runtime of its own: an assistant reads the
 skills, and the skills drive MCP tools. So installing it means three
 things, in this order:
 
-1. Connect the [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)
-   MCP server — the only required dependency.
-2. Install the skills into whatever directory your assistant reads.
+1. Check that [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) —
+   the only required dependency — can reach your PowerBuilder.
+2. Run the installer, which puts the skills where your assistant reads them
+   **and** writes the MCP server configuration.
 3. Optionally add the Appeon doc index and the `pb-format` formatter.
 
 Nothing here is specific to one assistant or one model. Where a step
@@ -26,14 +27,14 @@ git ls-remote https://github.com/restoresrl/pb-orca-mcp    # priming git auth;
                                                            # writes nothing
 
 # 1. Is PowerBuilder reachable? No assistant involved yet.
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 `
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.2 --python 3.12-x86 `
     pb-orca-mcp doctor
 
 # 2. Does it work on YOUR project? Writes nothing.
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 `
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.2 --python 3.12-x86 `
     pb-orca-mcp check C:\your\project\workspace.pbw --pb-version 22.0
 
-# 3. Install the skills into your PowerBuilder project.
+# 3. Install the skills AND the MCP config into your PowerBuilder project.
 git clone https://github.com/restoresrl/pb-ai-code
 cd pb-ai-code
 .\scripts\install-skills.ps1 -Target C:\your\project
@@ -43,22 +44,9 @@ Steps 1 and 2 must print `Doctor OK` and `Check OK`. **If they do not, stop
 there** — nothing downstream can work around a PowerBuilder that is not
 reachable, and both commands tell you what is wrong.
 
-Then create `.mcp.json` in your project's root:
-
-```json
-{
-  "mcpServers": {
-    "pb-orca": {
-      "command": "uvx",
-      "args": [
-        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1",
-        "--python", "3.12-x86",
-        "pb-orca-mcp"
-      ]
-    }
-  }
-}
-```
+There is no fourth step. The installer writes the `pb-orca` server entry into
+your project's `.mcp.json`, so you do not create it by hand; any other MCP
+servers already in that file are left alone.
 
 Open your assistant **with your PowerBuilder project as the working
 directory** — not this repository — confirm the `pb_*` tools are listed (in
@@ -104,7 +92,9 @@ let the credential helper store the result, and retry.
 
 ## 1. Connect `pb-orca-mcp`
 
-One `mcpServers` entry:
+One `mcpServers` entry, which **the installer writes for you** in step 2.
+This is what it writes — canonically
+[`harness/mcp-servers.json`](../harness/mcp-servers.json):
 
 ```json
 {
@@ -112,7 +102,7 @@ One `mcpServers` entry:
     "pb-orca": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1",
+        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.2",
         "--python", "3.12-x86",
         "pb-orca-mcp"
       ]
@@ -126,36 +116,59 @@ One `mcpServers` entry:
 Getting this wrong produces a DLL-load error that looks like a missing
 file.
 
-**The `@v0.2.1` is the pin, and it is the point.** Without it the URL means
+**The `@v0.2.2` is the pin, and it is the point.** Without it the URL means
 "whatever the default branch happens to be right now", so two developers who
 run the same command on different days get different servers, and any commit
 reaches everyone the moment it lands. With it, a version is something a team
 decides to move to. Drop the `@tag` if you would rather track the latest, and
 `pb-orca-mcp --version` tells you which build you actually have.
 
-Bumping it is one edit in one file, and the tag a project pins is a reasonable
-thing to review like any other dependency.
+Bumping it is one edit in one file — that file — followed by re-running the
+installer wherever the kit is installed.
 
-Where the block goes:
+### Why the installer writes it, instead of you
+
+Because the pin only works if it moves. A block copied by hand stays on
+whatever tag was current the day it was copied, so the canonical file moves to
+a new version and nobody follows: the pin quietly becomes documentation rather
+than configuration, which is the opposite of what it is for. Installed
+alongside the skills, the two are updated by the same command and cannot drift.
+
+The consequence is worth stating plainly: **a project using this kit commits
+nothing agentic** — no `.claude/`, no `.mcp.json`, no neutral stand-in file.
+Re-running the installer is the entire synchronization story. This repository
+follows its own rule, so its root `.mcp.json` is generated and gitignored, just
+like `.claude/`.
+
+Where the installer puts it:
 
 | Client | Location |
 | --- | --- |
-| Claude Code | `.mcp.json` at the project root — shared and committable. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you. |
+| Claude Code | `.mcp.json` at the project root — written by `-Harness claude-code`. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you; then use `-SkipMcpConfig`. |
 | Cursor | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user) |
 | Codex CLI, Gemini CLI, Copilot, others | that client's MCP config file — the JSON shape is the same |
 
-This repository ships a working `.mcp.json` at its root with exactly that
-one server in it. Copy from it. The optional Appeon index in step 3 is
-deliberately **not** in there: it needs a local Python environment and a
-database you build yourself, so shipping it in the committed config would
-give every fresh clone one server that works and one that fails to start.
+Only Claude Code's location is written automatically, because it is the one
+whose on-disk contract this repository has actually verified. `-Harness
+generic` prints the block and tells you it is yours to place: inventing a path
+for a client we have not tested would look like it worked.
+
+Servers already in the target file are preserved — only the `pb-orca` key is
+written. A target `.mcp.json` that does not parse is left untouched and the
+block is printed instead, because a project's MCP config may hold servers that
+have nothing to do with PowerBuilder.
+
+The optional Appeon index in step 3 is deliberately **not** in the canonical
+file: it needs a local Python environment and a database you build yourself, so
+installing it everywhere would give every project one server that works and one
+that fails to start.
 
 **Verify before going further.** `pb-orca-mcp` has two CLI commands
 that need no MCP client at all:
 
 ```pwsh
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 pb-orca-mcp doctor
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 pb-orca-mcp check <path-to.pbw>
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.2 --python 3.12-x86 pb-orca-mcp doctor
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.2 --python 3.12-x86 pb-orca-mcp check <path-to.pbw>
 ```
 
 `doctor` reports every PB install it can see and exits non-zero when
@@ -173,6 +186,7 @@ skills/<name>/SKILL.md      Agent Skills (agentskills.io) format
 commands/<name>.md          slash-command wrappers
 docs/pb-antipatterns/       the knowledge the skills consult
 docs/pb-source-format/
+harness/mcp-servers.json    the pb-orca MCP server, pinned — every client
 harness/<harness>/          per-assistant config (permissions, ...)
 ```
 
@@ -190,14 +204,18 @@ every tool:
 # Anything else: point it at the directory your assistant reads
 .\scripts\install-skills.ps1 -Target ..\my-pb-app -Harness generic -SkillsDir .agent\skills
 
+# The MCP servers are managed elsewhere (e.g. `claude mcp add` at user scope):
+.\scripts\install-skills.ps1 -Target ..\my-pb-app -SkipMcpConfig
+
 # See the plan without writing:
 .\scripts\install-skills.ps1 -Target ..\my-pb-app -DryRun
 ```
 
 `-Harness claude-code` (the default) writes `<target>/.claude/skills/`,
-`<target>/.claude/commands/` and `<target>/.claude/settings.json`.
-`-Harness generic` writes wherever you point it and skips the
-assistant-specific settings file.
+`<target>/.claude/commands/`, `<target>/.claude/settings.json` and
+`<target>/.mcp.json`. `-Harness generic` writes the skills wherever you point
+it, skips the assistant-specific settings file, and prints the MCP block
+rather than placing it.
 
 **The install also vendors the knowledge base**, as `pb-ai-code-docs/` beside
 the skills, and rewrites the links inside the installed skills to point at it.
@@ -221,13 +239,16 @@ Markdown files.
 
 Two things the script does deliberately:
 
-- It writes a **marker file** recording the source commit, so drift
-  between an installed copy and this repository is auditable. Make
-  changes here and re-run; do not patch the installed copy.
-- Installed directories are **gitignored in this repository**. They are
-  build output. In a consumer project you may well want to commit them,
-  so the whole team gets the same bundle — that is the vendored-snapshot
-  pattern, and it is a deliberate choice, not an accident.
+- It writes a **marker file** recording the source commit and what it did
+  with the MCP config, so drift between an installed copy and this
+  repository is auditable. Make changes here and re-run; do not patch the
+  installed copy.
+- **Everything it writes is build output, and belongs in the target's
+  `.gitignore`** — `.claude/`, `.mcp.json`, the vendored knowledge base.
+  A project that uses this kit commits nothing agentic; re-running the
+  installer is what keeps a team on one version. The marker file records
+  the source commit, so "are we all on the same toolchain" is answered by
+  reading it rather than by trusting that everyone re-installed.
 
 ### If your assistant has no slash commands
 
@@ -262,8 +283,8 @@ and served as four MCP tools. It makes a language lookup cost ~400
 tokens instead of a few thousand. Without it, the `appeon-query` skill
 tells you it is not built rather than guessing.
 
-It takes two steps you have to do yourself, which is why it is not in the
-committed `.mcp.json`:
+It takes two steps you have to do yourself, and the paths it needs are
+machine-specific, which is why it is not in `harness/mcp-servers.json`:
 
 ```pwsh
 # 1. A Python environment with this repository's tools installed
@@ -274,9 +295,10 @@ uv pip install -e ".[dev]"
 .venv\Scripts\pb-appeon-index update
 ```
 
-Then add a second server entry, pointing at that interpreter. Use an
-**absolute** path unless you are certain your client launches servers with
-the repository as their working directory:
+Then add a second server entry by hand, pointing at that interpreter. The
+installer only ever writes the keys it owns, so an entry you add here survives
+re-installs. Use an **absolute** path unless you are certain your client
+launches servers with the repository as their working directory:
 
 ```json
 "pb-appeon-index": {
@@ -317,11 +339,11 @@ for the rules.
 
 Two working arrangements, both fine:
 
-**From the PowerBuilder workspace.** Install the skills there
-there, put the MCP config there, and work with the project
-as the working directory. This is the natural setup for day-to-day work,
-and it is what lets `.pb-review/` plan files and `CHANGELOG.md` land in
-the right repository.
+**From the PowerBuilder workspace.** Run the installer against it — which
+places the skills and the MCP config together — and work with the project as
+the working directory. This is the natural setup for day-to-day work, and it
+is what lets `.pb-review/` plan files and `CHANGELOG.md` land in the right
+repository.
 
 **From this repository.** Install into itself, and point the skills at a
 workspace elsewhere by absolute path. Convenient while developing the

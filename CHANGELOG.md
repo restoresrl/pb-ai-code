@@ -7,11 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Tags on this repository are what a team pins to. The version here selects the
 whole toolchain: which skill bundle, and — through the pinned URLs in
-`.mcp.json` and `harness/` — which `pb-orca-mcp` and which `pb-format`. Two
-developers installed from the same tag have the same setup, and the marker file
-the installer leaves in a target records which tag that was.
+`harness/` — which `pb-orca-mcp` and which `pb-format`. Two developers
+installed from the same tag have the same setup, and the marker file the
+installer leaves in a target records which tag that was.
 
 ## [Unreleased]
+
+### Added
+
+- **The installer now writes the MCP server configuration**, from a new
+  canonical [`harness/mcp-servers.json`](harness/mcp-servers.json), instead of
+  leaving readers to copy a JSON block out of the documentation. The pin is the
+  reason: a block copied by hand stays on whatever tag was current the day it
+  was copied, so the canonical file moves and nobody follows, and the pin
+  quietly becomes documentation rather than configuration. Installed with the
+  skills, the two are updated by one command and cannot drift.
+
+  `-Harness claude-code` merges it into `<target>/.mcp.json`; `-Harness
+  generic` prints it, because inventing a path for a client whose contract we
+  have not verified would look like it worked. Servers the project already had
+  are preserved — only the `pb-orca` key is written — and a target file that
+  does not parse is left alone with the block printed for a manual merge.
+  `-SkipMcpConfig` opts out entirely, for projects whose servers are managed at
+  user scope.
+
+  Consequence, and the point of the change: **a project using this kit commits
+  nothing agentic.** No `.claude/`, no `.mcp.json`, no neutral stand-in file.
+  Re-running the installer is the whole synchronization story. This repository
+  now follows its own rule — its root `.mcp.json` is generated and gitignored,
+  like `.claude/`.
+
+- `tests/test_pins_in_sync.py`: every `restoresrl/<repo>@<tag>` reference in
+  the tree must agree, and the file the installer materializes is the one that
+  decides. A pin that disagrees with itself is worse than none — it tells two
+  developers two different stories, each of which looks authoritative.
+
+### Corrected
+
+- Pinned `pb-orca-mcp` to **v0.2.2**. v0.2.1 could not start as an MCP server
+  at all: `mcp` 2.0.0 removed `mcp.server.fastmcp` and the dependency had no
+  upper bound. The CLI (`doctor`, `check`) kept working because it never
+  imports that layer, which is exactly why this survived the install audit.
+- **The optional Appeon doc index could not start either**, and for the same
+  reason: `pb_appeon_index.mcp_server` imports `mcp.server.fastmcp`, and this
+  repository's own `mcp` dependency had no upper bound. `__main__` imports that
+  module at module scope, so it was not only `serve-mcp` that failed but every
+  subcommand — including the `pb-appeon-index update` that `docs/install.md`
+  tells you to run to build the database in the first place. Pinned `mcp<2`,
+  and added a test that builds the server and registers its four tools, since
+  the whole suite was green while the CLI could not import.
+- The antipattern catalog's index linked `/pb-review` at
+  `../../commands/pb-review.md`, which does not exist in a `-Harness generic`
+  install — that harness has no commands directory. Points at the skill
+  instead, which every layout has.
 
 ## [0.1.0] - 2026-08-05
 

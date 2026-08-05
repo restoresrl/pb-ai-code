@@ -30,7 +30,12 @@ dependencies = [
     "chardet>=5.2",
     "requests>=2.31",
     "beautifulsoup4>=4.12",
-    "mcp>=1.0",
+    # Ceiling because `mcp` 2.0.0 removed `mcp.server.fastmcp`, which
+    # pb_appeon_index.mcp_server is built on. Without it, the `uv pip install
+    # -e ".[dev]"` in docs/install.md produces an Appeon index server that
+    # cannot start. Same break, same fix, as pb-orca-mcp v0.2.2. Lift the
+    # ceiling together with a port to the 2.x server API.
+    "mcp>=1.0,<2",
 ]
 
 [project.optional-dependencies]
@@ -61,6 +66,7 @@ packages = [
 include = [
     "tools/pb-source-analyzer",
     "tools/pb-appeon-index",
+    "tests",
     "docs",
     "skills",
     "commands",
@@ -77,6 +83,7 @@ include = [
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = [
+    "tests",
     "tools/pb-source-analyzer/tests",
     "tools/pb-appeon-index/tests",
 ]

@@ -15,6 +15,12 @@ build/
 venv/
 env/
 
+# `uv run`/`uv sync` write this. Not committed: what this repository asks a team
+# to agree on is the toolchain version — the git tag, and the pins in
+# harness/mcp-servers.json — not the resolution of the dev dependencies for the
+# two optional local tools. Commit it if that ever stops being true.
+uv.lock
+
 # Caches
 .pytest_cache/
 .mypy_cache/
@@ -32,13 +38,20 @@ htmlcov/
 Thumbs.db
 .DS_Store
 
-# Harness-specific installs. The canonical skills / commands / settings live
-# in skills/, commands/ and harness/<harness>/; scripts/install-skills.ps1
-# materializes them into the directory the assistant actually reads. Those
-# copies are build artefacts — regenerate them, never edit them in place.
+# Harness-specific installs. The canonical skills / commands / settings / MCP
+# config live in skills/, commands/, harness/<harness>/ and
+# harness/mcp-servers.json; scripts/install-skills.ps1 materializes them into
+# the places the assistant actually reads. Those copies are build artefacts —
+# regenerate them, never edit them in place.
+#
+# .mcp.json is in here for the same reason as .claude/, and it is the rule this
+# repository asks of its consumers: a project commits nothing agentic, because
+# a committed copy of the server pin drifts from the canonical one the moment
+# the tag moves. Run the installer to get it.
 .claude/
 .cursor/
 .codex/
+.mcp.json
 .github/copilot-instructions.md
 
 # Layer 1 — Appeon docs index (HTML cache + SQLite FTS5 DB)

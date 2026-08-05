@@ -88,8 +88,10 @@ e.g. same misunderstanding of PB semantics>
 
 ## Cross-references
 
-- [`/pb-review`](../../commands/pb-review.md) — Step 2b
-  consults this catalog during the bug-risk pass.
+- [`pb-review`](../../skills/pb-review/SKILL.md) — Step 2b
+  consults this catalog during the bug-risk pass. (Linked to the skill, not
+  the `/pb-review` command: every install has the skills, while commands only
+  exist for harnesses that have slash commands.)
 - [`pb-src-format`](../pb-source-format/) — sibling reference for
   the on-disk layout of `.sr*` files.
 - [`appeon-query`](../../skills/appeon-query/SKILL.md) —

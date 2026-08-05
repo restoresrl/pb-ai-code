@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-    Install the pb-ai-code skills, commands and knowledge base into the
-    directory an AI coding assistant actually reads.
+    Install the pb-ai-code skills, commands, knowledge base and MCP server
+    configuration into the places an AI coding assistant actually reads.
 
 .DESCRIPTION
     The canonical copies live in this repository, in agent-neutral locations:
@@ -10,6 +10,7 @@
         commands/<name>.md          slash-command wrappers
         docs/pb-antipatterns/       the knowledge the skills consult
         docs/pb-source-format/
+        harness/mcp-servers.json    the pb-orca MCP server, pinned
         harness/<harness>/          harness-specific config (permissions, ...)
 
     No assistant reads those paths. This script copies them into the layout a
@@ -28,6 +29,18 @@
     rewritten to point at them. They deliberately do NOT land in the
     consumer's own `docs/`, which belongs to the host project.
 
+    The MCP server configuration travels with them. It carries the version pin
+    that decides which pb-orca-mcp the project talks to, so leaving it for each
+    developer to copy by hand is how a team stops being on the same toolchain:
+    the canonical file moves to a new tag and every hand-made copy stays behind.
+    Installed together with the skills, the two cannot drift. A project using
+    this kit therefore commits nothing agentic at all, and re-running this
+    script is the whole synchronization story.
+
+    Existing MCP servers in the target are preserved - only the keys this kit
+    owns are written. A target config that cannot be parsed is never touched;
+    the block is printed for you to merge by hand instead.
+
     A marker file records the source commit so drift is auditable: fix things
     in pb-ai-code and re-run, do not patch the installed copy.
 
@@ -39,7 +52,10 @@
     Which assistant's layout to write.
 
         claude-code   <target>/.claude/{skills,commands,settings.json}
-        generic       paths you pass explicitly via -SkillsDir / -CommandsDir
+                      <target>/.mcp.json
+        generic       paths you pass explicitly via -SkillsDir / -CommandsDir;
+                      the MCP block is printed rather than written, because
+                      where it goes depends on the client
 
     Only harnesses whose on-disk contract is known are named here. For anything
     else use -Harness generic and point it at the right directory; see
@@ -53,6 +69,12 @@
 .PARAMETER CommandsDir
     -Harness generic only: destination directory for command files. Omit to
     skip commands (every flow is also reachable as a skill).
+
+.PARAMETER SkipMcpConfig
+    Leave the target's MCP configuration alone. For a project whose servers are
+    managed elsewhere - a user-wide entry added with `claude mcp add`, or a
+    config the team maintains by another route. The skills still install; they
+    just assume the `pb_*` tools are reachable some other way.
 
 .PARAMETER DryRun
     Print the planned operations and write nothing.
@@ -79,6 +101,8 @@ param(
 
     [string]$CommandsDir,
 
+    [switch]$SkipMcpConfig,
+
     [switch]$DryRun
 )
 
@@ -90,8 +114,110 @@ $ErrorActionPreference = 'Stop'
 $docTrees = @('pb-antipatterns', 'pb-source-format')
 $docsFolderName = 'pb-ai-code-docs'
 
+# The MCP servers this kit owns live in one harness-neutral file: the JSON block
+# is identical for every MCP client, only its destination differs. Set below,
+# once $source is resolved.
+$mcpSourceFile = $null
+
+function Get-McpServerBlock {
+    <#
+        The canonical mcpServers object, as an ordered hashtable so the key
+        order survives a round trip through ConvertTo-Json.
+    #>
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "MCP server config missing: $Path"
+    }
+    $parsed = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable
+    # .Contains(), not .ContainsKey(): -AsHashtable returns an OrderedHashtable
+    # on pwsh 7.3+ and a plain Hashtable before that, and Contains is the member
+    # both of them - and [ordered]@{} - actually have.
+    if (-not $parsed.Contains('mcpServers')) {
+        throw "$Path has no 'mcpServers' key."
+    }
+    return $parsed['mcpServers']
+}
+
+function Write-McpConfig {
+    <#
+        Merge the kit's servers into the target's MCP config, preserving every
+        server the project already had. Returns a list of human-readable
+        outcomes, one per server key, or $null when nothing was written.
+
+        Never clobbers a file it could not parse: a project's MCP config may
+        hold servers unrelated to PowerBuilder, and overwriting them because
+        the file has a stray comma would be a poor trade for saving the user
+        one merge.
+    #>
+    param(
+        [hashtable]$Servers,
+        [string]$DestPath,
+        [switch]$WhatIfOnly
+    )
+
+    $existing = [ordered]@{}
+    if (Test-Path -LiteralPath $DestPath) {
+        $raw = Get-Content -LiteralPath $DestPath -Raw
+        try {
+            $parsed = if ([string]::IsNullOrWhiteSpace($raw)) {
+                @{}
+            }
+            else {
+                $raw | ConvertFrom-Json -AsHashtable
+            }
+        }
+        catch {
+            Write-Host ""
+            Write-Host "WARN: $DestPath is not valid JSON - leaving it untouched." -ForegroundColor Yellow
+            Write-Host "      Merge this into its 'mcpServers' object by hand:" -ForegroundColor Yellow
+            Write-Host (@{ mcpServers = $Servers } | ConvertTo-Json -Depth 10)
+            Write-Host ""
+            return $null
+        }
+        foreach ($k in $parsed.Keys) { $existing[$k] = $parsed[$k] }
+    }
+
+    if (-not $existing.Contains('mcpServers') -or $null -eq $existing['mcpServers']) {
+        $existing['mcpServers'] = [ordered]@{}
+    }
+    $merged = [ordered]@{}
+    foreach ($k in $existing['mcpServers'].Keys) { $merged[$k] = $existing['mcpServers'][$k] }
+
+    $outcomes = @()
+    foreach ($name in $Servers.Keys) {
+        $incoming = $Servers[$name]
+        if ($merged.Contains($name)) {
+            $before = $merged[$name] | ConvertTo-Json -Depth 10 -Compress
+            $after = $incoming | ConvertTo-Json -Depth 10 -Compress
+            $outcomes += if ($before -eq $after) { "$name (already current)" } else { "$name (updated)" }
+        }
+        else {
+            $outcomes += "$name (added)"
+        }
+        $merged[$name] = $incoming
+    }
+    $kept = @($merged.Keys | Where-Object { $Servers.Keys -notcontains $_ })
+    if ($kept.Count -gt 0) {
+        $outcomes += "kept: " + ($kept -join ', ')
+    }
+
+    $existing['mcpServers'] = $merged
+
+    if (-not $WhatIfOnly) {
+        $parent = Split-Path -Parent $DestPath
+        if ($parent -and -not (Test-Path -LiteralPath $parent)) {
+            New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        }
+        Set-Content -LiteralPath $DestPath `
+            -Value ($existing | ConvertTo-Json -Depth 10) -Encoding utf8
+    }
+    return $outcomes
+}
+
 # --- Resolve source + target ---
 $source = (Get-Item (Join-Path $PSScriptRoot '..')).FullName
+$mcpSourceFile = Join-Path $source 'harness\mcp-servers.json'
 
 if ([string]::IsNullOrWhiteSpace($Target)) {
     $target = $source
@@ -108,12 +234,14 @@ else {
 # --- Harness layout ---
 $settingsSrc = $null
 $settingsRel = $null
+$mcpRel = $null
 switch ($Harness) {
     'claude-code' {
         $skillsRel = '.claude\skills'
         $commandsRel = '.claude\commands'
         $settingsSrc = Join-Path $source 'harness\claude-code\settings.json'
         $settingsRel = '.claude\settings.json'
+        $mcpRel = '.mcp.json'
         $markerRel = '.claude\_installed-from-pb-ai-code.txt'
     }
     'generic' {
@@ -207,11 +335,26 @@ if ($settingsSrc) {
     }
     $plan += [pscustomobject]@{ Op = 'settings'; Src = $settingsSrc; Dst = (Join-Path $target $settingsRel) }
 }
+# Checked here rather than where it is read, so a missing source file stops the
+# run before anything has been copied - and so -DryRun catches it too.
+if (-not $SkipMcpConfig -and -not (Test-Path -LiteralPath $mcpSourceFile)) {
+    throw "MCP server config missing: $mcpSourceFile"
+}
 
 foreach ($p in $plan) {
     $srcShort = $p.Src.Replace($source, '<src>')
     $dstShort = $p.Dst.Replace($target, '<dst>')
     Write-Host ("{0,-9} {1} -> {2}" -f $p.Op, $srcShort, $dstShort)
+}
+$mcpSrcShort = $mcpSourceFile.Replace($source, '<src>')
+if ($SkipMcpConfig) {
+    Write-Host ("{0,-9} skipped (-SkipMcpConfig)" -f 'mcp')
+}
+elseif ($mcpRel) {
+    Write-Host ("{0,-9} {1} -> {2}  (merged; other servers preserved)" -f 'mcp', $mcpSrcShort, (Join-Path '<dst>' $mcpRel))
+}
+else {
+    Write-Host ("{0,-9} {1} -> printed below (location is client-specific)" -f 'mcp', $mcpSrcShort)
 }
 Write-Host ("{0,-9} {1}" -f 'marker', $markerPath.Replace($target, '<dst>'))
 Write-Host ("{0,-9} ../../docs/ -> ../../{1}/  in the installed skills" -f 'rewrite', $docsFolderName)
@@ -260,14 +403,47 @@ foreach ($s in $skills) {
 }
 Write-Host ("Rewrote knowledge-base links in {0} skill file(s)." -f $rewritten) -ForegroundColor Green
 
+# --- MCP server configuration ---
+# Installed with the skills rather than left to the reader, because it carries
+# the version pin: a copy made by hand stays on whatever tag was current the day
+# it was made, and the pin quietly becomes documentation instead of config.
+$mcpServers = Get-McpServerBlock -Path $mcpSourceFile
+$mcpOutcome = $null
+if ($SkipMcpConfig) {
+    Write-Host "Skipped MCP config (-SkipMcpConfig). The skills expect the pb_* tools to be reachable." -ForegroundColor Yellow
+    $mcpOutcome = 'skipped (-SkipMcpConfig)'
+}
+elseif ($mcpRel) {
+    $mcpDest = Join-Path $target $mcpRel
+    $result = Write-McpConfig -Servers $mcpServers -DestPath $mcpDest
+    if ($null -eq $result) {
+        $mcpOutcome = "NOT written - $mcpRel could not be parsed; merge by hand"
+    }
+    else {
+        Write-Host ("Installed {0,-9} {1}  [{2}]" -f 'mcp', $mcpRel, ($result -join '; ')) -ForegroundColor Green
+        $mcpOutcome = "$mcpRel  [$($result -join '; ')]"
+    }
+}
+else {
+    # No known on-disk location for this harness. Printing the block and saying
+    # so beats writing it somewhere invented, which would look like it worked.
+    Write-Host ""
+    Write-Host "MCP config: add these servers to your client's MCP configuration." -ForegroundColor Cyan
+    Write-Host "Same JSON for every MCP client; only the file it goes in differs." -ForegroundColor Cyan
+    Write-Host (@{ mcpServers = $mcpServers } | ConvertTo-Json -Depth 10)
+    Write-Host ""
+    $mcpOutcome = 'printed (location is client-specific)'
+}
+
 # --- Marker file (UTF-8, CRLF, so other tools and git diff it cleanly) ---
 $markerLines = @(
-    "# Skills, commands and knowledge base installed from pb-ai-code.",
+    "# Skills, commands, knowledge base and MCP config installed from pb-ai-code.",
     "# Generated - do not edit. Change things in pb-ai-code and re-run.",
     "#",
     "# Installed: $now",
     "# Source:    pb-ai-code @ $sha ($branch)",
-    "# Harness:   $Harness"
+    "# Harness:   $Harness",
+    "# MCP:       $mcpOutcome"
 )
 if ($isDirty) {
     $markerLines += "# WARN: source repo had uncommitted changes at install time."
@@ -297,6 +473,6 @@ Set-Content -LiteralPath $markerPath -Value ($markerLines -join "`r`n") -Encodin
 
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
-if ($Harness -eq 'claude-code') {
-    Write-Host "MCP servers are configured separately, in the project's .mcp.json - see docs/install.md."
+if ($Harness -eq 'claude-code' -and -not $SkipMcpConfig) {
+    Write-Host "Restart your assistant to pick up the MCP config, then confirm the pb_* tools are listed (/mcp)."
 }
