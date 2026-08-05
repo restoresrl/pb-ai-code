@@ -13,6 +13,11 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-05
+
+Cut because v0.1.0 pins `pb-orca-mcp@v0.2.1`, which cannot start — so the tag
+that is supposed to name a working toolchain named a broken one.
+
 ### Added
 
 - **The installer now writes the MCP server configuration**, from a new
