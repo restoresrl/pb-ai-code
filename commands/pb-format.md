@@ -21,7 +21,7 @@ behaviour needs to change, that is `/pb-review` instead.
 
 1. **The tool.** Run `pb-format --version`. If it does not resolve,
    stop and say so:
-   `uv tool install git+https://github.com/restoresrl/pb-format` (it is not
+   `uv tool install git+https://github.com/restoresrl/pb-format@v0.1.0` (it is not
    on PyPI yet). Do not attempt to hand-format anything as a substitute.
 2. **The opt-in.** Walk up from the target's location looking for
    `.pb-format.toml`. If there is none, the user has not opted into a

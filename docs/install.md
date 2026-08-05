@@ -26,11 +26,11 @@ git ls-remote https://github.com/restoresrl/pb-orca-mcp    # priming git auth;
                                                            # writes nothing
 
 # 1. Is PowerBuilder reachable? No assistant involved yet.
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp --python 3.12-x86 `
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 `
     pb-orca-mcp doctor
 
 # 2. Does it work on YOUR project? Writes nothing.
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp --python 3.12-x86 `
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 `
     pb-orca-mcp check C:\your\project\workspace.pbw --pb-version 22.0
 
 # 3. Install the skills into your PowerBuilder project.
@@ -51,7 +51,7 @@ Then create `.mcp.json` in your project's root:
     "pb-orca": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/restoresrl/pb-orca-mcp",
+        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1",
         "--python", "3.12-x86",
         "pb-orca-mcp"
       ]
@@ -112,7 +112,7 @@ One `mcpServers` entry:
     "pb-orca": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/restoresrl/pb-orca-mcp",
+        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1",
         "--python", "3.12-x86",
         "pb-orca-mcp"
       ]
@@ -125,6 +125,16 @@ One `mcpServers` entry:
 32-bit through PB 2025, and `ctypes` in a 64-bit Python cannot load it.
 Getting this wrong produces a DLL-load error that looks like a missing
 file.
+
+**The `@v0.2.1` is the pin, and it is the point.** Without it the URL means
+"whatever the default branch happens to be right now", so two developers who
+run the same command on different days get different servers, and any commit
+reaches everyone the moment it lands. With it, a version is something a team
+decides to move to. Drop the `@tag` if you would rather track the latest, and
+`pb-orca-mcp --version` tells you which build you actually have.
+
+Bumping it is one edit in one file, and the tag a project pins is a reasonable
+thing to review like any other dependency.
 
 Where the block goes:
 
@@ -144,8 +154,8 @@ give every fresh clone one server that works and one that fails to start.
 that need no MCP client at all:
 
 ```pwsh
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp --python 3.12-x86 pb-orca-mcp doctor
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp --python 3.12-x86 pb-orca-mcp check <path-to.pbw>
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 pb-orca-mcp doctor
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1 --python 3.12-x86 pb-orca-mcp check <path-to.pbw>
 ```
 
 `doctor` reports every PB install it can see and exits non-zero when
@@ -289,7 +299,7 @@ PowerScript style (indent, keyword case, operator spacing, line
 endings). It is a standalone CLI, independent of PowerBuilder and ORCA.
 
 ```pwsh
-uv tool install git+https://github.com/restoresrl/pb-format
+uv tool install git+https://github.com/restoresrl/pb-format@v0.1.0
 ```
 
 It is not on PyPI yet, so it installs from its repository — the same

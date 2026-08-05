@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pb-ai-code"
-version = "0.0.1"
+version = "0.1.0"
 description = "Agentic dev kit for PowerBuilder: skills, knowledge base and orchestration on top of pb-orca-mcp"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -68,6 +68,7 @@ include = [
     "scripts",
     "README.md",
     "AGENTS.md",
+    "CHANGELOG.md",
     "LICENSE",
     "PLAN.md",
     "pyproject.toml",

@@ -3,7 +3,7 @@
     "pb-orca": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/restoresrl/pb-orca-mcp",
+        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.1",
         "--python", "3.12-x86",
         "pb-orca-mcp"
       ]
