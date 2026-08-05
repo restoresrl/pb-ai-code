@@ -15,11 +15,16 @@ differs per client, the difference is called out.
 
 ## Quickstart
 
-The whole sequence, with nothing explained. Windows, a PowerBuilder IDE
-install, and [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
-The rest of this page is why each step exists and what to do when one fails.
+The whole sequence, with nothing explained. You need Windows and a
+PowerBuilder **IDE** install; everything else is below. The rest of this page
+is why each step exists and what to do when one fails.
 
 ```pwsh
+# 0. Once per machine: uv, and git credentials for the private repositories.
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+git ls-remote https://github.com/restoresrl/pb-orca-mcp    # priming git auth;
+                                                           # writes nothing
+
 # 1. Is PowerBuilder reachable? No assistant involved yet.
 uvx --from git+https://github.com/restoresrl/pb-orca-mcp --python 3.12-x86 `
     pb-orca-mcp doctor
@@ -63,12 +68,15 @@ in your own words, naming an object, a `.pbl` or a `.pbt`.
 From then on you work in your own project. You come back here only to re-run
 the installer when the kit has changed.
 
-Three things that trip people up, each covered in detail below: these
-repositories are **private**, so step 1 fails with a git authentication error
-until you have been granted access and `git` has your credentials;
-`--python 3.12-x86` is **not optional**, because PowerBuilder's ORCA DLL is
-32-bit; and `--pb-version` is only needed when you have several PowerBuilder
-versions installed, which `check` will tell you.
+Four things that trip people up, each covered in detail below. Step 0 needs a
+new shell afterwards, because the installer puts `uv` on `PATH` and the current
+session will not see it. These repositories are **private**, so step 1 fails
+with a git authentication error until access has been granted — that is what
+the `ls-remote` in step 0 is for, and if *it* is refused, ask for access rather
+than debugging anything else. `--python 3.12-x86` is **not
+optional**, because PowerBuilder's ORCA DLL is 32-bit and `ctypes` cannot load
+it from a 64-bit interpreter. And `--pb-version` is only needed when several
+PowerBuilder versions are installed, which `check` will tell you.
 
 ## Requirements
 
