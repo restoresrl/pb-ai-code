@@ -54,12 +54,17 @@ cd pb-ai-code
 .\scripts\install-skills.ps1 -Target ..\my-pb-app
 ```
 
-**The full walkthrough, per assistant, is
-[`docs/install.md`](docs/install.md).** Start there — it covers the
-`mcpServers` block (including the one flag you cannot get wrong), where
-it goes for each client, how to verify the stack before trusting it, and
-what to do when your assistant has no slash commands or no skill
-discovery.
+That is the middle of the sequence, not the start. **Go to
+[`docs/install.md`](docs/install.md)**: the
+[Quickstart](docs/install.md#quickstart) at the top is the whole thing with
+nothing explained — five commands and one JSON block — and the rest of the
+page is why each step exists, where the `mcpServers` block goes for each
+client, how to verify the stack before trusting it, and what to do when your
+assistant has no slash commands or no skill discovery.
+
+Two things worth knowing before you begin: these repositories are **private**,
+so you need access granted before the first command will run, and everything
+that touches a `.pbl` needs Windows with a PowerBuilder **IDE** install.
 
 ## Dependencies
 

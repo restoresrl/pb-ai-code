@@ -13,6 +13,63 @@ things, in this order:
 Nothing here is specific to one assistant or one model. Where a step
 differs per client, the difference is called out.
 
+## Quickstart
+
+The whole sequence, with nothing explained. Windows, a PowerBuilder IDE
+install, and [`uv`](https://docs.astral.sh/uv/getting-started/installation/).
+The rest of this page is why each step exists and what to do when one fails.
+
+```pwsh
+# 1. Is PowerBuilder reachable? No assistant involved yet.
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp --python 3.12-x86 `
+    pb-orca-mcp doctor
+
+# 2. Does it work on YOUR project? Writes nothing.
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp --python 3.12-x86 `
+    pb-orca-mcp check C:\your\project\workspace.pbw --pb-version 22.0
+
+# 3. Install the skills into your PowerBuilder project.
+git clone https://github.com/restoresrl/pb-ai-code
+cd pb-ai-code
+.\scripts\install-skills.ps1 -Target C:\your\project
+```
+
+Steps 1 and 2 must print `Doctor OK` and `Check OK`. **If they do not, stop
+there** — nothing downstream can work around a PowerBuilder that is not
+reachable, and both commands tell you what is wrong.
+
+Then create `.mcp.json` in your project's root:
+
+```json
+{
+  "mcpServers": {
+    "pb-orca": {
+      "command": "uvx",
+      "args": [
+        "--from", "git+https://github.com/restoresrl/pb-orca-mcp",
+        "--python", "3.12-x86",
+        "pb-orca-mcp"
+      ]
+    }
+  }
+}
+```
+
+Open your assistant **with your PowerBuilder project as the working
+directory** — not this repository — confirm the `pb_*` tools are listed (in
+Claude Code, `/mcp`), and ask for a review: `/pb-review`, or the same request
+in your own words, naming an object, a `.pbl` or a `.pbt`.
+
+From then on you work in your own project. You come back here only to re-run
+the installer when the kit has changed.
+
+Three things that trip people up, each covered in detail below: these
+repositories are **private**, so step 1 fails with a git authentication error
+until you have been granted access and `git` has your credentials;
+`--python 3.12-x86` is **not optional**, because PowerBuilder's ORCA DLL is
+32-bit; and `--pb-version` is only needed when you have several PowerBuilder
+versions installed, which `check` will tell you.
+
 ## Requirements
 
 | | |
