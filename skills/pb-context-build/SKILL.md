@@ -133,7 +133,7 @@ required. Four fields change how the rest of the work proceeds:
   it from scope, or tell the user plainly that the finding belongs
   upstream, in the project that owns that library.
 
-Record all three at the top of the context pack.
+Record all four at the top of the context pack.
 
 ## Session bring-up
 
@@ -317,6 +317,14 @@ points on monolithic codebases:
 
 - **Hard cap on exported entries**: 20 per invocation. If the natural
   flow would exceed it, prune (depth, then breadth) until under cap.
+
+  **The size cap is the binding one; the count is advisory.** Twenty is
+  twenty entries *of typical size*. A library of global functions is
+  mostly 300-600 byte wrappers, and pruning six of them to satisfy an
+  arithmetic limit removes the callers that give the object under review
+  its contract, while freeing well under 1% of the budget. Entries below
+  ~2 KB do not count against the twenty. If the pack is under the size
+  cap, do not prune to meet the count — say what you included and why.
 - **Soft cap on cumulative source size**: ~150 KB of plain text
   (~50 K tokens). Track as you go; if you cross it before reaching
   the outgoing-refs expansion, stop and report what you have. The

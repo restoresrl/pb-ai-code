@@ -107,7 +107,19 @@ Required YAML fields (per the `pb-review` contract):
 - `kind` — `bug-risk` | `refactor` | `style` | …
 - `priority` — `high` | `medium` | `low`.
 - `depends_on` — list of `id`s that must be applied first.
-- `confidence` — `parsed` | `user-augmented` | `manual`.
+- `depends_on_confidence` — `parsed` | `user-augmented` | `manual`.
+  Where the `depends_on` graph came from. Not a judgement about the
+  finding; a normal review writes `parsed` on all of them.
+- `evidence` — `code-read` | `verified-in-docs` | `unverified-semantics`.
+  **Gate on this.** A finding marked `unverified-semantics` rests on a
+  PowerScript behaviour nobody checked, and carries an `experiment:`
+  naming the test that would settle it. Do not apply it in the ordinary
+  flow: present the finding, present the experiment, and let the user
+  decide whether to run the experiment first or accept the risk out
+  loud. Applying an unchecked premise is how a review makes a codebase
+  worse while looking productive.
+  Plans written before this field existed will not have it; treat a
+  missing `evidence` as `code-read` and say that you assumed it.
 - `status` — `pending` | `applied` | `skipped`.
 
 Optional: `function`, `lines`, `effort_estimate`, `tag`, `also_in`,

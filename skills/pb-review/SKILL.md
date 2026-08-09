@@ -37,7 +37,51 @@ accepted forms:
 If the target is missing or unintelligible, ask the user to restate. Do
 not guess.
 
+## Running unattended
+
+This flow is written for a conversation, and several steps say to wait
+for the user. When there is no user — a subagent, `claude -p`, a
+scheduled run — do not hang and do not silently ignore the
+instruction. Switch to these defaults, and **state at the top of the
+plan file that the run was unattended and which choices were made for
+the user**:
+
+| Step | Interactive | Unattended default |
+| --- | --- | --- |
+| Step 0 framing | confirm five things | derive them: scope category from the request's wording, context slug from the entry name, entry set = the target plus its ORCA-resolved neighbourhood, budget computed and reported, semver from the finding mix |
+| Step 2a understanding gate | wait for acknowledgement | the `## Understanding` section *is* the gate — write it, and mark every assumption you could not confirm |
+| Second sweep | offer | run at least two; keep going while a sweep adds a finding; stop at four |
+| `.pb-review/` gitignore offer | ask | do not ask. The plan file is work product, not harness state — the skill's own promise that a different agent can resume it days later only holds if it is committed. Leave it tracked and say so |
+| Step 4 handoff | offer the apply loop | never. An unattended run does not write to a `.pbl` |
+
+Everything else — the pre-flight, the gates that protect the workspace,
+the refusal in `pb-apply-plan` — applies unchanged. Unattended means
+*nobody to ask*, not *nobody to protect*.
+
 ## Pre-flight
+
+0. **Find out what the project already knows about this code.** Cheap,
+   and skipping it is the single most expensive mistake this flow can
+   make: on a project with review history, most of what you are about to
+   produce is already written down, and a report that re-derives it is
+   worse than no report — the maintainer now has to diff two documents
+   to find what is new.
+
+   Read, in this order: `CHANGELOG.md`, `AGENTS.md` (or `CLAUDE.md`),
+   `README`, and **any backlog, plan or review document they link to**.
+   The pointer is often a single line — a real project had
+   "voci con riferimento (`piano X.Y`) rimandano al piano fix" three
+   lines into its `CHANGELOG.md`, pointing at a 15 KB prior review of
+   the very object under review. Also look for `doc/`, `docs/`,
+   `.pb-review/` and anything matching `*plan*`, `*review*`,
+   `*backlog*`, `*todo*`.
+
+   Carry the result into the review as a list of what is already
+   recorded, with that document's own identifiers. Findings that match
+   it do not go in the queue: they go in `## Already recorded elsewhere`
+   (see Step 3), which tells the maintainer you looked and agreed. State
+   in the report which documents you read; if there were none, say that
+   too, because "no prior review exists" is itself worth knowing.
 
 1. **`pb_workspace_info(lib_path)`** — one call, no ORCA session, no PB
    install needed. It gives the project shape (`ws_objects` vs
@@ -53,12 +97,40 @@ not guess.
    exactly the bytes ORCA writes — an applied fix can leave
    `git status` clean and surface as drift on someone else's checkout.
    A review is read-only and safe either way, but it ends by handing
-   off to `pb-apply-plan`, which is not. Measure it now, while it costs
-   one command: `git ls-files --eol <projection dir>`, count the files
-   reported `i/lf w/crlf`, and put the number in the report. Say it
-   has to be fixed — `*.sr* -text` (and `*.pbl`, `*.pbd` as `binary`) plus
-   `git add --renormalize`, its own commit — **before** the apply loop
-   runs, not after. Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
+   off to `pb-apply-plan`, which is not.
+
+   **Measure the disagreement that actually matters**, which is between
+   what ORCA holds and what is on disk — not between git's index and the
+   working tree. Export one entry of the target to a scratch directory
+   and compare:
+
+   ```bash
+   # after the export above, with <a> = the scratch copy, <b> = the projection file
+   cmp -s <a> <b> && echo "identical" || echo "differ"
+   python -c "a=open(r'<a>','rb').read(); b=open(r'<b>','rb').read();    print('bytes', len(a), len(b)); print('CR', a.count(13), b.count(13));    print('same once CR stripped:', a.replace(b'
+',b'')==b.replace(b'
+',b''))"
+   ```
+
+   "Same once CR stripped" with different CR counts is the signature:
+   the content agrees and every line ending will flip the moment the
+   apply loop writes the file back. Report the number of line endings
+   involved — it is the size of the invisible change. Measured on a real
+   library: ORCA held 663 of 704 line breaks as bare LF while the
+   working tree had all 704 as CRLF, so an apply loop would have
+   rewritten 663 of them with `git status` clean throughout.
+
+   `git ls-files --eol <projection dir>` is a useful **secondary**
+   reading — how far the normalization has already spread across the
+   tree — but it is a fact about git, not about ORCA, and on its own it
+   does not establish the danger.
+
+   Either way, say it has to be fixed — `*.sr* -text` (and `*.pbl`,
+   `*.pbd` as `binary`) plus `git add --renormalize`, its own commit —
+   **before** the apply loop runs, not after. Use `-text`, not `binary`:
+   both stop the translation, but `binary` implies `-diff`, so git
+   answers "Binary files differ" and the change cannot be read, which is
+   what the projection is for.
 2. **Bring up the ORCA session**: `pb_session_open` (`pb_version` or
    `install_path` is required — there is no auto-pick; enumerate with
    `pb_discover_pb_install` and say which you chose),
@@ -79,10 +151,17 @@ not guess.
      clean.** It does not follow, and least of all here: an unprotected
      workspace is one where `git status` stays clean *by construction*.
      Git compares the working tree to the index, and the `.pbl` is
-     opaque to it. The only thing that establishes the two agree is an
-     ORCA export compared against the file. If that matters to a
-     finding, open the session and check; otherwise write down that you
-     assumed it.
+     opaque to it. Only an ORCA export compared against the file settles
+     it — the procedure is below. If that matters to a finding and you
+     do not run it, write down that you assumed it.
+
+   **Export to a scratch directory, never in place.**
+   `pb_object_export_file` writes into the projection directory when you
+   omit `dest_dir` — it refreshes the source of truth — so calling it to
+   "check" the projection overwrites the file you were about to compare
+   and then reports a match. Either pass a `dest_dir` outside the
+   project, or use `pb_library_entry_export`, which returns the source
+   in memory and writes nothing.
 
 3. **Note which reference tools you have.** If the `appeon_*` tools are
    absent, the Appeon doc index is not configured on this machine (the
@@ -94,6 +173,19 @@ not guess.
    language behaviour from memory inside a finding** — a wrong one costs
    the user more than a missing one, because it looks the same as a
    right one and arrives with a suggested edit attached.
+
+   That leaves a real gap, so name what fills it. Without the index you
+   may spend **two or three** web lookups against `docs.appeon.com` on
+   the semantics a finding actually turns on — the `appeon-query` skill
+   discourages the web because it costs thousands of tokens per page,
+   which is an argument about volume, not a prohibition. Budget it: the
+   handful of behaviours your findings depend on, not background
+   reading.
+
+   What you look up becomes `evidence: verified-in-docs` with the
+   citation. What you cannot check becomes `evidence:
+   unverified-semantics` with an `experiment:`. Both are honest; only
+   the third option, asserting it, is not.
 
 If bring-up fails, stop and report the diagnostic —
 `pb-orca-mcp doctor` and `pb-orca-mcp check <target>` are CLI commands
@@ -328,12 +420,30 @@ a re-run, a **sweep for what the first pass did not see**:
 > already known, hunting only for what they do not cover. It costs
 > roughly what the first pass cost."
 
+Unattended, do not ask — run the sweeps (see *Running unattended*).
+
 If the user accepts, list the existing findings as known, review again,
 and **append** the new ones to the same plan file with fresh ids —
 never renumber, the CHANGELOG already links to the old anchors. Repeat
 until a sweep adds nothing, and record in `## Scope` how many sweeps ran
 and what each added. A sweep that finds nothing is the only evidence of
 coverage this flow can honestly produce.
+
+### Consumers you cannot see
+
+Caller discovery, even when enabled, inverts the **configured library
+list** — it cannot see a project that consumes this one. For a library
+with a public surface (global functions wrapping an object, a `.pbd`
+other products link, an API the project's own docs describe as shared)
+that is most of the risk, and it is invisible from here.
+
+So: if the target has such a surface, or `AGENTS.md` / `CLAUDE.md` /
+the README names external consumers, open a **`## Consumers outside
+this workspace`** section listing what you could not check. And **do
+not assign a priority above `medium` to a public-contract change on
+that basis alone** — the priority would be a guess dressed as a
+judgement. Say what would settle it: usually one question to a human
+who knows who links this library.
 
 ## Step 3 — Emit the plan file and the CHANGELOG entry
 
@@ -356,11 +466,16 @@ none of that, so the handoff cannot run. The two are different
 artefacts: this one is a machine-readable snapshot of one review, that
 one is a curated backlog.
 
-Connect them instead of merging them. Add **one line** to the project's
-document pointing at this file, and after the apply loop promote what
-actually landed into the project's own numbering. Not before: a
-curated backlog should not fill up with findings that may yet be
-rejected.
+Connect them instead of merging them. Add **one line** pointing at this
+file, and after the apply loop promote what actually landed into the
+project's own numbering. Not before: a curated backlog should not fill
+up with findings that may yet be rejected.
+
+Which document, and where: the backlog or plan document found in
+Pre-flight 0 — not `CHANGELOG.md`, which already gets its own entry.
+Put it under a references or index heading if one exists, otherwise at
+the end. If Pre-flight 0 found no such document, there is nothing to
+link and you write only the two artefacts.
 
 The format is YAML front-matter per finding, **plus** a generated
 summary table at the top.
@@ -373,7 +488,9 @@ summary table at the top.
 - **scope**: <scope_category>
 - **context**: <context_slug>
 - **target**: <entry triples / .pbt / .pbl reviewed>
-- **workspace**: mode=<ws_objects|pbl_only>, encoding=<…>, outside_source_tree=<…>, source_protection=<…>
+- **workspace**: mode=<ws_objects|pbl_only>, encoding=<export_encode> (orca=<orca_encoding>, observed=<observed_encoding>, from=<encoding_source>), outside_source_tree=<true|false, for the library queried>, source_protection=<…>, sources_diffable=<…>
+- **library**: <absolute path of the .pbl holding the target>
+- **resolved target**: <the .pbt whose LibList contains it> — applib=<…>, liblist=<…>
 - **generated**: <YYYY-MM-DD HH:MM>
 - **source skill**: pb-review @ <pb-ai-code git sha — see below>
 - **semver bump proposed**: <patch|minor|major> → <X.Y.Z>
@@ -390,7 +507,35 @@ pb-context-build>
 ## Skipped
 
 <anything pruned that the user should know about>
+
+## Already recorded elsewhere
+
+<findings that Pre-flight 0 showed are already in the project's own
+plan, backlog or changelog — each with that document's identifier, not
+a new fix id. "I looked at these and agree they are known" is one of
+the most useful things this report says.>
+
+## Consumers outside this workspace
+
+<omit unless the target has a public surface. See Step 2c.>
 ```
+
+`pb_workspace_info` returns **no** field called `encoding`: it returns
+`export_encode`, `orca_encoding`, `observed_encoding` and
+`encoding_source`, and the interesting case is when the first and third
+disagree — the workspace is already inconsistent and the IDE will
+rewrite those files on its next export. Record all four, and raise a
+finding on a mismatch.
+
+`outside_source_tree` is a **boolean about the one library you asked
+about**, not a list. To speak about several libraries, call the tool
+once per library.
+
+The **library** and **resolved target** lines exist because an entry
+triple does not identify a file: two libraries in one workspace can
+share a basename, and `pbgettext.pbl` under `src/` and under `test/`
+is a realistic collision. `pb-apply-plan` needs the absolute path, and
+it needs to know which target's library list this review assumed.
 
 The **source skill** line is the reproducibility record: which version of
 the kit produced this plan. Read the sha from the marker the installer
@@ -405,10 +550,14 @@ missing, say so and name the directory you looked in.
 ```markdown
 ## Queue
 
-| id     | entry                              | kind     | depends_on | confidence | status  |
+| id     | entry                              | kind     | depends_on | evidence | status  |
 |--------|------------------------------------|----------|------------|------------|---------|
-| fix-01 | core.pbl :: n_logger : userobject  | bug-risk | —          | parsed     | pending |
-| fix-02 | core.pbl :: n_log_target : uobj    | refactor | fix-01     | parsed     | pending |
+| fix-01 | core.pbl::n_logger:userobject      | bug-risk | —          | code-read | pending |
+| fix-02 | core.pbl::n_log_target:userobject  | refactor | fix-01     | code-read | pending |
+
+The `entry` column is the **same string** as the finding's `entry:`
+field — `lib::name:type`, no spaces, type spelled in full. One spelling
+so the table can be regenerated from the YAML and compared to it.
 ```
 
 The table is **derived** from the YAML blocks below;
@@ -428,7 +577,8 @@ lines: [42, 58]
 kind: bug-risk
 priority: high
 depends_on: []
-confidence: parsed
+depends_on_confidence: parsed
+evidence: code-read
 status: pending
 ```
 
@@ -449,11 +599,34 @@ empty input; this is defense-in-depth.
 
 Required YAML fields: `id`, `entry`, `kind` (bug-risk | refactor |
 style | …), `priority` (high | medium | low), `depends_on` (list of
-`id`), `confidence` (parsed | user-augmented | manual), `status`
-(pending | applied | skipped).
+`id`), `depends_on_confidence` (parsed | user-augmented | manual),
+`evidence` (code-read | verified-in-docs | unverified-semantics),
+`status` (pending | applied | skipped).
+
+**`depends_on_confidence` is about the dependency graph, not about the
+finding.** It says where `depends_on` came from, and in a review that
+ran normally with no hand edits it is `parsed` on every single finding,
+which is why it must not be mistaken for a judgement about the finding
+itself. (It was called `confidence` and was read that way.)
+
+**`evidence` is the judgement about the finding**, and it is the field
+`pb-apply-plan` gates on:
+
+- `code-read` — established by reading the code in front of you.
+- `verified-in-docs` — rests on a documented PowerScript behaviour that
+  you looked up and can cite.
+- `unverified-semantics` — rests on a language behaviour you could not
+  check. **Requires an `experiment:` field**: one or two sentences
+  naming the concrete test that would settle it. `pb-apply-plan` will
+  not apply one of these without the user saying so explicitly.
+
+A finding whose premise was never checked and whose check was never
+named does not belong in the queue at all.
 
 Optional YAML fields:
 
+- `experiment` — **required when `evidence: unverified-semantics`**. The
+  test that would settle the premise, concretely enough to run.
 - `function`, `lines` — narrow down the location.
 - `effort_estimate` — `small` | `medium` | `large`. Signals to
   `pb-apply-plan` whether to expect a long apply step.
@@ -480,6 +653,36 @@ Confidence semantics:
   user overrode it).
 
 ### CHANGELOG entry
+
+Three conventions, because these bullets join a file somebody else
+writes in:
+
+- **Language.** An artefact appended to an existing document follows
+  *that document's* language, not the conversation's. The plan file is
+  new, so it follows the conversation. A project whose `CHANGELOG.md`
+  is in Italian gets Italian bullets even when the review was conducted
+  in English.
+- **Bullet style.** If the section already has entries, match their
+  shape — prose, reference markers, whatever the house style is —
+  rather than importing this template verbatim. A `### Fixed` holding
+  one prose entry and eleven checkbox entries is a diff nobody wants.
+- **Placeholders.** An empty subsection often holds a placeholder
+  ("*(no entries yet)*"). Remove it from the section you write into.
+  The append-only rule protects released versions and entries a
+  previous run wrote; a placeholder is neither.
+
+Look for the project's own scheme **before** falling back to semver, in
+this order: a project-local versioning skill; a version file
+(`*.version`, `.version`, `package.json`, `*.pbg`); a statement in
+`AGENTS.md` / `CLAUDE.md` about how versions are decided. A real PB
+project kept `src/<app>.version` with `major`/`minor`/`patch`/`build`
+and a `major` that tracks the **PowerBuilder release**, not API
+compatibility — under which "major bump" has no semver meaning and
+proposing one is simply wrong. If the scheme is not semver, say which
+component you are proposing to move and why, and do not translate it
+into semver words.
+
+
 
 Append to (or create) `CHANGELOG.md` in the reviewed project's root,
 following [Keep a Changelog](https://keepachangelog.com/). Add or
@@ -546,8 +749,12 @@ the CHANGELOG entry persist; the work can resume later by invoking
   refactors are out of scope.
 - **No edits during the review itself.** This flow produces artefacts;
   edits to PB sources happen only in the `pb-apply-plan` handoff, with
-  per-fix confirmation. Writing the plan file and the CHANGELOG entry
-  is review output, not a source modification.
+  per-fix confirmation. Three writes are review output rather than
+  source modification, and they are the only ones: the plan file, the
+  `CHANGELOG.md` entry, and — when the project keeps its own plan or
+  backlog — the single pointer line into it described in Step 3. Say
+  in the summary that you touched that third file; it is the one the
+  user did not ask for.
 - **No automated test execution.** If a fix conceptually needs a test,
   suggest it as a follow-up note in the finding; do not generate a test
   runner.
