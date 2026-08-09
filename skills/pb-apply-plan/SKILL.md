@@ -175,6 +175,25 @@ Before touching any file, present the topo-sorted queue:
 
 Wait for an explicit yes. This is the **handoff gate**.
 
+**Ask that question and no other.** Do not offer to show all the diffs
+at once and apply the batch, or to apply everything and report at the
+end. Per-fix confirmation is this skill's contract, not a default to be
+traded for fewer exchanges, and the trade is worse than it looks: the
+compile-error path in (b) — read the errors, decide, retry or roll back
+— only exists between one fix and the next. Batch the imports and a
+failure at fix 3 arrives with 4 and 5 already written.
+
+If the user asks for a faster cadence, say what it costs and let them
+choose with that in hand. Offering it unprompted is this skill talking
+itself out of the reason it exists.
+
+**Say what you will do about commits, here, once.** This skill never
+stages and never commits (see below), so if the work belongs on a
+branch, that is the user's call to make now rather than after fifteen
+edits are sitting in the working tree. Do not ask which branch unless
+you intend to act on the answer — an unused question reads as a promise
+of commits that never arrive.
+
 ## Step 4 — The apply loop
 
 For each fix in topo-sorted order **whose `status` is `pending`**:
@@ -332,6 +351,28 @@ Query the DAG for fixes that depend on this one, transitively.
      as it is.
 
 Never cascade silently; the user must acknowledge it.
+
+### (c2) When the fix itself turns out to be wrong
+
+The plan is a hypothesis written before the code was open in front of
+you. Sometimes preparing the edit shows it was wrong. Two very different
+cases, and conflating them loses the more valuable one:
+
+- **The finding holds, the proposed edit does not** — wrong identifier,
+  wrong signature, a construct that will not compile, a step missing.
+  Fix the edit, apply it, and **rewrite the finding's body in the plan
+  file to describe what you actually did.** The CHANGELOG links to that
+  anchor; a plan describing an edit nobody made is worse than no plan.
+- **The finding does not hold** — the bug is not real, or the fix is
+  the wrong shape for it. Do not apply. Set `status: skipped`, record
+  why in the body, and **tell the user plainly that a finding did not
+  survive contact with the code**. That is not bookkeeping: it is
+  evidence about the other findings in the same plan, and they are
+  entitled to know before approving the next one.
+
+Never quietly apply something different from what was approved. The
+diff shown in (a) is what the user agreed to; if what you are about to
+write differs, show it again and re-confirm.
 
 ### (d) After every status change
 

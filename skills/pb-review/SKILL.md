@@ -66,6 +66,24 @@ not guess.
    may rewrite the `.pbw` as a side effect; mention it if the session
    ends with the user looking at `git status`.
 
+   **On a `ws_objects` project you may skip the session and read the
+   projection instead** — it is cheaper and a review writes nothing.
+   Two conditions, and they are not optional:
+
+   - Say you are doing it, and say what it costs. Without a session
+     there is no `pb_object_query_hierarchy` and no
+     `pb_object_query_reference`, so ancestors and callers come from
+     reading text. That is workable inside one library and unreliable
+     across a whole workspace; state which you did.
+   - **Never claim the projection matches the `.pbl` because git is
+     clean.** It does not follow, and least of all here: an unprotected
+     workspace is one where `git status` stays clean *by construction*.
+     Git compares the working tree to the index, and the `.pbl` is
+     opaque to it. The only thing that establishes the two agree is an
+     ORCA export compared against the file. If that matters to a
+     finding, open the session and check; otherwise write down that you
+     assumed it.
+
 3. **Note which reference tools you have.** If the `appeon_*` tools are
    absent, the Appeon doc index is not configured on this machine (the
    normal state — see the `appeon-query` skill for why and how to turn
@@ -300,6 +318,23 @@ If a pattern recurs across the pack and is not documented in the
 `docs/pb-source-format/`, note it — that is a candidate for wiki
 growth.
 
+### A second sweep, when it is worth it
+
+Because one pass misses things, offer another before handing off — not
+a re-run, a **sweep for what the first pass did not see**:
+
+> "That is N findings. A single pass typically misses a third of what
+> is there. Want a second sweep? I re-read the same code with these N
+> already known, hunting only for what they do not cover. It costs
+> roughly what the first pass cost."
+
+If the user accepts, list the existing findings as known, review again,
+and **append** the new ones to the same plan file with fresh ids —
+never renumber, the CHANGELOG already links to the old anchors. Repeat
+until a sweep adds nothing, and record in `## Scope` how many sweeps ran
+and what each added. A sweep that finds nothing is the only evidence of
+coverage this flow can honestly produce.
+
 ## Step 3 — Emit the plan file and the CHANGELOG entry
 
 Two artefacts on disk, one user-facing summary.
@@ -311,6 +346,21 @@ Path:
 (values from Step 0). Create `.pb-review/` if it does not exist. On
 first creation, mention it: "I created `.pb-review/` in the working
 directory. Want a `.gitignore` suggestion for it?"
+
+**Always here, even when the project already keeps its own plan or
+backlog document.** Many do, with their own numbering. Do not ask, and
+do not merge into it: `pb-apply-plan` parses *this* file — the YAML
+front-matter, the `depends_on` graph, the `status:` fields it rewrites
+as it goes — and findings folded into a hand-maintained document have
+none of that, so the handoff cannot run. The two are different
+artefacts: this one is a machine-readable snapshot of one review, that
+one is a curated backlog.
+
+Connect them instead of merging them. Add **one line** to the project's
+document pointing at this file, and after the apply loop promote what
+actually landed into the project's own numbering. Not before: a
+curated backlog should not fill up with findings that may yet be
+rejected.
 
 The format is YAML front-matter per finding, **plus** a generated
 summary table at the top.
@@ -325,7 +375,7 @@ summary table at the top.
 - **target**: <entry triples / .pbt / .pbl reviewed>
 - **workspace**: mode=<ws_objects|pbl_only>, encoding=<…>, outside_source_tree=<…>, source_protection=<…>
 - **generated**: <YYYY-MM-DD HH:MM>
-- **source skill**: pb-review @ <pb-ai-code git sha>
+- **source skill**: pb-review @ <pb-ai-code git sha — see below>
 - **semver bump proposed**: <patch|minor|major> → <X.Y.Z>
 
 ## Understanding
@@ -341,6 +391,14 @@ pb-context-build>
 
 <anything pruned that the user should know about>
 ```
+
+The **source skill** line is the reproducibility record: which version of
+the kit produced this plan. Read the sha from the marker the installer
+leaves next to the skills — `_installed-from-pb-ai-code.txt`, the
+`# Source:` line. Do not write "n/d" because the skills are not tracked
+in the consumer's git: they are not supposed to be, and the marker exists
+precisely so the version survives that. If the marker is genuinely
+missing, say so and name the directory you looked in.
 
 #### Summary table
 
@@ -496,6 +554,14 @@ the CHANGELOG entry persist; the work can resume later by invoking
 - **Honest about cost.** If the budget was hit early and the review is
   partial, say so loudly at the top of the plan file, in `## Scope`.
   Partial reviews are valuable; pretending to be exhaustive is not.
+- **Never call a review complete.** Not "review completa", not
+  "exhaustive", not "all findings". One pass does not find everything,
+  and this is measured, not cautious: two passes over the same object,
+  same scope, same model produced 23 distinct findings between them and
+  neither pass saw more than 83% of the union — while both called
+  themselves complete. Say what you examined and how, and leave the
+  reader to judge coverage. `## Scope` describes work done, not ground
+  covered.
 
 ## Cross-references
 
