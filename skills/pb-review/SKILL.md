@@ -51,8 +51,8 @@ the user**:
 | Step 0 framing | confirm five things | derive them: scope category from the request's wording, context slug from the entry name, entry set = the target plus its ORCA-resolved neighbourhood, budget computed and reported, semver from the finding mix |
 | Step 2a understanding gate | wait for acknowledgement | the `## Understanding` section *is* the gate — write it, and mark every assumption you could not confirm |
 | Second sweep | offer | run at least two; keep going while a sweep adds a finding; stop at four |
-| `.pb-review/` gitignore offer | ask | do not ask. The plan file is work product, not harness state — the skill's own promise that a different agent can resume it days later only holds if it is committed. Leave it tracked and say so |
-| Step 4 handoff | offer the apply loop | never **on your own initiative**. If the invoker explicitly asked for the apply loop, run it — restricted to `evidence: code-read` findings, under `pb-apply-plan`'s own unattended rules — and record the override in the plan file |
+| `.pb-review/` gitignore offer | ask | do not ask, and do not gitignore it. The plan file is work product, not harness state, and the promise that another agent can resume it later only holds if it reaches the repository. This flow does not commit it, so say so explicitly in the closing summary: the plan file is untracked and wants committing |
+| Step 4 handoff | offer the apply loop | never **on your own initiative**. If the invoker explicitly asked for the apply loop, run it — restricted to `evidence: code-read` and `verified-in-docs` findings, under `pb-apply-plan`'s own unattended rules — and record the override in the plan file |
 
 Everything else — the pre-flight, the gates that protect the workspace,
 the refusal in `pb-apply-plan` — applies unchanged. Unattended means
@@ -128,7 +128,7 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    does not establish the danger.
 
    Either way, say it has to be fixed — `*.sr* -text` (and `*.pbl`,
-   `*.pbd` as `binary`) plus `git add --renormalize`, its own commit —
+   `*.pbd` as `binary`) plus `git add --renormalize -- '*.sr*' '*.pbl' '*.pbd'`, its own commit —
    **before** the apply loop runs, not after. Use `-text`, not `binary`:
    both stop the translation, but `binary` implies `-diff`, so git
    answers "Binary files differ" and the change cannot be read, which is
@@ -628,7 +628,8 @@ finding must land on the same value, which they cannot do while the axis
 is left to taste), `depends_on` (list of
 `id`), `depends_on_confidence` (parsed | user-augmented | manual),
 `evidence` (code-read | verified-in-docs | unverified-semantics),
-`status` (pending | applied | skipped).
+`status` (pending | applied | skipped | partial — a review always writes
+`pending`; the rest are written by `pb-apply-plan` as it runs).
 
 **`depends_on_confidence` is about the dependency graph, not about the
 finding.** It says where `depends_on` came from, and in a review that

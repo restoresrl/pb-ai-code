@@ -44,10 +44,17 @@ scheduled run — the defaults are:
 | Running at all | offered by `pb-review` | **only when the invoker asked for the apply loop explicitly.** Never on your own initiative |
 | `source_protection: unprotected` | ask: fix first, or proceed | **fix first.** Both pre-flight repairs, each committed on its own |
 | Step 3 handoff gate | wait for an explicit yes | proceed, and record in the plan file that the run was unattended |
-| Each fix | confirm the diff | apply only `evidence: code-read`. Skip `unverified-semantics` and `requires_discussion` with a reason |
+| Each fix | confirm the diff | apply `evidence: code-read` **and `verified-in-docs`**. Skip `unverified-semantics` and `requires_discussion` with a reason |
+| Branch | the user's call, asked at Step 3 | if the repository's convention is not to commit to the default branch, cut `pb-review/<context-slug>-<date>` for the two precondition commits and say so. Never commit them to the default branch without saying which branch you chose |
 | A compile error | show, decide, retry | **stop the loop.** Roll that fix back, leave the rest `pending`, report |
 | Dependency cycle | ask which edge to cut | do not guess. Stop and report |
 | CHANGELOG promotion | offer | never. Leave `[Unreleased]` |
+
+`verified-in-docs` is the *strongest* evidence class, not a weaker one: it
+means the premise was checked against the documentation rather than merely
+read off the code. Excluding it would mean a reviewer that verifies gets
+less of its plan applied than one that verifies nothing, which is the one
+incentive a review tool must not have.
 
 An unattended run that applies three well-understood fixes and stops at
 the first surprise is useful. One that improvises past a surprise is
@@ -75,7 +82,15 @@ how a shared library gets quietly damaged.
    and ask for one of:
 
    - **fix it first** — add `*.sr* -text` (and `*.pbl`, `*.pbd` as `binary`) and run
-     `git add --renormalize`, in a commit of its own, then come back.
+     `git add --renormalize -- '*.sr*' '*.pbl' '*.pbd'`, in a commit of its own, then come back.
+
+     **Give the pathspec.** A bare `git add --renormalize` is an error and
+     the obvious repair, `git add --renormalize .`, stages every modified
+     tracked file — which at this point in the flow includes the
+     `CHANGELOG.md` entry and the backlog pointer `pb-review` has just
+     written and this skill deliberately does not commit. The precondition
+     commit would swallow the review output, which is the exact outcome
+     the paragraph below exists to prevent.
      This is the answer to recommend. Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
    - **proceed anyway** — only on an explicit instruction, and only
      after saying that the resulting diff cannot be trusted to show
@@ -92,7 +107,7 @@ how a shared library gets quietly damaged.
    how this workflow creates the problem it then trips over. Export one
    entry to a scratch directory and compare it with its projection:
 
-   - **Identical** — nothing to do.
+   - **Identical** — nothing to do *for that entry*.
    - **Identical once `
 ` is stripped, different byte counts** — the
      `.pbl` and the working tree disagree on line endings only. Repair
@@ -103,6 +118,14 @@ how a shared library gets quietly damaged.
    - **Different in content** — stop. The projection is stale with
      respect to the `.pbl`, or vice versa, and applying fixes on top of
      an unknown base is not something to guess at. Report and ask.
+
+   **Check every entry the queue will touch, not a sample.** LF enters one
+   entry at a time, through one import of one normalized file, so the
+   condition is per-entry and a clean answer from a neighbour proves
+   nothing. Measured here: exactly **1 of 24** entries in the library held
+   LF — and it was the one under review. Sample any other and the
+   diagnostic says "nothing to do" while the rewrite waits inside the
+   first fix's diff.
 
    Skipping this is not cosmetic. Measured on a real library: the
    `.pbl` held 663 of 704 line breaks as bare LF while the checkout had
@@ -174,7 +197,6 @@ Required YAML fields (per the `pb-review` contract):
   worse while looking productive.
   Plans written before this field existed will not have it; treat a
   missing `evidence` as `code-read` and say that you assumed it.
-- `status` — `pending` | `applied` | `skipped`.
 
 Optional: `function`, `lines`, `effort_estimate`, `tag`, `also_in`,
 `requires_discussion`, `decision_options`.
@@ -484,7 +506,7 @@ happen later.
 ## What to tell the user about committing
 
 **The two pre-flight repairs are the exception, and they are
-committed.** The `.gitattributes` rule plus `git add --renormalize`,
+committed.** The `.gitattributes` rule plus `git add --renormalize -- '*.sr*' '*.pbl' '*.pbd'`,
 and the line-ending repair of the `.pbl`, are preconditions rather than
 fixes: each rewrites a large part of the tree for no change in
 behaviour, so each goes in a commit of its own, before the first fix,

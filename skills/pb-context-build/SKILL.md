@@ -117,7 +117,7 @@ required. Four fields change how the rest of the work proceeds:
   `git ls-files --eol <projection dir>` — count the files reported
   `i/lf w/crlf` — and report the number. Do not fix it silently as
   part of other work: the fix is `*.sr* -text` (and `*.pbl`, `*.pbd` as `binary`) plus
-  `git add --renormalize`, which rewrites every source in the index
+  `git add --renormalize -- '*.sr*' '*.pbl' '*.pbd'`, which rewrites every source in the index
   and belongs in its own commit with its own explanation.
   Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
 - **`export_encode`** — the workspace's `DefaultExportEncode`. You never
