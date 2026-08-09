@@ -13,6 +13,32 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-08-09
+
+Four unattended runs against a real PowerBuilder library, each on a fresh
+clone, each asked to report every place the kit made it guess. They found 21,
+13, 6 and 2 defects; the fourth found none blocking and none serious. This
+release is the last two, plus the three rounds before it.
+
+### Corrected
+
+- A skip in the apply loop rendered as `- [~] skipped: <reason>`, replacing
+  the CHANGELOG bullet's fix id, its description and its link to the plan
+  anchor — the anchor `pb-review` promises never to renumber precisely because
+  the CHANGELOG points at it. The box changes; the bullet stays.
+- Re-pinned `pb-orca-mcp` to **v0.2.5**, which documents that the `bytes` an
+  export reports counts the source text and not the file, so the byte-identity
+  check this kit prescribes no longer looks like it fails on every entry.
+
+### Still unproven
+
+Four rounds exercised the cautious paths and never the recovery ones. Nothing
+failed to compile, no dependency cycle arose, no `also_in` fix reached the
+apply stage, and no library was `outside_source_tree` — the test project has
+no vendored dependency, so it cannot produce one. The kit stops correctly; it
+has not been shown to recover correctly. Worth knowing before pointing it at
+something that matters.
+
 ## [0.1.3] - 2026-08-09
 
 ### Corrected

@@ -469,9 +469,14 @@ write differs, show it again and re-confirm.
 2. Regenerate the **summary table** at the top of the plan file from
    the up-to-date YAML blocks.
 3. Tick (or untick) the `- [ ]` / `- [x]` boxes in `CHANGELOG.md`
-   under `[Unreleased]`. A skipped fix shows as `- [~] skipped:
-   <reason>` (the tilde is a convention; renderers ignore it, but it
-   is visible in the source).
+   under `[Unreleased]`. **Change the box, keep the bullet.** A skip
+   becomes `- [~] **fix-NN** — <the original description> — skipped:
+   <reason> ([plan](…#fix-NN))`: the id, the text and the plan anchor
+   all stay, because `pb-review` links the CHANGELOG to those anchors
+   and never renumbers them. Replacing the line with a bare
+   `- [~] skipped: <reason>` throws away the only thing connecting the
+   entry to its finding. (The tilde is a convention; renderers ignore
+   it, but it is visible in the source.)
 
 Persist to disk **immediately**, so a crash mid-loop leaves the plan
 file recoverable.
