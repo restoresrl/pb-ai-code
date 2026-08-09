@@ -33,6 +33,26 @@ legibility. Speak whatever language the user is speaking.
 If there is **no plan file yet**, this skill is the wrong choice — run
 `pb-review` first.
 
+## Running unattended
+
+This skill writes to a `.pbl`, so *nobody to ask* must never become
+*nobody to protect*. When there is no user — a subagent, `claude -p`, a
+scheduled run — the defaults are:
+
+| Decision | Interactive | Unattended |
+| --- | --- | --- |
+| Running at all | offered by `pb-review` | **only when the invoker asked for the apply loop explicitly.** Never on your own initiative |
+| `source_protection: unprotected` | ask: fix first, or proceed | **fix first.** Both pre-flight repairs, each committed on its own |
+| Step 3 handoff gate | wait for an explicit yes | proceed, and record in the plan file that the run was unattended |
+| Each fix | confirm the diff | apply only `evidence: code-read`. Skip `unverified-semantics` and `requires_discussion` with a reason |
+| A compile error | show, decide, retry | **stop the loop.** Roll that fix back, leave the rest `pending`, report |
+| Dependency cycle | ask which edge to cut | do not guess. Stop and report |
+| CHANGELOG promotion | offer | never. Leave `[Unreleased]` |
+
+An unattended run that applies three well-understood fixes and stops at
+the first surprise is useful. One that improvises past a surprise is
+how a shared library gets quietly damaged.
+
 ## Pre-flight
 
 1. `pb_workspace_info(lib_path)` — cheap, no ORCA session. Confirms
@@ -64,6 +84,34 @@ If there is **no plan file yet**, this skill is the wrong choice — run
    Never fold the `.gitattributes` fix into a fix commit. It rewrites
    every source in the index, so it would bury the one change the user
    is trying to review under a whole-tree diff.
+
+   **Then check the other half, because `.gitattributes` does not fix
+   it and can expose it.** `source_protection` describes what *git*
+   does. It says nothing about what the `.pbl` holds — and a library
+   that was ever imported from an LF-normalized file holds LF, which is
+   how this workflow creates the problem it then trips over. Export one
+   entry to a scratch directory and compare it with its projection:
+
+   - **Identical** — nothing to do.
+   - **Identical once `
+` is stripped, different byte counts** — the
+     `.pbl` and the working tree disagree on line endings only. Repair
+     it **before the first fix**: keep the projection as the checkout
+     has it, import that file so ORCA rewrites the `.pbl` with those
+     endings, re-export to a scratch dir to confirm the two now match
+     byte for byte, and commit that on its own.
+   - **Different in content** — stop. The projection is stale with
+     respect to the `.pbl`, or vice versa, and applying fixes on top of
+     an unknown base is not something to guess at. Report and ask.
+
+   Skipping this is not cosmetic. Measured on a real library: the
+   `.pbl` held 663 of 704 line breaks as bare LF while the checkout had
+   all 704 as CRLF, so the first export rewrote the whole file and a
+   19-line fix arrived inside a **1404-line diff**. Note the order —
+   before `.gitattributes` that export produced a *clean* `git status`,
+   because git normalized it away. Protecting the line endings is what
+   makes the damage visible, and repairing the `.pbl` is what makes it
+   go away. Do both, in that order, each in its own commit.
 2. Bring up the ORCA session: `pb_session_open` (`pb_version` or
    `install_path` is required), `pb_set_library_list`,
    `pb_set_current_application`.
@@ -110,6 +158,12 @@ Required YAML fields (per the `pb-review` contract):
 - `depends_on_confidence` — `parsed` | `user-augmented` | `manual`.
   Where the `depends_on` graph came from. Not a judgement about the
   finding; a normal review writes `parsed` on all of them.
+- `status` — `pending` | `applied` | `skipped` | `partial`. `partial` is
+  for a multi-entry fix (`also_in:`) that landed on some entries and not
+  others; pair it with `applied_in:` listing the entries that took it.
+- `skip_reason` — free text, required when `status: skipped`.
+- `chosen_option` — the `label` picked from `decision_options`, required
+  once a `requires_discussion` finding has been decided.
 - `evidence` — `code-read` | `verified-in-docs` | `unverified-semantics`.
   **Gate on this.** A finding marked `unverified-semantics` rests on a
   PowerScript behaviour nobody checked, and carries an `experiment:`
@@ -258,7 +312,7 @@ pb_object_export_file {
 
 ORCA writes the file itself, so it is byte-identical to what the IDE
 would produce: correct `$PBExportHeader$` / `$PBExportComments$`
-lines, correct BOM for the workspace encoding, CRLF throughout. The
+lines, correct BOM for the workspace encoding, and whatever line endings the .pbl actually holds. The
 response gives you the path. On a `ws_objects` project that path is
 the projection file; on a `pbl_only` project it is a working file
 under `.pb-orca/`.
@@ -294,7 +348,7 @@ Ask: "Apply this fix?"
      They carry the entry's name, type and comment metadata; ORCA
      wrote them correctly and the import reads them back. Touching
      them is how comment metadata gets silently lost.
-   - **Do not translate newlines.** The file is CRLF. An editor that
+   - **Do not translate newlines.** Keep whatever the export gave you — usually CRLF, but see the pre-flight: a `.pbl` can hold LF. An editor that
      normalizes to LF turns one fix into a whole-file diff, and puts
      LF into the `.pbl`.
    - **Do not re-encode.** Preserve the BOM you found.
@@ -429,6 +483,14 @@ happen later.
 
 ## What to tell the user about committing
 
+**The two pre-flight repairs are the exception, and they are
+committed.** The `.gitattributes` rule plus `git add --renormalize`,
+and the line-ending repair of the `.pbl`, are preconditions rather than
+fixes: each rewrites a large part of the tree for no change in
+behaviour, so each goes in a commit of its own, before the first fix,
+or every diff after it is unreadable. That is the one place this skill
+stages and commits. Everything below is about the **fixes**.
+
 The server never stages and never commits, and whether the `.pbl`
 itself is tracked varies by project — some commit the binary next to
 the text, others treat it as a build artefact regenerated from the
@@ -439,6 +501,9 @@ usually worth reverting.
 
 ## What this skill never does
 
+- **Never commits a fix.** The two pre-flight repairs above are
+  committed because they are preconditions; the fixes themselves are
+  left in the working tree for the user to stage.
 - **Never applies an edit without per-fix confirmation.** Even
   trivial ones. Auditable application is the whole point.
 - **Never edits `CHANGELOG.md` outside the current `[Unreleased]`

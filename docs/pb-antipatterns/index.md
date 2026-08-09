@@ -49,12 +49,13 @@ one concrete case where it bit.
 
 ## How to add a new entry
 
-1. Create `docs/pb-antipatterns/<slug>.md` with the sections
-   below.
+1. Create `docs/pb-antipatterns/<slug>.md` with the sections below.
 2. Add a link to the relevant category in this `index.md`.
 3. If the new entry surfaces a category not yet covered (e.g.
    concurrency, SQL injection, deprecated API usage), open a new
    section here.
+
+> **Reading this from an installed bundle?** Then you are in a snapshot (`<harness>/pb-ai-code-docs/`), and the paths above do not exist here. Grow the catalog in the `pb-ai-code` repository and re-run the installer; an edit made in the snapshot is discarded by the next install.
 
 ### Per-entry template
 

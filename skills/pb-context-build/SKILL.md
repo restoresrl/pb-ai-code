@@ -120,10 +120,15 @@ required. Four fields change how the rest of the work proceeds:
   `git add --renormalize`, which rewrites every source in the index
   and belongs in its own commit with its own explanation.
   Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
-- **`encoding`** — the workspace's `DefaultExportEncode`. You never
+- **`export_encode`** — the workspace's `DefaultExportEncode`. You never
   have to act on it (ORCA writes the files), but it belongs in the
   pack: it is what makes a hand-edited file look out-of-sync to the
   IDE.
+  There is no field called `encoding`: the tool returns `export_encode`,
+  `orca_encoding`, `observed_encoding` and `encoding_source`. Record all
+  four — `export_encode` disagreeing with `observed_encoding` means the
+  workspace is already inconsistent and the IDE will rewrite those files
+  on its next export, which is a finding, not a footnote.
 - **`outside_source_tree`** — libraries that sit inside the project
   but outside its source tree. **This one is load-bearing for a
   review.** A library flagged this way is a vendored dependency
@@ -315,7 +320,7 @@ anything the heuristic pass suggested. ORCA-sourced edges marked
 Judgment-based, not a strict counter. Defaults that work as starting
 points on monolithic codebases:
 
-- **Hard cap on exported entries**: 20 per invocation. If the natural
+- **Cap on exported entries**: the size budget is the rule; 20 entries is a rule of thumb for typical sizes, not a limit to prune to. If the natural
   flow would exceed it, prune (depth, then breadth) until under cap.
 
   **The size cap is the binding one; the count is advisory.** Twenty is
@@ -355,7 +360,7 @@ fine). Recommended shape — flexible markdown, not a rigid schema:
 ## Context pack: <target description>
 
 **Workspace** (from `pb_workspace_info`): mode=<ws_objects|pbl_only>,
-encoding=<DefaultExportEncode>, git=<yes|no>,
+encoding=<export_encode> (orca=<…>, observed=<…>, from=<…>), git=<yes|no>,
 outside_source_tree=<libraries, or none>, source_protection=<…>
 
 **Target**: `lib_path` :: `entry_name` (`entry_type`)

@@ -1,6 +1,6 @@
 ---
 name: pb-review
-description: Use this to run a structured code review on a PowerBuilder target — an entry, a .pbl, a .pbt, or a free-form description of a block of code. Frames the work with the user, builds a scoped context pack, validates understanding before reviewing, then produces two persistent artefacts (a plan file with one YAML-tagged finding per fix, and a CHANGELOG entry) and hands off to pb-apply-plan for the edit loop. Report-only by itself — it never edits PowerBuilder sources.
+description: Use this to run a structured code review on a PowerBuilder target — an entry, a .pbl, a .pbt, or a free-form description of a block of code. Frames the work with the user, builds a scoped context pack, validates understanding before reviewing, then produces two persistent artefacts (a plan file with one YAML-tagged finding per fix, and a CHANGELOG entry) and hands off to pb-apply-plan for the edit loop. Never edits PowerBuilder sources; it does write three files — the plan, the CHANGELOG entry, and a one-line pointer into the project's own backlog if it has one.
 metadata:
   version: "1.2.0"
 ---
@@ -52,7 +52,7 @@ the user**:
 | Step 2a understanding gate | wait for acknowledgement | the `## Understanding` section *is* the gate — write it, and mark every assumption you could not confirm |
 | Second sweep | offer | run at least two; keep going while a sweep adds a finding; stop at four |
 | `.pb-review/` gitignore offer | ask | do not ask. The plan file is work product, not harness state — the skill's own promise that a different agent can resume it days later only holds if it is committed. Leave it tracked and say so |
-| Step 4 handoff | offer the apply loop | never. An unattended run does not write to a `.pbl` |
+| Step 4 handoff | offer the apply loop | never **on your own initiative**. If the invoker explicitly asked for the apply loop, run it — restricted to `evidence: code-read` findings, under `pb-apply-plan`'s own unattended rules — and record the override in the plan file |
 
 Everything else — the pre-flight, the gates that protect the workspace,
 the refusal in `pb-apply-plan` — applies unchanged. Unattended means
@@ -104,12 +104,14 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    working tree. Export one entry of the target to a scratch directory
    and compare:
 
-   ```bash
-   # after the export above, with <a> = the scratch copy, <b> = the projection file
-   cmp -s <a> <b> && echo "identical" || echo "differ"
-   python -c "a=open(r'<a>','rb').read(); b=open(r'<b>','rb').read();    print('bytes', len(a), len(b)); print('CR', a.count(13), b.count(13));    print('same once CR stripped:', a.replace(b'
-',b'')==b.replace(b'
-',b''))"
+   ```python
+   # <a> = the scratch export, <b> = the projection file
+   a = open(r"<a>", "rb").read()
+   b = open(r"<b>", "rb").read()
+   print("identical:", a == b)
+   print("bytes", len(a), len(b), " CR", a.count(13), b.count(13))
+   print("same once CR stripped:",
+         a.replace(b"\r", b"") == b.replace(b"\r", b""))
    ```
 
    "Same once CR stripped" with different CR counts is the signature:
@@ -131,7 +133,19 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    both stop the translation, but `binary` implies `-diff`, so git
    answers "Binary files differ" and the change cannot be read, which is
    what the projection is for.
-2. **Bring up the ORCA session**: `pb_session_open` (`pb_version` or
+2. **Resolve which target owns the library**, before opening anything.
+   An entry triple does not name a library list, and the workspace's
+   default target is frequently the wrong one: in a real project the
+   default's `LibList` did not contain the library under review at all,
+   so a session opened against it would have failed every
+   `pb_object_query_*` call with "entry not found" — a symptom that
+   looks like a misspelled entry name and sends you hunting in the wrong
+   place. Read the `.pbw`, call `pb_target_info` on each target, and
+   pick the one whose `LibList` contains your library; use its `applib`
+   and `appname`. Say which you picked and why. If no target contains
+   it, stop and say so: the entry is not reachable from any build.
+
+3. **Bring up the ORCA session**: `pb_session_open` (`pb_version` or
    `install_path` is required — there is no auto-pick; enumerate with
    `pb_discover_pb_install` and say which you chose),
    `pb_set_library_list`, `pb_set_current_application`. The last one
@@ -155,6 +169,10 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
      it — the procedure is below. If that matters to a finding and you
      do not run it, write down that you assumed it.
 
+   **This measurement needs an ORCA session**, so it happens after
+   step 2 even though it belongs to this one. Do the reading here, bring
+   the session up, then come back and measure before any other work.
+
    **Export to a scratch directory, never in place.**
    `pb_object_export_file` writes into the projection directory when you
    omit `dest_dir` — it refreshes the source of truth — so calling it to
@@ -163,7 +181,7 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    project, or use `pb_library_entry_export`, which returns the source
    in memory and writes nothing.
 
-3. **Note which reference tools you have.** If the `appeon_*` tools are
+4. **Note which reference tools you have.** If the `appeon_*` tools are
    absent, the Appeon doc index is not configured on this machine (the
    normal state — see the `appeon-query` skill for why and how to turn
    it on). You can still review: most findings rest on reading the code,
@@ -493,7 +511,7 @@ summary table at the top.
 - **resolved target**: <the .pbt whose LibList contains it> — applib=<…>, liblist=<…>
 - **generated**: <YYYY-MM-DD HH:MM>
 - **source skill**: pb-review @ <pb-ai-code git sha — see below>
-- **semver bump proposed**: <patch|minor|major> → <X.Y.Z>
+- **version bump proposed**: <in the project's own scheme — see Step 3>
 
 ## Understanding
 
@@ -517,7 +535,7 @@ the most useful things this report says.>
 
 ## Consumers outside this workspace
 
-<omit unless the target has a public surface. See Step 2c.>
+<omit unless the target has a public surface. See "Consumers you cannot see".>
 ```
 
 `pb_workspace_info` returns **no** field called `encoding`: it returns
@@ -595,10 +613,19 @@ if IsNull(buf) or Len(buf) = 0 then return
 
 **Notes**: the caller `n_log_target.write` already guards against
 empty input; this is defense-in-depth.
+
+**Applied**: *(written by `pb-apply-plan`, absent until then. What
+actually landed, when it differs from **Suggested fix** — which stays
+as written, because the difference between what was proposed and what
+was needed is worth keeping.)*
 ````
 
 Required YAML fields: `id`, `entry`, `kind` (bug-risk | refactor |
-style | …), `priority` (high | medium | low), `depends_on` (list of
+style | …), `priority` (high | medium | low — **severity if it happens, not
+likelihood**: an infinite loop reachable only from an unusual input is
+`high`, and the rarity belongs in the body. Two people ranking the same
+finding must land on the same value, which they cannot do while the axis
+is left to taste), `depends_on` (list of
 `id`), `depends_on_confidence` (parsed | user-augmented | manual),
 `evidence` (code-read | verified-in-docs | unverified-semantics),
 `status` (pending | applied | skipped).
@@ -662,10 +689,12 @@ writes in:
   new, so it follows the conversation. A project whose `CHANGELOG.md`
   is in Italian gets Italian bullets even when the review was conducted
   in English.
-- **Bullet style.** If the section already has entries, match their
-  shape — prose, reference markers, whatever the house style is —
-  rather than importing this template verbatim. A `### Fixed` holding
-  one prose entry and eleven checkbox entries is a diff nobody wants.
+- **Bullet style.** The `- [ ]` checkbox is **structural, not
+  cosmetic**: `pb-apply-plan` ticks those boxes as fixes land, so a
+  bullet without one is a bullet nothing can update. Keep it even when
+  the section's existing entries are prose. Match the house style in
+  *wording, length and reference markers* — that is what "match the
+  file you are writing into" means here.
 - **Placeholders.** An empty subsection often holds a placeholder
   ("*(no entries yet)*"). Remove it from the section you write into.
   The append-only rule protects released versions and entries a
