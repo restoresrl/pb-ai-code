@@ -143,9 +143,21 @@ converts back on checkout, so **a line-ending change produces no diff and
 `git status` stays clean**. `git ls-files --eol` shows the truth
 (`i/lf w/crlf` means the index and the working tree disagree by
 normalization), and `git add --renormalize <dir>` brings the index onto
-the real bytes. Marking `*.sr*` and `*.pbl` as `binary` in
-`.gitattributes` stops the normalization for good, which is what makes
-drift visible in the first place.
+the real bytes. A `.gitattributes` rule stops the normalization for good,
+which is what makes drift visible in the first place.
+
+Use **`*.sr* -text`**, not `*.sr* binary`. Both stop the translation, but
+`binary` is a macro for `-diff -merge -text`, so git then answers
+`Binary files differ` for every change to a PowerBuilder object — trading a
+silent-drift problem for an unreadable-diff one, and discarding the reason a
+project keeps a text projection at all. Keep `binary` for `*.pbl` and `*.pbd`,
+which really are opaque:
+
+```gitattributes
+*.sr* -text
+*.pbl binary
+*.pbd binary
+```
 
 ## Who writes these files — and why it should not be you
 

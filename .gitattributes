@@ -9,16 +9,13 @@
 # bytes as given, so a line-ending conversion on the way in or out of git
 # silently changes what the compiler sees. No .sr* files live here today;
 # this is here so that the first one to arrive is safe.
-*.sra binary
-*.srf binary
-*.srw binary
-*.srm binary
-*.sru binary
-*.srd binary
-*.srq binary
-*.srs binary
-*.srp binary
-*.srj binary
+#
+# `-text`, not `binary`, on the sources. Both stop the translation, but
+# `binary` is a macro for `-diff -merge -text`, so git would answer
+# "Binary files differ" and a PowerBuilder change could not be read in a diff
+# — which is exactly what the skills in this repository tell people to avoid.
+# The libraries themselves are genuinely opaque, so they stay `binary`.
+*.sr* -text
 *.pbl binary
 *.pbd binary
 

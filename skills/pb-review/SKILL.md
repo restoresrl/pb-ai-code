@@ -56,8 +56,9 @@ not guess.
    off to `pb-apply-plan`, which is not. Measure it now, while it costs
    one command: `git ls-files --eol <projection dir>`, count the files
    reported `i/lf w/crlf`, and put the number in the report. Say it
-   has to be fixed — `*.sr* binary` plus `git add --renormalize`, its
-   own commit — **before** the apply loop runs, not after.
+   has to be fixed — `*.sr* -text` (and `*.pbl`, `*.pbd` as `binary`) plus
+   `git add --renormalize`, its own commit — **before** the apply loop
+   runs, not after. Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
 2. **Bring up the ORCA session**: `pb_session_open` (`pb_version` or
    `install_path` is required — there is no auto-pick; enumerate with
    `pb_discover_pb_install` and say which you chose),

@@ -116,9 +116,10 @@ required. Four fields change how the rest of the work proceeds:
   fresh checkout. Measure how far it has already gone with
   `git ls-files --eol <projection dir>` — count the files reported
   `i/lf w/crlf` — and report the number. Do not fix it silently as
-  part of other work: the fix is a `*.sr* binary` rule plus
+  part of other work: the fix is `*.sr* -text` (and `*.pbl`, `*.pbd` as `binary`) plus
   `git add --renormalize`, which rewrites every source in the index
   and belongs in its own commit with its own explanation.
+  Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
 - **`encoding`** — the workspace's `DefaultExportEncode`. You never
   have to act on it (ORCA writes the files), but it belongs in the
   pack: it is what makes a hand-edited file look out-of-sync to the

@@ -13,6 +13,28 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-08-09
+
+### Corrected
+
+- **v0.1.2 told people to protect their sources the wrong way.** The new
+  line-ending guidance said to add `*.sr* binary`. It stops the translation,
+  and it also implies `-diff`, so git answers `Binary files differ` for every
+  change to a PowerBuilder object — trading silent drift for an unreadable
+  diff, and discarding the reason a project keeps a `ws_objects/` projection.
+  Now `*.sr* -text`, with `binary` kept for `*.pbl` and `*.pbd`. Fixed in the
+  three skills and in
+  [`encoding.md`](docs/pb-source-format/encoding.md); `pb-orca-mcp` v0.2.4
+  carries the matching change and adds `sources_diffable`, so a repository
+  where someone already made this mistake is told rather than left silent.
+
+  The apply loop found it by following the advice literally, hours after the
+  advice shipped. Guidance written and never executed is a hypothesis.
+
+- This repository's own `.gitattributes` marked `.sr*` as `binary`, so it
+  contradicted the skills it ships. It now models exactly what they
+  recommend — verified with `git check-attr`, not by reading it.
+
 ## [0.1.2] - 2026-08-09
 
 Everything here came out of the first real review the kit ran on a real

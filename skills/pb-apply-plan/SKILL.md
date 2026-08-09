@@ -54,9 +54,9 @@ If there is **no plan file yet**, this skill is the wrong choice — run
    `git ls-files --eol <projection dir>` (files reported `i/lf w/crlf`),
    and ask for one of:
 
-   - **fix it first** — add `*.sr* binary` (plus `*.pbl`, `*.pbd`) and
-     run `git add --renormalize`, in a commit of its own, then come
-     back. This is the answer to recommend.
+   - **fix it first** — add `*.sr* -text` (and `*.pbl`, `*.pbd` as `binary`) and run
+     `git add --renormalize`, in a commit of its own, then come back.
+     This is the answer to recommend. Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
    - **proceed anyway** — only on an explicit instruction, and only
      after saying that the resulting diff cannot be trusted to show
      what changed.
