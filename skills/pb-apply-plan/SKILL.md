@@ -42,6 +42,28 @@ If there is **no plan file yet**, this skill is the wrong choice — run
    vendored snapshot or a third-party component, replaced wholesale by
    whatever produced it, so the edit will be lost at the next update.
    Surface it and ask whether to skip the fix or take it upstream.
+
+   **`source_protection: unprotected` stops this skill.** Everything
+   below writes to a `.pbl` and mirrors it into the `.sr*` projection.
+   With no `.gitattributes` rule covering those files, git stores them
+   with LF and checks them out with CRLF, so what you write and what
+   the repository holds differ by exactly the bytes you changed — and
+   `git status` stays clean while they do. The user cannot review the
+   diff, and the next person to check the tree out gets something else.
+   Report it, show the count from
+   `git ls-files --eol <projection dir>` (files reported `i/lf w/crlf`),
+   and ask for one of:
+
+   - **fix it first** — add `*.sr* binary` (plus `*.pbl`, `*.pbd`) and
+     run `git add --renormalize`, in a commit of its own, then come
+     back. This is the answer to recommend.
+   - **proceed anyway** — only on an explicit instruction, and only
+     after saying that the resulting diff cannot be trusted to show
+     what changed.
+
+   Never fold the `.gitattributes` fix into a fix commit. It rewrites
+   every source in the index, so it would bury the one change the user
+   is trying to review under a whole-tree diff.
 2. Bring up the ORCA session: `pb_session_open` (`pb_version` or
    `install_path` is required), `pb_set_library_list`,
    `pb_set_current_application`.

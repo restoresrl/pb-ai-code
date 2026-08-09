@@ -47,12 +47,34 @@ not guess.
    third-party component, so a refactoring proposed inside it will be
    overwritten at the next update of that dependency. Either keep it
    out of scope or say plainly that the finding belongs upstream.
+
+   **Also read `source_protection`.** `unprotected` means git rewrites
+   the `.sr*` line endings, so the index and the working tree differ by
+   exactly the bytes ORCA writes — an applied fix can leave
+   `git status` clean and surface as drift on someone else's checkout.
+   A review is read-only and safe either way, but it ends by handing
+   off to `pb-apply-plan`, which is not. Measure it now, while it costs
+   one command: `git ls-files --eol <projection dir>`, count the files
+   reported `i/lf w/crlf`, and put the number in the report. Say it
+   has to be fixed — `*.sr* binary` plus `git add --renormalize`, its
+   own commit — **before** the apply loop runs, not after.
 2. **Bring up the ORCA session**: `pb_session_open` (`pb_version` or
    `install_path` is required — there is no auto-pick; enumerate with
    `pb_discover_pb_install` and say which you chose),
    `pb_set_library_list`, `pb_set_current_application`. The last one
    may rewrite the `.pbw` as a side effect; mention it if the session
    ends with the user looking at `git status`.
+
+3. **Note which reference tools you have.** If the `appeon_*` tools are
+   absent, the Appeon doc index is not configured on this machine (the
+   normal state — see the `appeon-query` skill for why and how to turn
+   it on). You can still review: most findings rest on reading the code,
+   not on the language reference. But a finding whose truth depends on
+   a PowerScript semantic you could not verify must say so in its body
+   and name the experiment that would settle it. **Do not assert
+   language behaviour from memory inside a finding** — a wrong one costs
+   the user more than a missing one, because it looks the same as a
+   right one and arrives with a suggested edit attached.
 
 If bring-up fails, stop and report the diagnostic —
 `pb-orca-mcp doctor` and `pb-orca-mcp check <target>` are CLI commands
@@ -300,7 +322,7 @@ summary table at the top.
 - **scope**: <scope_category>
 - **context**: <context_slug>
 - **target**: <entry triples / .pbt / .pbl reviewed>
-- **workspace**: mode=<ws_objects|pbl_only>, encoding=<…>, outside_source_tree=<…>
+- **workspace**: mode=<ws_objects|pbl_only>, encoding=<…>, outside_source_tree=<…>, source_protection=<…>
 - **generated**: <YYYY-MM-DD HH:MM>
 - **source skill**: pb-review @ <pb-ai-code git sha>
 - **semver bump proposed**: <patch|minor|major> → <X.Y.Z>

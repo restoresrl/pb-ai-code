@@ -42,7 +42,7 @@ This skill never replaces a primitive; it sequences them.
 
 | Primitive | Purpose | Needs ORCA session? |
 |---|---|---|
-| `pb_workspace_info(lib_path)` | Project shape, projection directory, source encoding, git root, `outside_source_tree` | no — and no PB install either |
+| `pb_workspace_info(lib_path)` | Project shape, projection directory, source encoding, git root, `outside_source_tree`, `source_protection` | no — and no PB install either |
 | `pb_target_info(path)` | Parse a `.pbt` (or `.pbw`) into liblist + app metadata | no |
 | `pb_library_directory(lib_path, entry_type?)` | List entries in a PBL, optionally filter by type | **yes** |
 | `pb_object_query_hierarchy(lib_path, entry_name, entry_type)` | Inheritance chain (ancestors) of an entry | yes |
@@ -100,12 +100,25 @@ repository. Say so before running it there.
 
 Before any session bring-up, call `pb_workspace_info(lib_path)` on
 one library of the target. One call, no ORCA session, no PB install
-required. Three fields change how the rest of the work proceeds:
+required. Four fields change how the rest of the work proceeds:
 
 - **`mode`** — `ws_objects` (the project keeps `.sr*` text sources
   next to the `.pbl`, and those are the source of truth) or
   `pbl_only` (the `.pbl` is everything). It decides what a fix will
   touch and what the user commits at the end.
+- **`source_protection`** — `protected`, `unprotected` or `no_git`.
+  **`unprotected` is a stop-and-say-so, not a footnote.** No
+  `.gitattributes` rule exempts the `.sr*` files from git's
+  line-ending translation, so git stores them with LF and hands them
+  back as CRLF: the index and the working tree differ by exactly the
+  bytes ORCA writes. A change lands in the `.pbl` and its projection
+  while `git status` stays clean, and nobody sees the drift until a
+  fresh checkout. Measure how far it has already gone with
+  `git ls-files --eol <projection dir>` — count the files reported
+  `i/lf w/crlf` — and report the number. Do not fix it silently as
+  part of other work: the fix is a `*.sr* binary` rule plus
+  `git add --renormalize`, which rewrites every source in the index
+  and belongs in its own commit with its own explanation.
 - **`encoding`** — the workspace's `DefaultExportEncode`. You never
   have to act on it (ORCA writes the files), but it belongs in the
   pack: it is what makes a hand-edited file look out-of-sync to the
@@ -334,7 +347,7 @@ fine). Recommended shape — flexible markdown, not a rigid schema:
 
 **Workspace** (from `pb_workspace_info`): mode=<ws_objects|pbl_only>,
 encoding=<DefaultExportEncode>, git=<yes|no>,
-outside_source_tree=<libraries, or none>
+outside_source_tree=<libraries, or none>, source_protection=<…>
 
 **Target**: `lib_path` :: `entry_name` (`entry_type`)
 

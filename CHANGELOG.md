@@ -13,6 +13,58 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-09
+
+Everything here came out of the first real review the kit ran on a real
+library. The findings about the *code* were the point; these are the findings
+about the *kit*, which is what a dogfooding run is actually for.
+
+### Added
+
+- **The pre-flight now looks at git's line-ending translation.**
+  `pb-orca-mcp` v0.2.3 makes `pb_workspace_info` report `source_protection`,
+  and the skills act on it: `pb-context-build` reports it in the workspace
+  summary, `pb-review` measures how far the normalization has already gone
+  (`git ls-files --eol`, count the `i/lf w/crlf` files) and says it must be
+  fixed before the apply loop, and **`pb-apply-plan` stops** when it is
+  `unprotected` rather than writing a diff the user cannot trust.
+
+  The review that found this ran against a repository where 56 of 61 sources
+  were being normalized by git, and nothing in the chain said a word. A review
+  is read-only, so it was harmless there — but it ends by handing off to the
+  one skill that writes, and that skill would have produced changes invisible
+  to `git status`.
+
+  The `.gitattributes` fix is never folded into a fix commit: it rewrites every
+  source in the index, so it would bury the change under a whole-tree diff.
+
+- `tests/test_pins_in_sync.py` also checks bare `@vX.Y.Z` mentions, not just
+  full URLs. The prose sentence explaining what the pin is for had drifted a
+  version behind on the very release that added the URL check — the test
+  watched the copies it knew about and missed the one in the sentence next to
+  them. Changelogs are exempt: recording what a past version pinned is their
+  job.
+
+### Corrected
+
+- **`appeon-query` told half the story.** The Appeon index is deliberately not
+  configured by the installer — it needs an absolute interpreter path and a
+  database each developer builds — but the skill's fallback only explained how
+  to *populate* the index, not how to *add the server*, and pointed at a
+  document that is not part of a vendored install. On the real run this cost
+  two findings, which could not be checked against the language reference. The
+  skill now carries the whole recipe inline, and `pb-review` states the rule
+  that made those two findings safe anyway: **never assert PowerScript
+  behaviour from memory inside a finding** — mark it unverified and name the
+  experiment that would settle it. A wrong finding costs more than a missing
+  one, because it looks exactly like a right one and arrives with an edit
+  attached.
+- `harness/claude-code/settings.json` pre-approves `mcp__pb-appeon-index__*`
+  tools and names the server in `enabledMcpjsonServers`, for a server the
+  installer never writes. That is intentional — it is inert until someone adds
+  the server by hand, and then it saves them a step — but nothing said so.
+  Now it does.
+
 ## [0.1.1] - 2026-08-05
 
 Cut because v0.1.0 pins `pb-orca-mcp@v0.2.1`, which cannot start — so the tag

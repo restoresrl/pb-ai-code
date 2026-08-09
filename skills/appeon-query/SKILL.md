@@ -73,12 +73,50 @@ file is laid out on disk — that's `pb-src-format`'s job. If you find
 yourself reaching for `appeon_search` to find file-format details,
 switch skills.
 
-## What to do when the index isn't built
+## What to do when the index isn't available
 
-If `appeon_search` returns an error like "database not found" or the
-MCP server isn't connected, the local index hasn't been built yet
-on this machine. Tell the user; do not silently fall back to
-fetching the page live. The user can run `pb-appeon-index update` to populate
-the index — the instructions are in `docs/appeon-index/README.md` in the
-[`pb-ai-code`](https://github.com/restoresrl/pb-ai-code) repository, which is
-not part of a vendored install.
+Two different situations, and they need different things said.
+
+**The `appeon_*` tools are not listed at all.** The `pb-appeon-index`
+server is not in this project's MCP configuration. This is the normal
+state: the installer deliberately does not add it, because unlike
+`pb-orca` it needs an absolute path to a Python interpreter and to a
+database that only exists once someone builds it, so shipping it
+everywhere would give every project one server that works and one that
+fails to start.
+
+**The tools are listed but `appeon_search` errors** with something like
+"database not found" — the server is wired up but the index has never
+been populated on this machine.
+
+In both cases: **tell the user, and do not fall back to fetching pages
+live or to answering from memory.** A PowerScript semantic you did not
+verify is a guess, and a guess inside a finding is worse than an
+absent finding. Mark anything resting on one as unverified, say what
+would settle it, and leave it to the user.
+
+The full recipe, in the [`pb-ai-code`](https://github.com/restoresrl/pb-ai-code)
+checkout (not part of a vendored install, so quote it rather than
+linking to it):
+
+```pwsh
+uv venv                          # 1. an environment with the tools
+uv pip install -e ".[dev]"
+.venv\Scripts\pb-appeon-index update   # 2. scrape and index (idempotent)
+```
+
+Then add a second server to the project's MCP config, with **absolute**
+paths:
+
+```json
+"pb-appeon-index": {
+  "command": "C:\\path\\to\\pb-ai-code\\.venv\\Scripts\\python.exe",
+  "args": ["-m", "pb_appeon_index", "serve-mcp"],
+  "env": { "PB_APPEON_INDEX_DB": "C:\\path\\to\\pb-ai-code\\docs\\appeon-index\\index.db" }
+}
+```
+
+The Claude Code permission file the installer writes already
+pre-approves the four `appeon_*` tools, so nothing else is needed once
+the server starts. Full detail: `docs/appeon-index/README.md` and
+`docs/install.md` §3 in that repository.

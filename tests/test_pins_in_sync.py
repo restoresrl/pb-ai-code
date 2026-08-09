@@ -35,6 +35,13 @@ PIN_RE = re.compile(r"github\.com/restoresrl/(?P<repo>[A-Za-z0-9._-]+?)@(?P<ref>
 # report a drift that does not exist in the source.
 SKIP_SUFFIXES = {".pbl", ".pbd", ".png", ".jpg", ".gif", ".ico", ".db", ".sqlite"}
 
+# A changelog's job is to say what past versions pinned — "v0.1.0 pins
+# pb-orca-mcp@v0.2.1, which cannot start" is the entry earning its keep, not a
+# stale pin. Exempt from the rules that read a version mention as configuration.
+# `_pins()` needs no exemption: it matches full URLs, which a changelog does not
+# use when it is talking about history.
+HISTORY_FILES = {"CHANGELOG.md"}
+
 
 def _tracked_files() -> list[Path]:
     """Everything git would consider part of the repository.
@@ -123,6 +130,8 @@ def test_x86_interpreter_is_requested_everywhere_pb_orca_mcp_runs() -> None:
     for path in _tracked_files():
         if path.suffix.lower() not in {".md", ".json", ".ps1"} or not path.is_file():
             continue
+        if path.name in HISTORY_FILES:
+            continue
         try:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
@@ -137,4 +146,38 @@ def test_x86_interpreter_is_requested_everywhere_pb_orca_mcp_runs() -> None:
                 offenders.append(f"{rel}:{line_no}")
     assert not offenders, (
         "pb-orca-mcp is invoked without --python 3.12-x86 near: " + ", ".join(offenders)
+    )
+
+
+# `@v1.2.3` written without the URL in front of it — "the @v0.2.2 is the pin" in
+# prose. It drifted exactly once, on the release that added the test above,
+# because that test only looked at full URLs. Prose about a version without the
+# at-sign ("pinned to v0.2.2" in a changelog entry) is history and stays legal;
+# the at-sign is pin syntax, and a pin has to be a pin that exists.
+BARE_PIN_RE = re.compile(r"(?<!/)@(?P<ref>v\d+\.\d+\.\d+)")
+
+
+def test_bare_at_version_mentions_match_a_real_pin() -> None:
+    live = {ref for refs in _pins().values() for ref in refs}
+    assert live, "no pinned URLs found at all — the scan is not seeing the tree"
+
+    stale = []
+    for path in _tracked_files():
+        if path.suffix.lower() not in {".md", ".json", ".ps1", ".toml"} or not path.is_file():
+            continue
+        if path.name in HISTORY_FILES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        for line_no, line in enumerate(text.splitlines(), 1):
+            for m in BARE_PIN_RE.finditer(line):
+                if m.group("ref") not in live:
+                    stale.append(f"{rel}:{line_no} mentions @{m.group('ref')}")
+    assert not stale, (
+        "these name a pin that is not pinned anywhere: "
+        + "; ".join(stale)
+        + f" (live pins: {sorted(live)})"
     )
