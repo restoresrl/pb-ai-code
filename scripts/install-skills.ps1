@@ -39,7 +39,10 @@
 
     Existing MCP servers in the target are preserved - only the keys this kit
     owns are written. A target config that cannot be parsed is never touched;
-    the block is printed for you to merge by hand instead.
+    the block is printed for you to merge by hand instead. A preserved server
+    that turns out to be a second copy of one of ours under a different key
+    earns a warning and stays put: two processes driving a single-session ORCA
+    library is a problem, but so is deleting a server somebody meant to keep.
 
     A marker file records the source commit so drift is auditable: fix things
     in pb-ai-code and re-run, do not patch the installed copy.
@@ -200,6 +203,31 @@ function Write-McpConfig {
     $kept = @($merged.Keys | Where-Object { $Servers.Keys -notcontains $_ })
     if ($kept.Count -gt 0) {
         $outcomes += "kept: " + ($kept -join ', ')
+    }
+
+    # Preserving a project's own servers is right; preserving a second copy of
+    # one of ours under a different key is not. It happens on any project that
+    # was configured before the key settled, and the result is two servers
+    # driving the same single-session ORCA library and two sets of identical
+    # tools under different prefixes - of which only one matches the permission
+    # allowlist. Warn rather than remove: it is the user's file, and a wrong
+    # guess here silently deletes a server somebody meant to keep.
+    $ourPackages = @($Servers.Keys | ForEach-Object {
+            ($Servers[$_] | ConvertTo-Json -Depth 10 -Compress)
+        }) -join ' '
+    foreach ($name in $kept) {
+        $blob = $merged[$name] | ConvertTo-Json -Depth 10 -Compress
+        foreach ($pkg in @('pb-orca-mcp')) {
+            if ($blob -match [regex]::Escape($pkg) -and $ourPackages -match [regex]::Escape($pkg)) {
+                Write-Host ""
+                Write-Host "WARN: the target already has a server '$name' that runs $pkg, which is what" -ForegroundColor Yellow
+                Write-Host "      this kit installs as '$($Servers.Keys -join "', '")'. Two of them means two processes" -ForegroundColor Yellow
+                Write-Host "      competing for a single-session ORCA library, duplicate tools under different" -ForegroundColor Yellow
+                Write-Host "      prefixes, and only one of them matching the permission allowlist." -ForegroundColor Yellow
+                Write-Host "      Left in place - it is your file. Remove '$name' unless you meant to keep it." -ForegroundColor Yellow
+                Write-Host ""
+            }
+        }
     }
 
     $existing['mcpServers'] = $merged

@@ -154,7 +154,12 @@ generic` prints the block and tells you it is yours to place: inventing a path
 for a client we have not tested would look like it worked.
 
 Servers already in the target file are preserved — only the `pb-orca` key is
-written. A target `.mcp.json` that does not parse is left untouched and the
+written. If one of them turns out to be another copy of `pb-orca-mcp` under a
+different key — which is what a project configured before the key settled looks
+like — the installer says so and leaves it alone. Two of them means two
+processes competing for a single-session ORCA library, duplicate tools under
+different prefixes, and only one prefix matching the permission allowlist.
+Removing it is your call. A target `.mcp.json` that does not parse is left untouched and the
 block is printed instead, because a project's MCP config may hold servers that
 have nothing to do with PowerBuilder.
 
