@@ -20,9 +20,13 @@ version is a TOML edit, not a code change.
 from __future__ import annotations
 
 import sys
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - 3.10 reads the same TOML through a backport
+    import tomli as tomllib  # type: ignore[import-not-found,no-redef,unused-ignore]
 
 
 @dataclass(frozen=True)

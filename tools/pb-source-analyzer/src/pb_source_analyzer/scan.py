@@ -9,9 +9,10 @@ files, not perfect parsing of a single file. Edge cases are surfaced as
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 PB_EXTENSIONS: dict[str, str] = {
     ".sra": "application",

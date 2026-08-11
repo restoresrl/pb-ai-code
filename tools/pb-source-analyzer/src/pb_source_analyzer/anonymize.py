@@ -68,24 +68,78 @@ KNOWN_CUSTOMER_CODES: tuple[str, ...] = (
 PB_STANDARD_PARENT_TYPES: frozenset[str] = frozenset(
     {
         # Visual
-        "application", "window", "userobject", "picture", "picturebutton",
-        "commandbutton", "statictext", "singlelineedit", "multilineedit",
-        "editmask", "datawindow", "dragobject", "dropdownlistbox",
-        "dropdownpicturelistbox", "listbox", "listview", "treeview",
-        "picturelistbox", "tab", "tabpage", "radiobutton", "checkbox",
-        "groupbox", "richtextedit", "graph", "linenumbered", "line",
-        "rectangle", "roundrectangle", "oval", "olecustomcontrol",
-        "olecontrol", "oleobject", "olestorage", "olestream",
-        "vscrollbar", "hscrollbar", "menu", "menucascade", "window_panel",
+        "application",
+        "window",
+        "userobject",
+        "picture",
+        "picturebutton",
+        "commandbutton",
+        "statictext",
+        "singlelineedit",
+        "multilineedit",
+        "editmask",
+        "datawindow",
+        "dragobject",
+        "dropdownlistbox",
+        "dropdownpicturelistbox",
+        "listbox",
+        "listview",
+        "treeview",
+        "picturelistbox",
+        "tab",
+        "tabpage",
+        "radiobutton",
+        "checkbox",
+        "groupbox",
+        "richtextedit",
+        "graph",
+        "linenumbered",
+        "line",
+        "rectangle",
+        "roundrectangle",
+        "oval",
+        "olecustomcontrol",
+        "olecontrol",
+        "oleobject",
+        "olestorage",
+        "olestream",
+        "vscrollbar",
+        "hscrollbar",
+        "menu",
+        "menucascade",
+        "window_panel",
         # Non-visual
-        "nonvisualobject", "transaction", "errorobject", "mailsession",
-        "mailmessage", "mailrecipient", "mailfileattachment", "connection",
-        "error", "inet", "pipeline", "service", "transport",
-        "internetresult", "oletxnobject", "dynamicdescriptionarea",
-        "dynamicstagingarea", "connectivity", "powerobject", "structure",
-        "exception", "throwable", "runtimeerror", "nullobjecterror",
-        "dividebyzeroerror", "coderesource", "contextkeyword",
-        "contextinformation", "messaging", "javavm", "transportobject",
+        "nonvisualobject",
+        "transaction",
+        "errorobject",
+        "mailsession",
+        "mailmessage",
+        "mailrecipient",
+        "mailfileattachment",
+        "connection",
+        "error",
+        "inet",
+        "pipeline",
+        "service",
+        "transport",
+        "internetresult",
+        "oletxnobject",
+        "dynamicdescriptionarea",
+        "dynamicstagingarea",
+        "connectivity",
+        "powerobject",
+        "structure",
+        "exception",
+        "throwable",
+        "runtimeerror",
+        "nullobjecterror",
+        "dividebyzeroerror",
+        "coderesource",
+        "contextkeyword",
+        "contextinformation",
+        "messaging",
+        "javavm",
+        "transportobject",
     }
 )
 
@@ -119,9 +173,7 @@ _SENSITIVE_TOKENS = sorted(
 # lookarounds that treat letters and digits as boundary blockers but
 # allow ``_`` (and any non-alphanumeric) as a boundary.
 _SENSITIVE_RE = re.compile(
-    r"(?<![A-Za-z0-9])("
-    + "|".join(re.escape(t) for t in _SENSITIVE_TOKENS)
-    + r")(?![A-Za-z0-9])",
+    r"(?<![A-Za-z0-9])(" + "|".join(re.escape(t) for t in _SENSITIVE_TOKENS) + r")(?![A-Za-z0-9])",
     re.IGNORECASE,
 )
 
@@ -240,9 +292,7 @@ def anonymize_record(
     for b in record.get("blocks", []):
         detail = b.get("detail")
         if detail and b.get("kind") == "global_type":
-            new_detail: str | None = anonymize_global_type_detail(
-                detail, counter, parent_mapping
-            )
+            new_detail: str | None = anonymize_global_type_detail(detail, counter, parent_mapping)
         elif detail:
             new_detail = anonymize_text(detail, counter)
         else:

@@ -46,8 +46,8 @@ def _format_section(entry_type: str, stats: dict[str, Any]) -> str:
     lines.append("## Auto-generated from corpus")
     lines.append("")
     lines.append(
-        f"Derived from `pb-source-analyzer` over a private corpus. "
-        f"Do not edit by hand; this section is replaced on each render."
+        "Derived from `pb-source-analyzer` over a private corpus. "
+        "Do not edit by hand; this section is replaced on each render."
     )
     lines.append("")
     lines.append(f"- **File count:** {stats['file_count']}")

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pb-ai-code"
-version = "0.1.8"
+version = "0.1.9"
 description = "Agentic dev kit for PowerBuilder: skills, knowledge base and orchestration on top of pb-orca-mcp"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -36,6 +36,8 @@ dependencies = [
     # cannot start. Same break, same fix, as pb-orca-mcp v0.2.2. Lift the
     # ceiling together with a port to the 2.x server API.
     "mcp>=1.0,<2",
+    # config.py reads TOML; tomllib landed in 3.11, so 3.10 needs the backport.
+    "tomli>=2.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]

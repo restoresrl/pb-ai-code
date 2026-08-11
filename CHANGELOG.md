@@ -13,6 +13,54 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-08-12
+
+### Added
+
+- **CI.** This repository had none: eight releases went out in a day, gated
+  by a local run on one machine — the same trust that had just turned out to
+  be misplaced next door, where three tags shipped on a red build because
+  `ruff format --check` was never run and nobody looked.
+
+  Windows, Python 3.10/3.11/3.12, and the four commands as separate steps.
+  The format check gets its own step deliberately: it is the one that gets
+  forgotten, and a step that fails by name is harder to overlook than a line
+  in a script.
+
+- **The dead-link check is a test now** (`tests/test_links_resolve.py`),
+  rather than a script in a session scratchpad. It has found something every
+  time it has run — 28 dead links in an installed bundle in August while the
+  repository itself was clean, five more the day the wiki-notes guide was
+  added, one pseudo-link in prose.
+
+  Two tests, because the canonical tree proves little on its own: the
+  installer copies the documentation elsewhere and rewrites the links, so a
+  link can be right here and dead in the only place a consumer reads it. The
+  second runs the installer into a temporary directory for both harness
+  layouts and checks what lands. That is why CI is on Windows.
+
+### Corrected
+
+- Paid the lint debt that would have made CI red on its first run: 14 `ruff`
+  findings, 5 files needing `ruff format`, 7 `mypy` errors. All in the two
+  local tools, none in the kit itself. The substantive ones were a `tomllib`
+  import with no 3.10 fallback — so the package could not have been installed
+  on the oldest Python it claims to support — and BeautifulSoup element
+  narrowing, where `find()` may return a `NavigableString` that has no
+  `.get`. The rest was formatting and long SQL lines.
+
+  A CI that starts red teaches people to ignore the mail, which is how three
+  tags shipped on a red build in the first place.
+
+### What this does not do
+
+None of the defects found this week would have been caught by any of it. The
+26 from the unattended review rounds, the `.pbl` holding LF, the gate that
+penalised findings for being verified, the vendored library adopting a
+namesake's projection — all semantic, all false statements about how
+PowerBuilder behaves. No static check sees those. What finds them is running
+the thing against a real workspace.
+
 ## [0.1.8] - 2026-08-11
 
 ### Corrected

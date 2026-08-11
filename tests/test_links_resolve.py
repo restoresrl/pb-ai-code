@@ -68,7 +68,16 @@ def _tracked_markdown() -> list[Path]:
     every finding.
     """
     out = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "ls-files", "--cached", "--others", "--exclude-standard", "*.md"],
+        [
+            "git",
+            "-C",
+            str(REPO_ROOT),
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "*.md",
+        ],
         capture_output=True,
         text=True,
         check=True,
@@ -127,6 +136,4 @@ def test_installed_layout_has_no_dead_links(
     assert files, f"no Markdown installed into {installed_subdir}/"
 
     dead = dead_links(files, base)
-    assert not dead, (
-        f"dead relative links in the {harness} install:\n  " + "\n  ".join(dead)
-    )
+    assert not dead, f"dead relative links in the {harness} install:\n  " + "\n  ".join(dead)

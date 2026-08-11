@@ -40,9 +40,7 @@ def aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for entry_type, recs in by_type.items():
         n = len(recs)
-        encoding_kinds: Counter[str] = Counter(
-            r.get("encoding_kind", "unknown") for r in recs
-        )
+        encoding_kinds: Counter[str] = Counter(r.get("encoding_kind", "unknown") for r in recs)
         crlf_ok = sum(1 for r in recs if r.get("crlf_ok"))
         header_ok = sum(1 for r in recs if r.get("header_ok"))
 
@@ -69,12 +67,11 @@ def aggregate(records: list[dict[str, Any]]) -> dict[str, Any]:
             "encoding_kinds": dict(encoding_kinds.most_common()),
             "crlf_ok_ratio": round(crlf_ok / n, 3) if n else 0.0,
             "header_ok_ratio": round(header_ok / n, 3) if n else 0.0,
-            "block_kind_frequency": {
-                k: round(v / n, 3) for k, v in kind_counts.most_common()
-            } if n else {},
+            "block_kind_frequency": {k: round(v / n, 3) for k, v in kind_counts.most_common()}
+            if n
+            else {},
             "top_block_sequences": [
-                {"sequence": list(seq), "count": cnt}
-                for seq, cnt in seqs.most_common(5)
+                {"sequence": list(seq), "count": cnt} for seq, cnt in seqs.most_common(5)
             ],
             "parent_classes": dict(parents.most_common(10)),
         }

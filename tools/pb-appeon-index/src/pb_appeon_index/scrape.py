@@ -78,7 +78,7 @@ def _url_to_cache_path(cache_root: Path, slug: str, base_url: str, url: str) -> 
     """Map a URL under ``base_url`` to its local cache path. ``None`` if outside."""
     if not url.startswith(base_url):
         return None
-    rel = url[len(base_url):]
+    rel = url[len(base_url) :]
     # Strip query/fragment, default to index.html for directory URLs.
     rel = rel.split("?", 1)[0].split("#", 1)[0]
     if not rel or rel.endswith("/"):

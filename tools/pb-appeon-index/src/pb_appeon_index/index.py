@@ -19,10 +19,11 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from .config import Config
 from .parse import Page, parse_page
@@ -57,20 +58,28 @@ CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
 );
 
 CREATE TRIGGER IF NOT EXISTS pages_ai AFTER INSERT ON pages BEGIN
-    INSERT INTO pages_fts(rowid, name, description, syntax, arguments, return_value, examples, version)
-    VALUES (new.id, new.name, new.description, new.syntax, new.arguments, new.return_value, new.examples, new.version);
+    INSERT INTO pages_fts(rowid, name, description, syntax, arguments,
+                        return_value, examples, version)
+    VALUES (new.id, new.name, new.description, new.syntax,
+            new.arguments, new.return_value, new.examples, new.version);
 END;
 
 CREATE TRIGGER IF NOT EXISTS pages_ad AFTER DELETE ON pages BEGIN
-    INSERT INTO pages_fts(pages_fts, rowid, name, description, syntax, arguments, return_value, examples, version)
-    VALUES ('delete', old.id, old.name, old.description, old.syntax, old.arguments, old.return_value, old.examples, old.version);
+    INSERT INTO pages_fts(pages_fts, rowid, name, description, syntax, arguments,
+                        return_value, examples, version)
+    VALUES ('delete', old.id, old.name, old.description, old.syntax,
+            old.arguments, old.return_value, old.examples, old.version);
 END;
 
 CREATE TRIGGER IF NOT EXISTS pages_au AFTER UPDATE ON pages BEGIN
-    INSERT INTO pages_fts(pages_fts, rowid, name, description, syntax, arguments, return_value, examples, version)
-    VALUES ('delete', old.id, old.name, old.description, old.syntax, old.arguments, old.return_value, old.examples, old.version);
-    INSERT INTO pages_fts(rowid, name, description, syntax, arguments, return_value, examples, version)
-    VALUES (new.id, new.name, new.description, new.syntax, new.arguments, new.return_value, new.examples, new.version);
+    INSERT INTO pages_fts(pages_fts, rowid, name, description, syntax, arguments,
+                        return_value, examples, version)
+    VALUES ('delete', old.id, old.name, old.description, old.syntax,
+            old.arguments, old.return_value, old.examples, old.version);
+    INSERT INTO pages_fts(rowid, name, description, syntax, arguments,
+                        return_value, examples, version)
+    VALUES (new.id, new.name, new.description, new.syntax,
+            new.arguments, new.return_value, new.examples, new.version);
 END;
 """
 

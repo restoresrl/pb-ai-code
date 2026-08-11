@@ -66,7 +66,19 @@ def _infer_kind_and_name(html_path: Path) -> tuple[str, str]:
     return "unknown", stem
 
 
-def _is_appeon_section_header(tag: Tag) -> bool:
+def _is_appeon_section_header(tag: object) -> bool:
+    """BeautifulSoup hands back `PageElement`, which may be a bare string.
+
+    Taking `object` and narrowing here — rather than at each of the three call
+    sites — keeps the callers readable and makes the answer for a
+    `NavigableString` what it should be: no, that is not a section header.
+    """
+    if not isinstance(tag, Tag):
+        return False
+    return _is_appeon_section_header_tag(tag)
+
+
+def _is_appeon_section_header_tag(tag: Tag) -> bool:
     """Appeon doc pages use ``<p><span class="bold"><strong>Section</strong></span></p>``
     as section headers, not real heading tags. This identifies them."""
     if not isinstance(tag, Tag) or tag.name != "p":
@@ -81,7 +93,7 @@ def _is_appeon_section_header(tag: Tag) -> bool:
 def _find_appeon_section_header(soup: BeautifulSoup, label: str) -> Tag | None:
     label_l = label.lower()
     for p in soup.find_all("p"):
-        if not _is_appeon_section_header(p):
+        if not isinstance(p, Tag) or not _is_appeon_section_header(p):
             continue
         text = p.get_text(" ", strip=True).lower()
         if text == label_l or text.startswith(label_l + " "):
@@ -90,11 +102,7 @@ def _find_appeon_section_header(soup: BeautifulSoup, label: str) -> Tag | None:
 
 
 def _is_table_div(tag: object) -> bool:
-    return (
-        isinstance(tag, Tag)
-        and tag.name == "div"
-        and "table" in (tag.get("class") or [])
-    )
+    return isinstance(tag, Tag) and tag.name == "div" and "table" in (tag.get("class") or [])
 
 
 def _appeon_section(
@@ -190,7 +198,7 @@ def _text_after_heading(soup: BeautifulSoup, heading_text: str) -> str:
 def _main_title(soup: BeautifulSoup) -> str:
     # Priority 1: Appeon's <meta name="Section-title" content="...">.
     meta = soup.find("meta", attrs={"name": "Section-title"})
-    if meta is not None:
+    if isinstance(meta, Tag):
         content = meta.get("content")
         if isinstance(content, str) and content.strip():
             return content.strip()
@@ -198,7 +206,7 @@ def _main_title(soup: BeautifulSoup) -> str:
     for tag in soup.find_all(["h1", "h2", "h3", "h4"]):
         classes = tag.get("class") or []
         if "title" in classes:
-            text = tag.get_text(strip=True)
+            text: str = tag.get_text(strip=True)
             if text:
                 return text
     # Priority 3: <h1> (note: on Appeon pages this is the breadcrumb).
@@ -232,10 +240,8 @@ def _lead_paragraph(soup: BeautifulSoup) -> str:
             break
     if title_tag is None:
         title_tag = soup.find(["h1", "h2"])
-    if title_tag is None:
-        target_iter = soup.find_all("p")
-    else:
-        target_iter = title_tag.find_all_next("p")
+    # No title found: scan the whole document rather than what follows it.
+    target_iter = soup.find_all("p") if title_tag is None else title_tag.find_all_next("p")
     for p in target_iter:
         if not isinstance(p, Tag):
             continue
@@ -259,9 +265,8 @@ def parse_page(html_path: Path, version: str, category: str, url: str) -> Page:
     kind, derived_name = _infer_kind_and_name(html_path)
     title = _main_title(soup) or derived_name
 
-    syntax = (
-        _appeon_section(soup, "Syntax", exclude_tables=True)
-        or _text_after_heading(soup, "Syntax")
+    syntax = _appeon_section(soup, "Syntax", exclude_tables=True) or _text_after_heading(
+        soup, "Syntax"
     )
     # On Appeon function pages the Arguments table is the first
     # <div class="table"> that follows the Syntax header (no header of
@@ -285,10 +290,7 @@ def parse_page(html_path: Path, version: str, category: str, url: str) -> Page:
         or _text_after_heading(soup, "Examples")
         or _text_after_heading(soup, "Example")
     )
-    see_also = (
-        _appeon_section_links(soup, "See also")
-        or _appeon_section_links(soup, "See Also")
-    )
+    see_also = _appeon_section_links(soup, "See also") or _appeon_section_links(soup, "See Also")
     description = (
         _appeon_section(soup, "Description")
         or _lead_paragraph(soup)

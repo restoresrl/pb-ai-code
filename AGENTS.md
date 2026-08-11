@@ -122,11 +122,24 @@ annotations`, full type hints, `mypy --strict`, `ruff` with line-length
 parsing and orchestration; anything needing a real PowerBuilder lives in
 `pb-orca-mcp`.
 
+**Run all four before committing — CI runs exactly these.** The third is
+the one that gets forgotten: in the sibling repository it had been failing
+for three tagged releases while `ruff check` passed, because nobody ran it
+and nobody looked at CI.
+
 ```pwsh
-pytest
+pytest                                                    # incl. the link tests
 ruff check .
-mypy .
+ruff format --check tools tests                           # the forgotten one
+mypy tools/pb-source-analyzer/src tools/pb-appeon-index/src
 ```
+
+And **look at CI after you push** (`gh run list --limit 1`). A green local
+run is evidence about one machine.
+
+`pytest` installs the bundle into a temporary directory, for both harness
+layouts, and fails on a dead relative link. That check needs PowerShell; it
+skips without one, which is why CI runs on Windows.
 
 ## Conventions
 

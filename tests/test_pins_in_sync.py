@@ -144,8 +144,8 @@ def test_x86_interpreter_is_requested_everywhere_pb_orca_mcp_runs() -> None:
             window = "\n".join(text.splitlines()[line_no - 1 : line_no + 3])
             if "3.12-x86" not in window:
                 offenders.append(f"{rel}:{line_no}")
-    assert not offenders, (
-        "pb-orca-mcp is invoked without --python 3.12-x86 near: " + ", ".join(offenders)
+    assert not offenders, "pb-orca-mcp is invoked without --python 3.12-x86 near: " + ", ".join(
+        offenders
     )
 
 
