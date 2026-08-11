@@ -13,6 +13,24 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-08-12
+
+### Corrected
+
+- **`pb-appeon-index` refused to run on Python 3.10**, which `requires-python`
+  says it supports. `load_config` carried a runtime guard raising
+  *"requires Python 3.11+ (uses tomllib)"* — true when it was written, and
+  left behind when the import was given a `tomli` fallback in v0.1.9. A guard
+  that rejects the oldest interpreter the package claims to support is a
+  contradiction, and it made the Appeon index unusable there rather than
+  merely untested.
+
+  **Found by CI on its first run, which is the whole argument for having it:**
+  no local run could have caught it, this machine being on 3.14. Eight
+  releases had gone out without anyone executing this code path on the
+  version it advertises. Verified afterwards on a real 3.10 interpreter — 14
+  tests, green.
+
 ## [0.1.9] - 2026-08-12
 
 ### Added

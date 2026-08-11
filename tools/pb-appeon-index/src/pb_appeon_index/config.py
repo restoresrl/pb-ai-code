@@ -63,8 +63,11 @@ class Config:
 
 
 def load_config(path: Path) -> Config:
-    if sys.version_info < (3, 11):  # pragma: no cover
-        raise RuntimeError("pb-appeon-index requires Python 3.11+ (uses tomllib)")
+    # No version guard here: the import above falls back to `tomli` on 3.10,
+    # and `requires-python` says 3.10. A guard that refuses the oldest Python
+    # the package claims to support is a contradiction, and this one survived
+    # the import being fixed — CI caught it on its first run, which no local
+    # run could, this machine being on 3.14.
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     versions_raw = data.get("versions", [])
     if not versions_raw:
