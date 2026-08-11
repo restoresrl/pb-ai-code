@@ -47,6 +47,16 @@ one concrete case where it bit.
   specifica di `ex`; usare `throw ex` per ri-lanciare preservando
   il type concreto.
 
+## How a new entry gets here
+
+Two routes. Directly, when you are working in this repository — the
+template below. Or as a **note**, when the hazard turned up while working
+on somebody's PowerBuilder library: the installed copy of this catalog is
+a snapshot, so an addition made there is discarded by the next install.
+`pb-review` writes such a discovery into the plan file's
+`## Notes for the wiki` section, and [`wiki-notes.md`](../wiki-notes.md)
+covers what happens to it.
+
 ## How to add a new entry
 
 1. Create `docs/pb-antipatterns/<slug>.md` with the sections below.

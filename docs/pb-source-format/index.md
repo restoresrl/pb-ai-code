@@ -18,6 +18,16 @@ encoding, missing terminators. Compile-time error messages tend to be
 unhelpful for this category. A wiki of canonical forms and observed
 variants short-circuits the trial-and-error.
 
+## How this wiki grows
+
+It is not finished, and it is not meant to be: it documents what has been
+observed. A project using this kit holds a **snapshot** of these pages, so
+an agent that meets an undocumented construction cannot edit them where it
+works — it writes a note into the review's plan file instead, and the note
+is carried back. [`wiki-notes.md`](../wiki-notes.md) explains the shape of
+a note, why the fields are what they are, and how to turn one into a
+change here.
+
 ## How this wiki is organized
 
 One page per entry type:

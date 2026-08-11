@@ -392,9 +392,12 @@ Generic patterns to also check:
   and
   [`space-before-init`](../../docs/pb-antipatterns/space-before-init.md).)
 
-When you spot a recurring pattern the catalog does not have yet, note
-it under "Notes for the wiki" in the report — that is a candidate for a
-new page under `docs/pb-antipatterns/`.
+When you spot a recurring pattern the catalog does not have yet, write
+it into the plan file's **`## Notes for the wiki`** section, in the shape
+given under Step 3 — `page: pb-antipatterns/<slug>.md`, `section: new
+page`. That is a candidate for a new catalog entry, and the note is how
+it gets back to the repository that holds the catalog; see
+[`docs/wiki-notes.md`](../../docs/wiki-notes.md).
 
 ### Refactoring opportunities (medium priority)
 
@@ -538,7 +541,52 @@ the most useful things this report says.>
 ## Consumers outside this workspace
 
 <omit unless the target has a public surface. See "Consumers you cannot see".>
+
+## Notes for the wiki
+
+<omit when empty. Anything this review learned that the knowledge base
+does not document — a `.sr*` layout the format wiki has not seen, a
+recurring hazard the antipattern catalog lacks. One entry per note, in
+the shape below; see docs/wiki-notes.md for what happens to them.>
 ```
+
+### The shape of a wiki note
+
+The knowledge base lives in the `pb-ai-code` repository, and what you
+have in front of you is a **snapshot** — the next install overwrites it,
+so an edit made there is lost. A note in the plan file is how a
+discovery survives the trip back. It is collected from here, so the
+fields are not decoration: they are what makes it collectable.
+
+```markdown
+### note-01 — <one line: entry type, and what is different>
+
+- **page**: `pb-source-format/userobject.md` | `pb-antipatterns/<slug>.md`
+- **section**: `Variants observed` | `Canonical form` | `Open questions`
+  | `new page`
+- **observed-against**: `pb-ai-code @ <sha>` — from the installer's
+  marker file, `.claude/_installed-from-pb-ai-code.txt`, the `# Source:`
+  line
+- **evidence**: `compiled clean` (and how — the tool call and its
+  result) | `observed only`
+- **repro**: the smallest snippet that shows it
+- **why it differs**: one line
+
+<optional prose, if a line is not enough>
+```
+
+Two fields carry the weight. **`observed-against`** says which version of
+the wiki this was new *against*, so whoever collects it can tell a
+discovery from something already documented since. **`evidence`** is the
+gate: `compiled clean` means the entry went through
+`pb_object_import_file` with `errors: []`, so the claim is a fact about
+PowerBuilder rather than an impression. A note marked `observed only`
+is still worth writing — it just does not get applied without someone
+reproducing it.
+
+If the discovery arrives during the apply loop rather than the review —
+which is usual, since that is where things compile — write it into the
+same plan file. That is what the section is for.
 
 `pb_workspace_info` returns **no** field called `encoding`: it returns
 `export_encode`, `orca_encoding`, `observed_encoding` and

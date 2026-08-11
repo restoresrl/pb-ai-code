@@ -100,8 +100,17 @@ runtime trace analysis are designed but deferred — see
 
 The knowledge base is the part most worth contributing to, and it needs
 no AI: a corrected format page, a new antipattern with a reproduction,
-or a variant the wiki has not seen are all directly useful. If you are
-an agent working on this repository, read [`AGENTS.md`](AGENTS.md).
+or a variant the wiki has not seen are all directly useful.
+
+If the discovery happened while working on your own PowerBuilder project
+rather than in this repository, you were reading an installed
+**snapshot** — the next install overwrites it. The route back is a note
+in the review's plan file, and
+[`docs/wiki-notes.md`](docs/wiki-notes.md) explains the shape and what to
+do with one.
+
+If you are an agent working on this repository, read
+[`AGENTS.md`](AGENTS.md).
 
 ## License
 

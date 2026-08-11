@@ -191,6 +191,7 @@ skills/<name>/SKILL.md      Agent Skills (agentskills.io) format
 commands/<name>.md          slash-command wrappers
 docs/pb-antipatterns/       the knowledge the skills consult
 docs/pb-source-format/
+docs/wiki-notes.md          how a discovery travels back here
 harness/mcp-servers.json    the pb-orca MCP server, pinned — every client
 harness/<harness>/          per-assistant config (permissions, ...)
 ```
@@ -236,7 +237,9 @@ to a `docs/` inside the harness directory once installed.
 
 That copy is a **snapshot**. When a skill grows the wiki, the change belongs
 upstream in this repository; an edit inside an installed `pb-ai-code-docs/` is
-discarded by the next install.
+discarded by the next install. What a project does instead is write a note
+into its review's plan file, which is carried back by hand — see
+[`wiki-notes.md`](wiki-notes.md).
 
 Every skill is installed, not a subset: a skill left out is a dangling
 cross-reference in the ones that ship, and the saving is a handful of

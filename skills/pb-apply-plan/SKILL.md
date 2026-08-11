@@ -579,6 +579,20 @@ file recoverable.
 
 ## Step 5 — Wrap up and promote the CHANGELOG entry
 
+**First, harvest what the run learned.** This loop is where the evidence
+exists: an entry that went through `pb_object_import_file` with
+`errors: []` has *proved* something about PowerBuilder, which reading it
+never does. If a fix ran into a `.sr*` layout the format wiki does not
+document, or a hazard the antipattern catalog lacks, write it into the
+plan file's `## Notes for the wiki` section — the shape is in
+[`pb-review`](../pb-review/SKILL.md) under Step 3, and `evidence:
+compiled clean` is the field that makes it usable. Add the section if
+the plan does not have one.
+
+Say in the summary that you wrote notes, and how many. They travel back
+to the knowledge base by being read; see
+[`docs/wiki-notes.md`](../../docs/wiki-notes.md).
+
 When no `pending` fixes remain, summarize:
 
 > "Queue complete.

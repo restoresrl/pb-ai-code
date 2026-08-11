@@ -127,10 +127,22 @@ Two cross-cutting pages apply to every entry type:
    **Where to write it matters.** If these pages arrived as
    `pb-ai-code-docs/` beside the skills, you are looking at a vendored
    **snapshot**: the next install overwrites it, so an addition made there
-   is lost. Make it in the `pb-ai-code` repository and re-install. When the
-   upstream repository is not at hand, write the finding into the review's
-   plan file under "Notes for the wiki" instead — that is what the section
-   is for, and it survives.
+   is lost.
+
+   - **Working in the `pb-ai-code` repository itself** — edit the page
+     directly. You are at the source.
+   - **Working in a consumer project**, which is the usual case — write a
+     note into the review's plan file, under `## Notes for the wiki`. The
+     fields and an example are in
+     [`pb-review`](../pb-review/SKILL.md) under Step 3; the short version
+     is *page, section, observed-against, evidence, repro, why*. Say in
+     your summary that you wrote one, because a note nobody reads is the
+     same as no note.
+
+   What happens to it afterwards — who collects it, how it becomes a
+   change to the wiki — is [`docs/wiki-notes.md`](../../docs/wiki-notes.md).
+   Read it once; it is short, and it explains why the fields are what
+   they are.
 
 6. **Update the page `status`** in the frontmatter when it changes:
    `stub` → `seeded` (canonical form filled in), `seeded` →

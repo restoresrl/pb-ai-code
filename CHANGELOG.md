@@ -13,6 +13,47 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-08-11
+
+### Added
+
+- **A route back for what a project learns.** The knowledge base is
+  installed as a snapshot, which is what keeps every project on one version
+  — and means an agent that discovers something cannot write it down where
+  it works. Two skills already told it to record the discovery under
+  "Notes for the wiki", and **that section did not exist**: the plan
+  template never defined it, so the documented fallback pointed at nothing.
+
+  It exists now, with six fields and two that carry the weight.
+  `observed-against` is the kit commit the note was new against, read from
+  the installer's marker, so whoever collects it can tell a discovery from
+  something documented since. `evidence` is the gate: `compiled clean`
+  names the call that proved the claim, `observed only` says it was seen
+  but not confirmed. Both are worth writing; only the first is applied
+  without someone reproducing it, which is the difference between a
+  knowledge base that stays true and one that accumulates folklore.
+
+  `pb-apply-plan` harvests at the end of a run, because that is where the
+  compiler has just spoken and where the evidence therefore exists.
+
+- [`docs/wiki-notes.md`](docs/wiki-notes.md) — how notes are produced,
+  collected and turned into wiki changes, including how to write one that
+  survives contact with the person applying it.
+
+  It also says why the collection is manual on purpose. Automating the
+  *decision* to contribute is the wrong end of the problem: a mechanism
+  that opens a pull request per note yields, after a month, twenty
+  unreviewed pull requests and the illusion of a working loop — at which
+  point nobody reads the plan files either. A collector belongs after
+  three or four real notes have shown what notes actually look like.
+
+- The installer copies loose documentation files, not only trees. Found by
+  installing and counting: the skills linked the new guide from the exact
+  moment a reader is ready to act on it, and in a consumer that was **five
+  dead links**, the guide being the one page the consumer needs most.
+  Verified at zero dead links in the repository and in both installed
+  layouts.
+
 ## [0.1.5] - 2026-08-11
 
 The recovery paths, which four rounds of review had never reached because

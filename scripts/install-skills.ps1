@@ -10,6 +10,7 @@
         commands/<name>.md          slash-command wrappers
         docs/pb-antipatterns/       the knowledge the skills consult
         docs/pb-source-format/
+        docs/wiki-notes.md          how a discovery travels back here
         harness/mcp-servers.json    the pb-orca MCP server, pinned
         harness/<harness>/          harness-specific config (permissions, ...)
 
@@ -115,6 +116,13 @@ $ErrorActionPreference = 'Stop'
 # bundle is self-contained; not copied on a self-install, where the repository's
 # own docs/ already sits where the links point.
 $docTrees = @('pb-antipatterns', 'pb-source-format')
+
+# Loose documentation files the skills link to, copied alongside the trees.
+# wiki-notes.md is the one a consumer needs most: it explains how a discovery
+# made *there* travels back here, and the skills point at it from the exact
+# moment that matters. Leaving it behind would be a dead link at the only
+# place the reader is ready to act on it.
+$docFiles = @('wiki-notes.md')
 $docsFolderName = 'pb-ai-code-docs'
 
 # The MCP servers this kit owns live in one harness-neutral file: the JSON block
@@ -356,6 +364,13 @@ foreach ($d in $docTrees) {
         throw "Source docs tree missing: $src"
     }
     $plan += [pscustomobject]@{ Op = 'docs'; Src = $src; Dst = (Join-Path (Join-Path $target $docsRel) $d) }
+}
+foreach ($f in $docFiles) {
+    $src = Join-Path $source "docs\$f"
+    if (-not (Test-Path -LiteralPath $src)) {
+        throw "Source docs file missing: $src"
+    }
+    $plan += [pscustomobject]@{ Op = 'docfile'; Src = $src; Dst = (Join-Path (Join-Path $target $docsRel) $f) }
 }
 if ($settingsSrc) {
     if (-not (Test-Path -LiteralPath $settingsSrc)) {
