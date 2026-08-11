@@ -27,11 +27,11 @@ git ls-remote https://github.com/restoresrl/pb-orca-mcp    # priming git auth;
                                                            # writes nothing
 
 # 1. Is PowerBuilder reachable? No assistant involved yet.
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.6 --python 3.12-x86 `
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.7 --python 3.12-x86 `
     pb-orca-mcp doctor
 
 # 2. Does it work on YOUR project? Writes nothing.
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.6 --python 3.12-x86 `
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.7 --python 3.12-x86 `
     pb-orca-mcp check C:\your\project\workspace.pbw --pb-version 22.0
 
 # 3. Install the skills AND the MCP config into your PowerBuilder project.
@@ -102,7 +102,7 @@ This is what it writes — canonically
     "pb-orca": {
       "command": "uvx",
       "args": [
-        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.6",
+        "--from", "git+https://github.com/restoresrl/pb-orca-mcp@v0.2.7",
         "--python", "3.12-x86",
         "pb-orca-mcp"
       ]
@@ -116,7 +116,7 @@ This is what it writes — canonically
 Getting this wrong produces a DLL-load error that looks like a missing
 file.
 
-**The `@v0.2.6` is the pin, and it is the point.** Without it the URL means
+**The `@v0.2.7` is the pin, and it is the point.** Without it the URL means
 "whatever the default branch happens to be right now", so two developers who
 run the same command on different days get different servers, and any commit
 reaches everyone the moment it lands. With it, a version is something a team
@@ -172,8 +172,8 @@ that fails to start.
 that need no MCP client at all:
 
 ```pwsh
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.6 --python 3.12-x86 pb-orca-mcp doctor
-uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.6 --python 3.12-x86 pb-orca-mcp check <path-to.pbw>
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.7 --python 3.12-x86 pb-orca-mcp doctor
+uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.7 --python 3.12-x86 pb-orca-mcp check <path-to.pbw>
 ```
 
 `doctor` reports every PB install it can see and exits non-zero when

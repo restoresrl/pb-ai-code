@@ -13,6 +13,21 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-08-11
+
+### Corrected
+
+- Re-pinned `pb-orca-mcp` to **v0.2.7**, which stops a vendored library from
+  adopting the sources of an unrelated library that shares its basename. That
+  defeated `outside_source_tree` — the check whose whole job is to keep an
+  edit out of a dependency that gets replaced wholesale — and an export
+  without `dest_dir` would have overwritten the other library's sources.
+
+  Found on the first workspace with genuine vendored dependencies, during the
+  install verification. The synthetic workspace built two days earlier to
+  exercise exactly this path could not produce it: it had no basename
+  collision, because nobody thinks to build one.
+
 ## [0.1.6] - 2026-08-11
 
 ### Added
