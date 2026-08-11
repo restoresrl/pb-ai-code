@@ -13,6 +13,82 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-08-11
+
+The recovery paths, which four rounds of review had never reached because
+nothing ever went wrong. Built the failures on purpose — a fix that will not
+compile, a dependency cycle, a multi-entry fix, a decision with no patch body,
+a vendored library — and ran the kit at them. **26 defects, five blocking.**
+
+### Corrected
+
+- **After a compile error there was nothing to revert to.** Step (a) exports
+  into the projection itself on a `ws_objects` project, step (b) edits that
+  file in place, so once the patch is written the pre-fix source exists
+  nowhere — and `git checkout` is not a fallback, because this skill never
+  commits a fix and `HEAD` predates every fix already applied in the run. On a
+  queue of ten, a failure at fix-07 meant losing fixes 01 to 06 or shipping a
+  library that does not compile. Measured, not reasoned: the `.pbl` took the
+  broken source, the projection held it too, and the two **agreed** — on
+  uncompilable code, with `git status` showing two ordinary modified files.
+  A snapshot is taken before the edit now, and "revert" means re-import it.
+- **A skipped finding could never come back.** An unattended run set
+  `requires_discussion` to `skipped`; Step 4 walks `pending` only; the one
+  sentence about re-opening covered `applied`; and the pre-flight forbids
+  hand-editing status. So "run it overnight, answer in the morning" — the
+  normal shape of unattended work — was undefined. There is a `deferred`
+  state now, which a resume treats as `pending`. `skipped` stays terminal.
+- **A chosen `decision_option` is prose, and the skill said to treat it as the
+  fix body.** There is no body: the option is `{label, summary}`. Someone has
+  to author the patch, which made this the one place in the flow where the
+  most unreviewed code gets written — and (c2)'s guarantee that "the diff
+  shown is what the user agreed to" is false here, because the user agreed to
+  a label and saw no diff. It returns the finding to draft now, and an
+  unattended run stops there whatever the evidence says.
+- **`function_object` was rejected as an entry type**, which is a hard stop on
+  every global-function finding. Fixed in `pb-orca-mcp` v0.2.6, which this
+  release pins.
+- **Halting the queue on the first compile error stranded everything else**,
+  including findings with no relation to the failure. Now: revert it, mark it
+  `failed`, carry on with the independent remainder — and stop the run on the
+  second failure, because one is a bad patch and two is a bad assumption.
+- The tie-breaker called **"Priority" ranked `kind`**, so the required
+  `priority` field never affected the order at all. Two `bug-risk` findings on
+  one entry — the common case — were left to document order by accident.
+- **The compile diagnostics do not have the shape the skill described.**
+  `message_number` empty, `column` always `0`, `line` relative to the function
+  rather than the file, and the context headers carrying `level_name: "error"`
+  while the real errors carry `unknown(4)`. Presented literally, the headers
+  read as failures and the failures read as unknown.
+- The pre-flight's `.pbl` line-ending check needs a session that the *next*
+  step opens — the same ordering error already fixed in `pb-review`, still
+  present here.
+- A `CHANGELOG.md` with no checkbox bullets left the apply loop with nothing
+  to tick and no instruction, so a run applied three fixes and **the
+  repository recorded none of it**. It creates the bullet now.
+- A cycle halt wrote nothing to disk, so a resume re-derived the identical
+  halt and nothing distinguished "blocked" from "never run".
+- Nothing looked at sibling plan files, so one plan silently undid a finding
+  another had recorded as `applied`, leaving that plan describing an edit no
+  longer in the source.
+- "The first line of the function body" is ambiguous on disk — PowerBuilder
+  puts the first statement on the signature line after the `;` — and following
+  it displaced a declaration past its use, turning a one-line guard into six
+  compile errors.
+- Plus the vendored-library work in the previous commit, and the smaller ones:
+  a `failed` status, `contract` and other unlisted `kind` values, the
+  unattended run-mode field, tie-breakers that assume a context pack, and a
+  branch rule that was undecidable on a repository with one branch.
+
+### Verified working
+
+The two pre-flight repairs, including the "1 of N entries holds LF"
+prediction — it was 1 of 3 queued entries, and the other two would have said
+"nothing to do". The `also_in` multi-entry path. The file loop round-tripping
+BOM and CRLF intact on every successful import. And the cycle halt itself,
+which correctly refuses to guess: both edges were over-declared, the skill
+could not know that, and it did not pretend to.
+
 ## [0.1.4] - 2026-08-09
 
 Four unattended runs against a real PowerBuilder library, each on a fresh

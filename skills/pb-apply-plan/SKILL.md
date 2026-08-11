@@ -43,11 +43,12 @@ scheduled run — the defaults are:
 | --- | --- | --- |
 | Running at all | offered by `pb-review` | **only when the invoker asked for the apply loop explicitly.** Never on your own initiative |
 | `source_protection: unprotected` | ask: fix first, or proceed | **fix first.** Both pre-flight repairs, each committed on its own |
-| Step 3 handoff gate | wait for an explicit yes | proceed, and record in the plan file that the run was unattended |
-| Each fix | confirm the diff | apply `evidence: code-read` **and `verified-in-docs`**. Skip `unverified-semantics` and `requires_discussion` with a reason |
-| Branch | the user's call, asked at Step 3 | if the repository's convention is not to commit to the default branch, cut `pb-review/<context-slug>-<date>` for the two precondition commits and say so. Never commit them to the default branch without saying which branch you chose |
+| Step 3 handoff gate | wait for an explicit yes | proceed, and add `- **run mode**: unattended` to the plan file's header block, under `generated` |
+| Each fix | confirm the diff | apply `evidence: code-read` **and `verified-in-docs`**. Set `unverified-semantics` and `requires_discussion` to `deferred` with a reason — not `skipped`, or they can never come back |
+| Branch | the user's call, asked at Step 3 | read the convention from the repository: several branches or a merge history means cut `pb-review/<context-slug>-<date>`; a single branch with linear history means the project commits to it directly, so use it. **When there is no signal either way, cut the branch** — an unwanted branch is deleted in one command, an unwanted commit on the default branch is not. Say which you chose and why |
 | Fix targets an `outside_source_tree` library | ask: skip, or take it upstream | **skip that fix**, record the reason, carry on with the queue. Unlike `source_protection` this is not fatal to the run — it disqualifies one finding, not all of them |
-| A compile error | show, decide, retry | **stop the loop.** Roll that fix back, leave the rest `pending`, report |
+| A compile error | show, decide, retry | revert it from the snapshot, mark it `failed`, and **stop only the fixes that depend on it** — the independent remainder of the queue is unaffected and should run. Report at the end |
+| Two compile errors in one run | show, decide, retry | **stop the whole queue.** One failure is a bad patch; two is a bad assumption about the workspace, and continuing tests that assumption on more of the library |
 | Dependency cycle | ask which edge to cut | do not guess. Stop and report |
 | CHANGELOG promotion | offer | never. Leave `[Unreleased]` |
 
@@ -112,6 +113,11 @@ how a shared library gets quietly damaged.
    Never fold the `.gitattributes` fix into a fix commit. It rewrites
    every source in the index, so it would bury the one change the user
    is trying to review under a whole-tree diff.
+
+   **This half needs an ORCA session**, which step 2 below opens — so do
+   the `.gitattributes` work here, bring the session up, then come back
+   and finish this check before applying anything. Printed in one block
+   for readability; not runnable in one pass.
 
    **Then check the other half, because `.gitattributes` does not fix
    it and can expose it.** `source_protection` describes what *git*
@@ -194,7 +200,14 @@ Required YAML fields (per the `pb-review` contract):
 - `depends_on_confidence` — `parsed` | `user-augmented` | `manual`.
   Where the `depends_on` graph came from. Not a judgement about the
   finding; a normal review writes `parsed` on all of them.
-- `status` — `pending` | `applied` | `skipped` | `partial`. `partial` is
+- `status` — `pending` | `applied` | `skipped` | `partial` | `failed` |
+  `deferred`.
+  `failed` is *attempted, did not compile, reverted* — distinct from a user's
+  `skipped`, and excluded from a resume so a repeat run does not re-apply a
+  patch already known not to build. Pair it with `skip_reason`.
+  `deferred` is *set aside pending an answer* — what an unattended run writes
+  for `requires_discussion` and `unverified-semantics`. A resume treats it as
+  `pending`, which is the whole point: see "Re-opening" below. `partial` is
   for a multi-entry fix (`also_in:`) that landed on some entries and not
   others; pair it with `applied_in:` listing the entries that took it.
 - `skip_reason` — free text, required when `status: skipped`.
@@ -247,12 +260,32 @@ Topo-sort with these tie-breakers:
    discovery was opted into) and A is a caller of B, then A goes
    **after** B (B is the dependency, A the consumer). Applied only
    when caller data is actually in the pack.
-4. **Priority**: among topologically equivalent nodes, `bug-risk`
-   before `refactor` before `style`.
+4. **Kind**: among topologically equivalent nodes, `bug-risk` before
+   `refactor` before `style`. These are `kind` values, not `priority`
+   ones — the rule was called "Priority" and ranked `kind`, which meant
+   the required `priority` field never affected the order at all. A
+   `kind` outside that list (`contract`, say) sorts after the three
+   named ones.
+5. **Priority**: `high` before `medium` before `low`, for nodes the
+   previous rule leaves tied. Two `bug-risk` findings on the same entry
+   are the common case and rule 4 alone does not separate them.
+6. **Document order**, last. Deterministic, and it matches the queue
+   table the reader is looking at.
+
+Rules 2 and 3 need a context pack. A plan that carries none — a
+hand-written one, or one from a review that read the projection — skips
+them and falls through to 4, 5, 6. Say so rather than inventing edges.
 
 ### Cycle detection
 
-A cycle makes the topo-sort impossible. Surface it explicitly:
+A cycle makes the topo-sort impossible. **Write the halt into the plan
+file before reporting it** — a `blocked_reason:` on each finding in the
+cycle, naming the other members. Stopping and saying so in a transcript
+changes nothing on disk, so a resume re-derives the identical halt and
+nothing distinguishes "blocked on a cycle" from "never run". It costs
+one field.
+
+Surface it explicitly:
 
 > "There is a cycle in the dependencies: fix-03 → fix-05 → fix-03,
 > so I cannot order the queue. How do you want to break it?
@@ -318,8 +351,20 @@ Two fields change the flow before any diff is computed:
   > Which one should I implement, or do you want to skip it for now?"
 
   Wait for the choice. Record it in the YAML as
-  `chosen_option: <label>`, then proceed to (a) treating that option
-  as the canonical fix body. If the user skips, go to (c).
+  `chosen_option: <label>`. **That returns the finding to draft — it does
+  not hand you a patch.** A `decision_option` is `{label, summary}`:
+  prose. There is no fix body to apply, so someone authors one, and that
+  someone is you. It is therefore the single point in this flow where the
+  most unreviewed code gets written, and the safety sentence in (c2) —
+  "the diff shown in (a) is what the user agreed to" — does not hold: the
+  user agreed to a *label* and never saw a diff.
+
+  So write the patch, present it as a diff, and get that confirmed before
+  importing. **Unattended, stop here whatever the `evidence` says**, leave
+  the finding `deferred`, and record the chosen option. A summary reading
+  "return false for a domain that was never loaded" does not say what
+  happens to the empty string, and the diff nobody looked at is the gate
+  that would have caught it. If the user skips, go to (c).
 
 - **`also_in: [entry_triple, …]`** — the same fix concept applies to
   several entries. Process the primary `entry` first through (a)-(d),
@@ -377,6 +422,29 @@ Ask: "Apply this fix?"
 
 ### (b) On yes — edit the file, then import it
 
+**"The first line of the function body" is ambiguous on disk.** PowerBuilder
+writes the first statement on the signature line, after the `;`. Inserting
+there displaces that statement, which is how a one-line guard produced six
+compile errors in testing: the declaration it pushed down was then used before
+it was declared. Put a new statement on its own line *after* the signature
+line, leaving what was there where it was, and check
+[`pb-src-format`](../pb-src-format/SKILL.md) when the layout is unfamiliar.
+
+**First, copy the exported file to a scratch path outside the project, and
+keep it until this fix is resolved.** Two lines of work that make the rest of
+this section possible:
+
+- On a `ws_objects` project the export in (a) wrote **the projection itself**,
+  and you are about to edit it in place. Once you do, the pre-fix source
+  exists nowhere.
+- **`git checkout` is not the fallback.** This skill never commits a fix, so
+  restoring from `HEAD` throws away every fix already applied in this run. On
+  a queue of ten, a failure at fix-07 would cost fixes 01 through 06.
+
+So "revert" below means: re-import the snapshot you took here. Without it,
+the failure branch has nothing to revert to and the only exits are shipping a
+`.pbl` that does not compile or losing the earlier work.
+
 1. **Edit the exported file in place** with ordinary text tools.
    Three rules:
    - Leave the `$PBExportHeader$` / `$PBExportComments$` lines alone.
@@ -415,11 +483,26 @@ refusing). Only then look at `success`:
   aligned. If `sync: "failed"`, surface `sync_error` — the `.pbl`
   changed but the text file did not, and the two now disagree.
 - `success: false` with a populated `errors` array → **compile
-  diagnostics, not a tool failure**. Each item has
-  `message_number`, `message_text`, `line`, `column` and
-  `level_name`. Present them to the user and ask whether to revise
-  the patch, revert (re-import the pre-fix source), or accept the
-  error state and continue.
+  diagnostics, not a tool failure**. Each item carries
+  `message_number`, `message_text`, `line`, `column` and `level_name`,
+  but do not trust their shape — this is ORCA's raw callback output and
+  measured against a real failure it looked like this:
+
+  - `message_number` was empty on every item; the code (`C0051`) was
+    inside `message_text`.
+  - `column` was `0` on every item.
+  - `line` is relative to the **function**, not the file.
+  - the first few items are *context headers* — library, object,
+    function — and they carry `level_name: "error"`, while the actual
+    errors carry `level_name: "unknown(4)"`. Presented literally, the
+    headers read as errors and the errors read as unknown.
+
+  So render `message_text` as the message and treat the rest as hints.
+  Read the leading `Library:` / `Object:` / `Function:` items as the
+  location and say so, rather than listing them as failures.
+
+  Then revert from the snapshot, mark it `failed`, and continue with the
+  fixes that do not depend on it — see the unattended table.
 
 **What a failed compile leaves behind.** Nothing was synced, and the
 `.pbl` may hold partially-parsed source while the file on disk still
@@ -538,6 +621,23 @@ sources. Both are valid. At the end of the loop, point at `git
 status` and let the repository's existing habits decide; if
 `pb_set_current_application` rewrote the `.pbw`, say that it is
 usually worth reverting.
+
+### Re-opening a finding that was set aside
+
+An unattended run sets `requires_discussion` and `unverified-semantics`
+findings to **`deferred`**, not `skipped`. The distinction is the whole
+overnight workflow — run it unattended, answer the questions in the morning —
+and without it that workflow is undefined: Step 4 walks `pending` only, so a
+`skipped` finding can never come back, and the pre-flight forbids hand-editing
+status as a workaround.
+
+So: on resume, treat `deferred` as `pending`. When the user answers, move it
+to `pending` yourself — that is this skill writing its own status field, which
+is exactly what the "only writer" rule protects — and keep the original reason
+as `previous_defer_reason` so the record survives.
+
+`skipped` stays terminal: it means a human declined the fix, and re-opening
+that is their decision, made by hand.
 
 ## What this skill never does
 
