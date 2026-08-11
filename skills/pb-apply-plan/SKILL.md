@@ -46,6 +46,7 @@ scheduled run — the defaults are:
 | Step 3 handoff gate | wait for an explicit yes | proceed, and record in the plan file that the run was unattended |
 | Each fix | confirm the diff | apply `evidence: code-read` **and `verified-in-docs`**. Skip `unverified-semantics` and `requires_discussion` with a reason |
 | Branch | the user's call, asked at Step 3 | if the repository's convention is not to commit to the default branch, cut `pb-review/<context-slug>-<date>` for the two precondition commits and say so. Never commit them to the default branch without saying which branch you chose |
+| Fix targets an `outside_source_tree` library | ask: skip, or take it upstream | **skip that fix**, record the reason, carry on with the queue. Unlike `source_protection` this is not fatal to the run — it disqualifies one finding, not all of them |
 | A compile error | show, decide, retry | **stop the loop.** Roll that fix back, leave the rest `pending`, report |
 | Dependency cycle | ask which edge to cut | do not guess. Stop and report |
 | CHANGELOG promotion | offer | never. Leave `[Unreleased]` |
@@ -63,12 +64,24 @@ how a shared library gets quietly damaged.
 ## Pre-flight
 
 1. `pb_workspace_info(lib_path)` — cheap, no ORCA session. Confirms
-   the project shape (`ws_objects` vs `pbl_only`) and flags any
-   library that is `outside_source_tree`. **A fix targeting an
+   the shape **of the library you asked about** (`ws_objects` vs
+   `pbl_only`) and whether that library is `outside_source_tree`. Both
+   answers are per library, not per project: a vendored `.pbl` in the
+   same workspace answers `pbl_only` while the project plainly keeps
+   text sources. **A fix targeting an
    `outside_source_tree` library is a trap**: that library is a
    vendored snapshot or a third-party component, replaced wholesale by
    whatever produced it, so the edit will be lost at the next update.
    Surface it and ask whether to skip the fix or take it upstream.
+   **Unattended, skip it** — see the table above. "Ask" with no stated
+   fallback is undefined behaviour exactly where this skill promised
+   there would be none.
+
+   **Check it per library, not once.** A queue can span several, and
+   `entry:` carries a bare basename, so one pre-flight call answers for
+   one library and says nothing about the rest. Resolve each distinct
+   library in the queue to a path and call `pb_workspace_info` on it
+   before applying anything that targets it.
 
    **`source_protection: unprotected` stops this skill.** Everything
    below writes to a `.pbl` and mirrors it into the `.sr*` projection.
@@ -471,7 +484,7 @@ write differs, show it again and re-confirm.
 3. Tick (or untick) the `- [ ]` / `- [x]` boxes in `CHANGELOG.md`
    under `[Unreleased]`. **Change the box, keep the bullet.** A skip
    becomes `- [~] **fix-NN** — <the original description> — skipped:
-   <reason> ([plan](…#fix-NN))`: the id, the text and the plan anchor
+   <reason> ([plan] link to `#fix-NN`, unchanged)`: the id, the text and the anchor
    all stay, because `pb-review` links the CHANGELOG to those anchors
    and never renumbers them. Replacing the line with a bare
    `- [~] skipped: <reason>` throws away the only thing connecting the

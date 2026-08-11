@@ -86,8 +86,10 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
 1. **`pb_workspace_info(lib_path)`** — one call, no ORCA session, no PB
    install needed. It gives the project shape (`ws_objects` vs
    `pbl_only`), the source encoding, whether git is watching, and
-   `outside_source_tree`. Note any library flagged
-   `outside_source_tree`: it is a vendored dependency snapshot or a
+   `outside_source_tree` — **a boolean about the library you asked
+   about, not a list**, so speaking about several means one call each;
+   `pb-context-build` Step 0 sweeps for the ones nobody named. Note any
+   library flagged `outside_source_tree`: it is a vendored dependency snapshot or a
    third-party component, so a refactoring proposed inside it will be
    overwritten at the next update of that dependency. Either keep it
    out of scope or say plainly that the finding belongs upstream.
@@ -653,6 +655,13 @@ named does not belong in the queue at all.
 
 Optional YAML fields:
 
+- `library_path` — the absolute path of the `.pbl`, **required whenever
+  the queue spans more than one library**. `entry:` carries a bare
+  basename and two libraries in one workspace can share one, so without
+  this `pb-apply-plan` cannot tell which file a finding means.
+- `outside_source_tree: true` — set it when the finding lands in a
+  vendored library. The header's boolean answers for one library; the
+  decision to skip is per finding, and `pb-apply-plan` gates on it.
 - `experiment` — **required when `evidence: unverified-semantics`**. The
   test that would settle the premise, concretely enough to run.
 - `function`, `lines` — narrow down the location.

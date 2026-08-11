@@ -102,10 +102,30 @@ Before any session bring-up, call `pb_workspace_info(lib_path)` on
 one library of the target. One call, no ORCA session, no PB install
 required. Four fields change how the rest of the work proceeds:
 
-- **`mode`** — `ws_objects` (the project keeps `.sr*` text sources
+**Then look for libraries nobody told you about.** One call answers for
+one library, so a flow that calls it once can only confirm what you
+already knew — and a vendored dependency is by definition the thing you
+did not know was there. After the first call, glob the project root for
+`*.pbl` that are **not** under the `ws_objects_dir` the call just handed
+you, and call `pb_workspace_info` on each hit. Sessionless and cheap: a
+handful of calls on any real project. List what comes back flagged, in
+the pack, even when the answer is none — "I looked and there are none"
+and "nobody looked" are different statements and only one of them is
+worth writing down.
+
+A library sitting in `dep/`, `vendor/`, `lib/` or beside the `.pbl`s
+without a projection is the shape to expect. Note that it may not be in
+any target's `LibList`, so enumerating the liblist is not a substitute.
+
+- **`mode`** — `ws_objects` (this library keeps `.sr*` text sources
   next to the `.pbl`, and those are the source of truth) or
   `pbl_only` (the `.pbl` is everything). It decides what a fix will
-  touch and what the user commits at the end.
+  touch and what the user commits at the end. **Per library, not per
+  project**: a vendored `.pbl` inside a project that plainly keeps text
+  sources answers `pbl_only`, and that is a fact about the library. Do
+  not carry one library's answer to another — and do not read it as
+  licence to run `pb_library_export_sources` on a library whose missing
+  projection is the very thing that marks it as vendored.
 - **`source_protection`** — `protected`, `unprotected` or `no_git`.
   **`unprotected` is a stop-and-say-so, not a footnote.** No
   `.gitattributes` rule exempts the `.sr*` files from git's
@@ -126,10 +146,14 @@ required. Four fields change how the rest of the work proceeds:
   IDE.
   There is no field called `encoding`: the tool returns `export_encode`,
   `orca_encoding`, `observed_encoding` and `encoding_source`. Record all
-  four — `export_encode` disagreeing with `observed_encoding` means the
+  four. `observed_encoding: null` means there was nothing to sample —
+  a library with no projection — and is **not** a mismatch; skip the
+  check rather than raising a finding about files that do not exist.
+  Otherwise, `export_encode` disagreeing with `observed_encoding` means the
   workspace is already inconsistent and the IDE will rewrite those files
   on its next export, which is a finding, not a footnote.
-- **`outside_source_tree`** — libraries that sit inside the project
+- **`outside_source_tree`** — a **boolean about the library you asked
+  about**, not a list. True for a library that sits inside the project
   but outside its source tree. **This one is load-bearing for a
   review.** A library flagged this way is a vendored dependency
   snapshot or a third-party component: it gets replaced wholesale by
@@ -137,6 +161,23 @@ required. Four fields change how the rest of the work proceeds:
   overwritten at the next update of that dependency. Either exclude
   it from scope, or tell the user plainly that the finding belongs
   upstream, in the project that owns that library.
+
+  **What the pack does with one**, since a warning is not a rule: include
+  its entries as **read-only context** when the dependency graph reaches
+  them — an ancestor three levels up often lives in one — and mark them
+  in the `## Sources` heading as `— vendored, read-only`. They do not
+  count against the entry cap, because they are context and not scope.
+  Never propose a fix inside one, and never generate a projection for
+  one. An unmarked vendored ancestor reads as ordinary project code, and
+  the reviewer files a finding that will be overwritten by the next
+  dependency update.
+
+- **`work_dir`** — where working files go for a library with no
+  projection, i.e. exactly the vendored case: `<root>/.pb-orca`. Worth
+  reading because the first export against such a library creates that
+  directory, and it is often not in the project's `.gitignore`. Say so
+  rather than leaving an untracked directory for someone to find.
+
 
 Record all four at the top of the context pack.
 
@@ -361,7 +402,7 @@ fine). Recommended shape — flexible markdown, not a rigid schema:
 
 **Workspace** (from `pb_workspace_info`): mode=<ws_objects|pbl_only>,
 encoding=<export_encode> (orca=<…>, observed=<…>, from=<…>), git=<yes|no>,
-outside_source_tree=<libraries, or none>, source_protection=<…>
+outside_source_tree=<the flagged libraries found by the sweep above, or 'none found'>, source_protection=<…>
 
 **Target**: `lib_path` :: `entry_name` (`entry_type`)
 
