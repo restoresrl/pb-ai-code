@@ -13,6 +13,23 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-08-11
+
+### Corrected
+
+- Re-pinned `pb-orca-mcp` to **v0.2.8**, the first green build since
+  2026-08-09. Nothing in v0.2.5 through v0.2.7 was functionally wrong — the
+  lint job's `ruff format --check` had been failing while the tests and
+  `ruff check` passed — but a tag pointing at a red build is worth less than
+  a tag, and the pin should name one that is green.
+
+  Worth recording as a process failure rather than a formatting one: the
+  sibling's `CONTRIBUTING.md` listed all four required commands the whole
+  time, three were being run, and nobody looked at CI after pushing. This
+  repository has **no CI at all**, so its releases have only ever been gated
+  by a local run on one machine — which is the same trust that just turned
+  out to be misplaced next door.
+
 ## [0.1.7] - 2026-08-11
 
 ### Corrected
