@@ -13,6 +13,61 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-12
+
+Four gaps in `pb-apply-plan`, found by pointing a hand-written plan file
+at the loop with one finding per refusal gate. All four are cases the
+skill described somewhere and then did not check.
+
+### Corrected
+
+- **`sources_diffable: false` was not gated.** The pre-flight stops on
+  `source_protection: unprotected`, but a project can have a
+  `.gitattributes` rule — so `source_protection` answers `protected` and
+  the run proceeds — while that rule marks the `.sr*` files `binary`
+  rather than `-text`. `binary` implies `-diff`, so every fix the loop
+  applies comes back as `Bin 716 -> 718 bytes, 0 insertions, 0
+  deletions`. Same harm as the case that *is* gated, arriving by a
+  configuration the skill's own advice tells people to avoid. Measured
+  on a fixture: `git check-attr diff` answered `unset`, a two-byte edit
+  rendered as "Binary files differ". Now treated like `unprotected`,
+  with the narrower repair — swap `binary` for `-text` on the source
+  lines, no renormalize needed since the indexed bytes are already
+  right.
+
+- **Nobody said whether the plan or the workspace wins.** A finding can
+  carry `outside_source_tree: true` from when the review ran;
+  `pb_workspace_info` answers for now. `pb-review` said the loop "gates
+  on it" — the flag — while `pb-apply-plan`'s pre-flight described
+  gating on the live check. Plans are applied days or weeks after they
+  are written, so the two routinely disagree. The rule is asymmetric:
+  refuse when **either** says outside, since a library that became
+  vendored since the review is the dangerous direction and a stale plan
+  cannot know it — and report the disagreement, because it is evidence
+  about the other findings in the same plan.
+
+- **A dependency set to `deferred` did not block its dependents.** The
+  topo-sort puts a dependency first; it never checks that the dependency
+  landed. `skipped` cascades through the skip path and `failed` stops
+  its dependents per the unattended table, but `deferred` — which is
+  precisely what an unattended run writes for every
+  `unverified-semantics` and `requires_discussion` finding — fell
+  through both. The loop would walk past the deferred dependency and
+  apply the fix that needed it. Step 4 now requires dependencies to be
+  `applied`, and holds a blocked fix at `pending` with `blocked_by:`
+  rather than mislabelling it skipped.
+
+- **The required-field list rejected a real plan file.**
+  `depends_on_confidence` is listed as required; plans written before
+  the rename carry `confidence`. One of them is in this kit's own test
+  fixture, and it also has no `evidence` field — which *was* handled.
+  A resume that refuses to parse an aged plan is a resume that does not
+  resume. The old spelling is now accepted as the same field.
+
+- **Ticking CHANGELOG boxes assumed the boxes exist.** A hand-written
+  plan has none. Note it once and carry on; do not invent the entry
+  mid-run, since `pb-review` owns that file's structure.
+
 ## [0.3.0] - 2026-08-12
 
 The write loop is now atomic, and the shape of it is documented with a

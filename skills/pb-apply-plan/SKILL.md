@@ -84,6 +84,27 @@ how a shared library gets quietly damaged.
    library in the queue to a path and call `pb_workspace_info` on it
    before applying anything that targets it.
 
+   **When the plan's flag and the live check disagree, the live check
+   decides — and the disagreement is worth a sentence.** There are two
+   sources for this: the finding's optional `outside_source_tree: true`,
+   written when the review ran, and `pb_workspace_info`, answering now.
+   A plan is applied days or weeks after it was written, so they
+   *routinely* differ, and neither skill said which one wins.
+
+   The rule is asymmetric, because the two directions carry different
+   risk:
+
+   - **Live says outside, the plan does not** → refuse. The library
+     became vendored since the review, and applying would be discarded
+     at the next dependency update. The stale plan cannot know this.
+   - **The plan says outside, live does not** → the trap is gone: apply
+     if the user wants to, but say that the plan was written against a
+     different arrangement, because that is evidence about *the other
+     findings in the same plan*.
+
+   In short: refuse when **either** source says outside, and report the
+   disagreement rather than silently picking one.
+
    **`source_protection: unprotected` stops this skill.** Everything
    below writes to a `.pbl` and mirrors it into the `.sr*` projection.
    With no `.gitattributes` rule covering those files, git stores them
@@ -113,6 +134,33 @@ how a shared library gets quietly damaged.
    Never fold the `.gitattributes` fix into a fix commit. It rewrites
    every source in the index, so it would bury the one change the user
    is trying to review under a whole-tree diff.
+
+   **`sources_diffable: false` is the same harm by a different route,
+   and `source_protection` does not catch it.** A project can carry a
+   `.gitattributes` rule — so `source_protection` answers `protected`
+   and this gate lets the run through — while that rule marks the
+   `.sr*` files `binary` rather than `-text`. `binary` implies `-diff`,
+   so every fix this loop applies renders as:
+
+   ```
+   ws_objects/app.pbl.src/w_main.srw | Bin 716 -> 718 bytes
+   1 file changed, 0 insertions(+), 0 deletions(-)
+   ```
+
+   The bytes are safe and the projection is in step; what is lost is the
+   ability to *read* the change, in a diff or a pull request — which is
+   the entire reason the projection exists. Measured on a real fixture:
+   `git check-attr diff` answered `unset`, and a two-byte edit came back
+   as "Binary files differ".
+
+   So treat it like `unprotected`: report it, and offer the same two
+   answers — **fix it first** by replacing `binary` with `-text` on the
+   `*.sr*` lines only (keep `binary` for `*.pbl` and `*.pbd`), which
+   needs no renormalize because the bytes in the index are already
+   correct; or **proceed anyway** on an explicit instruction, having
+   said that the user will not be able to review what this loop writes.
+   Unattended: fix it first, in a commit of its own, exactly as for
+   `unprotected`.
 
    **This half needs an ORCA session**, which step 2 below opens — so do
    the `.gitattributes` work here, bring the session up, then come back
@@ -206,6 +254,12 @@ Required YAML fields (per the `pb-review` contract):
 - `depends_on_confidence` — `parsed` | `user-augmented` | `manual`.
   Where the `depends_on` graph came from. Not a judgement about the
   finding; a normal review writes `parsed` on all of them.
+  **Older plans call this `confidence`.** Accept that spelling as the
+  same field and say you did — the rename happened because the short
+  name was being read as a judgement about the finding. Plans in the
+  wild predate it, including one in this kit's own test fixture. A
+  strict required-field check on a real plan file is a resume that
+  refuses to resume.
 - `status` — `pending` | `applied` | `skipped` | `partial` | `failed` |
   `deferred`.
   `failed` is *attempted, did not compile, reverted* — distinct from a user's
@@ -336,7 +390,25 @@ of commits that never arrive.
 
 ## Step 4 — The apply loop
 
-For each fix in topo-sorted order **whose `status` is `pending`**:
+For each fix in topo-sorted order **whose `status` is `pending`**, and
+**whose dependencies have all reached `applied`**.
+
+**That second condition is not implied by the topo-sort.** The order
+puts a dependency before its dependent; it does not check that the
+dependency actually landed. Three of the four non-applied outcomes
+already cascade — a user `skipped` cascades through (c), a `failed`
+stops its dependents per the unattended table — but **`deferred` does
+not**, and `deferred` is exactly what an unattended run writes for every
+`unverified-semantics` and `requires_discussion` finding. Without this
+condition the loop walks straight past a deferred dependency and applies
+the fix that needed it, which is the one outcome the dependency graph
+exists to prevent.
+
+So before applying a fix, check each `depends_on` id: if any is not
+`applied`, hold this fix at `pending`, record
+`blocked_by: [<id>, …]` on it, and say so in the run summary. It is not
+`skipped` — nobody declined it — and it is not `failed`. It is waiting,
+and the resume that answers the deferred question will release it.
 
 ### (a0) Pre-checks on optional YAML fields
 
@@ -701,7 +773,12 @@ write differs, show it again and re-confirm.
 2. Regenerate the **summary table** at the top of the plan file from
    the up-to-date YAML blocks.
 3. Tick (or untick) the `- [ ]` / `- [x]` boxes in `CHANGELOG.md`
-   under `[Unreleased]`. **Change the box, keep the bullet.** A skip
+   under `[Unreleased]` — **when there are any.** A plan written by hand,
+   or one whose CHANGELOG entry was never created, has no bullets to
+   tick: note it once in the run summary and carry on. Do not invent the
+   entry mid-run; `pb-review` owns that file's structure, and a bullet
+   appearing without the review that justifies it is worse than none.
+   **Change the box, keep the bullet.** A skip
    becomes `- [~] **fix-NN** — <the original description> — skipped:
    <reason> ([plan] link to `#fix-NN`, unchanged)`: the id, the text and the anchor
    all stay, because `pb-review` links the CHANGELOG to those anchors
