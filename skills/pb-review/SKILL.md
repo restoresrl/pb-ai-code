@@ -191,15 +191,27 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    and `appname`. Say which you picked and why. If no target contains
    it, stop and say so: the entry is not reachable from any build.
 
-   **Shortlist first when there are many targets.** "Each target" is
-   fine for three and wasteful for fourteen. A `.pbt` is a text file and
-   its `LibList` is in it verbatim, so one grep for the library's
-   basename across `src/*.pbt` narrows the field for free; then call
-   `pb_target_info` on the survivors, because that is what parses the
-   liblist properly and resolves the relative paths. The grep decides
-   which targets to ask about; the tool still decides the answer.
+   **Get the target list from the `.pbw`, never from a glob.**
+   `pb_target_info` on the workspace file returns the targets it
+   actually declares — one call, no session — and a filesystem glob
+   disagrees with it in **both** directions. In one real workspace,
+   `src/*.pbt` matched 16 files while the `.pbw` declared 14: the glob
+   missed two targets that live in subdirectories (`src\test\…`,
+   `src\tools\…`) and picked up two orphaned `.pbt` files that no
+   longer belong to any workspace. Reviewing against an orphan means
+   resolving a library list nobody builds; missing a subdirectory
+   target means concluding a library is unreachable when it is not.
 
-   When several targets qualify — ten of fourteen did, in one real
+   **Then shortlist.** "Call `pb_target_info` on each target" is fine
+   for three and wasteful for fourteen, and a `.pbt` is a text file
+   whose `LibList` is in it verbatim — so grep the library's basename
+   across **the paths the `.pbw` returned** to narrow the field, then
+   call `pb_target_info` on the survivors, because that is what parses
+   the liblist properly and resolves the relative paths. The grep
+   decides which targets to ask about; the tool still decides the
+   answer.
+
+   When several targets qualify — eleven of fourteen did, in one real
    workspace — the choice is yours to justify, not to make silently.
    Prefer the one whose application is the primary consumer of the code
    under review, and say so; the library list you pick is recorded in

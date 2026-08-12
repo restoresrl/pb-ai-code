@@ -66,7 +66,7 @@ what the run found *around* it.
   the workspace above had. A `.pbt` is text and its `LibList` is in it
   verbatim, so grep narrows the field for free and the tool still decides
   the answer. `pb-review` also now says that when several targets qualify —
-  ten of fourteen did — the choice must be justified rather than made
+  eleven of fourteen did — the choice must be justified rather than made
   silently, because a different target yields a different set of callers.
 
 ### Added
