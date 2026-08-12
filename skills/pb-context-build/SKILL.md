@@ -298,6 +298,52 @@ Input: one `lib_path`.
    rather than a read of it, that is the case for
    `pb_library_export_sources` plus grep.
 
+### Flavor D — intent-driven (default for "review the X flow")
+
+Input: a description with no path in it — *"the shipment tracking
+flow"*, *"error handling in the import layer"*, *"the logger chain"*.
+This is how people actually ask, and it is the one form where the
+target has to be **discovered** before anything else can happen.
+
+**Search content, not names.** The tempting move — guess a naming
+pattern and enumerate libraries with `pb_library_directory` — fails on
+exactly the codebases this skill exists for, and it fails quietly by
+returning something. Measured on one workspace, "the shipment tracking
+flow" matched **one** file by filename (a DataWindow, not the flow) and
+**sixteen files across five libraries** by content. The reason is
+ordinary: the domain is spelled in the codebase's own language and its
+vendors' names — the flow lived in `spedizione`, `vettore`,
+`n_gsped_client` and `n_get_shipments` — and no pattern guessed from
+the user's words reaches those.
+
+1. **On a `ws_objects` project, grep the projection.** It is on disk,
+   it covers every library at once, it needs no ORCA session and no PB
+   install, and it costs nothing. Search for the domain nouns *and*
+   their likely synonyms in the codebase's language; ask the user for a
+   term if the first pass is empty rather than guessing a third time.
+2. **On a `pbl_only` project** there is no projection to grep.
+   `pb_library_export_sources` with an explicit `dest_dir` **outside
+   the project** gives you the same text without materializing a
+   projection the project deliberately does not have — this is the safe
+   form of the call that is otherwise discouraged for vendored
+   libraries. Fall back to `pb_library_directory` per library only if
+   even that is refused.
+3. **Group the hits by library and by entry**, and present that, not a
+   file list: *"16 entries across 5 libraries — `mw_asp` (2), `mw_io`
+   (4), `mw_gsped` (2), `mw_ane` (3), `mw_rev` (5). Which of these is
+   the flow you mean?"* A concept that spans five libraries is a fact
+   the user wants to see before choosing, and often it is the finding.
+4. **Then hand the confirmed set to Flavor A** and walk the hierarchy
+   from there.
+
+Two cautions carry over. The [caller-discovery
+notes](#caller-discovery--opt-in-inversion-off-by-default) on word
+boundaries and library-list scoping apply to this grep too. And a
+content search finds comments and strings as well as code, which here
+is a **feature** — a comment naming the flow is evidence about where it
+lives — but it means the hit list is a starting point for the
+propose-confirm loop, never the scope itself.
+
 ## Outgoing refs from ORCA (default)
 
 For each exported entry, call `pb_object_query_reference` to get the

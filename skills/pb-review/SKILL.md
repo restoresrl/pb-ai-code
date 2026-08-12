@@ -301,9 +301,12 @@ Resolve the target into a concrete set of entry triples:
   [`pb-context-build`](../pb-context-build/SKILL.md) — present the PBL
   list, ask for refinement, then propose the entry set.
 - **From a `.pbl`**: defer to Flavor C (enumerate, filter, propose).
-- **From free-form intent**: use `pb_library_directory` plus a
-  naming-pattern guess to locate candidates, then walk the hierarchy.
-  Same propose-confirm loop.
+- **From free-form intent**: defer to Flavor D of
+  [`pb-context-build`](../pb-context-build/SKILL.md) — search the
+  projection's **content**, group the hits by library, propose. Do not
+  guess a naming pattern and enumerate libraries: the domain is spelled
+  in the codebase's language, not the user's, and that method returns a
+  plausible near-miss instead of nothing, which is worse.
 
 ### (d) An honest budget estimate
 
