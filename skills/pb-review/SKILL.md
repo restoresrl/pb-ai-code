@@ -224,9 +224,29 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    `pb_object_export_file` writes into the projection directory when you
    omit `dest_dir` — it refreshes the source of truth — so calling it to
    "check" the projection overwrites the file you were about to compare
-   and then reports a match. Either pass a `dest_dir` outside the
-   project, or use `pb_library_entry_export`, which returns the source
-   in memory and writes nothing.
+   and then reports a match. Pass a `dest_dir` outside the project.
+
+   **For this measurement, `pb_library_entry_export` is not a
+   substitute**, even though it writes nothing. It returns the object
+   *body*: no `$PBExportHeader$`, no `$PBExportComments$`, and — the
+   part that surprises — **no binary section**. An entry hosting an OLE
+   or ActiveX control serializes that control's state into a binary tail
+   after the PowerScript, and on one measured `olecustomcontrol` that
+   tail was 8 196 bytes, **40% of the file**. Compare the in-memory
+   string against the projection and you get a mismatch of exactly that
+   size, which is not drift and has nothing to do with line endings.
+
+   The file-based export does include it: measured on an OLE-bearing
+   window, `pb_object_export_file` produced a file **byte-identical** to
+   the projection, binary tail and all, despite `export_include_binary`
+   defaulting to `false` at the session level — the file-based tools set
+   that option themselves. So the apply loop is safe on these entries;
+   it is only the comparison shortcut that is not.
+
+   Use `pb_library_entry_export` for **reading** an entry into the pack,
+   where dropping an opaque blob of serialized ActiveX state is exactly
+   what you want. Use `pb_object_export_file` with a scratch `dest_dir`
+   for **comparing**.
 
 4. **Note which reference tools you have.** If the `appeon_*` tools are
    absent, the Appeon doc index is not configured on this machine (the

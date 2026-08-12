@@ -96,7 +96,15 @@ user as errors, do not retry them, and do not let them abort the walk.
 
 **Which read primitive to use.** `pb_library_entry_export` puts the
 body straight into your context and is the right default for the
-handful of entries in a pack. `pb_library_export_sources` writes a
+handful of entries in a pack — with one thing to know: it returns the
+**body**, so no `$PBExportHeader$`, no `$PBExportComments$`, and no
+binary section. An entry hosting an OLE or ActiveX control carries a
+binary tail of serialized control state, and on one measured
+`olecustomcontrol` that was 40% of the file. Dropping it is right for
+reading — it is opaque and unreviewable — and wrong for anything that
+compares sizes or bytes, where `pb_object_export_file` to a scratch
+directory is the primitive that returns the whole file.
+`pb_library_export_sources` writes a
 whole library to disk in one call — reach for it when you want to
 **grep** across a library rather than read it (every caller of a
 name, every `Dynamic Call`, every use of a literal), and when the
