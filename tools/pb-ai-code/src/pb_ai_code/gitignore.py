@@ -55,6 +55,7 @@ class IgnoreStatus:
     repo_root: Path | None
     ignored: bool
     target: Path | None = None
+    git_available: bool = True
 
     @property
     def encloses_target(self) -> bool:
@@ -90,14 +91,30 @@ def check(target: Path, bundle_root: str) -> IgnoreStatus:
     # long form of a path the caller may hold in its 8.3 short form, and
     # two spellings of one directory would read as a nested repository.
     target = target.resolve()
-    silent = IgnoreStatus(is_repo=False, repo_root=None, ignored=False, target=target)
+    silent = IgnoreStatus(
+        is_repo=False, repo_root=None, ignored=False, target=target, git_available=False
+    )
 
     # `--show-toplevel` answers both questions at once: it fails outside a
     # work tree, and inside one it names the repository the advice is
     # really about, which is not always the target.
     toplevel = _git(target, "rev-parse", "--show-toplevel")
-    if toplevel is None or toplevel[0] != 0:
+    if toplevel is None:
+        # No git on PATH. Nothing true can be said about a .gitignore, so
+        # nothing is said.
         return silent
+    if toplevel[0] != 0:
+        # Git works and this is not a repository. That is not the same as
+        # not knowing, and the difference is worth a line: the bundle and
+        # the MCP config are generated, one of them carries an absolute
+        # path with a username in it, and `git init` here at any point in
+        # the future would sweep both into a commit with nothing to stop
+        # it. A file we wrote into the project could stop it, and is not
+        # ours to write: a team that vendors the bundle deliberately has
+        # the opposite convention.
+        return IgnoreStatus(
+            is_repo=False, repo_root=None, ignored=False, target=target, git_available=True
+        )
     top = toplevel[1].strip()
     repo_root = Path(top).resolve() if top else None
 

@@ -359,7 +359,15 @@ def _gitignore_hint(
             continue
         seen.add(bundle_root)
         status = gitignore_mod.check(target, bundle_root)
-        if not status.is_repo or status.ignored:
+        if not status.is_repo:
+            # Git present and this is not a repository: say so once. Git
+            # absent: say nothing, because nothing is known.
+            if status.git_available:
+                reporter.block(
+                    report_mod.not_a_repository_note(bundle_root, include_mcp_json=include_mcp_json)
+                )
+            continue
+        if status.ignored:
             continue
         reporter.block(
             report_mod.gitignore_note(

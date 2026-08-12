@@ -13,6 +13,62 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-08-13
+
+Two corrections, both found by pointing a fresh session at a test fixture and
+reading what it said.
+
+### Corrected
+
+- **`PBORCA_OBJHASNOREFS` means two different things and the kit knew one.**
+  `pb-context-build` said to treat `-14` and `-15` as "empty, not broken",
+  record no references and move on. That is right when an entry genuinely
+  calls nothing, and wrong in the case nobody had met: ORCA reads reference
+  information out of what is written when an entry is **compiled**, so an
+  entry that has never been regenerated has none — and ORCA reports no
+  outgoing references for an object whose source plainly contains
+  `Open(w_main)`.
+
+  Measured on the `test-pb-orca-mcp` fixture: an application and a menu both
+  answered `PBORCA_OBJHASNOREFS` while their sources called
+  `Open(w_genapp_main)` and `Open(w_genapp_about)`. Following the old advice,
+  the context pack comes back with an **empty dependency map that reads as a
+  finished answer**, and the review built on it concludes the entries are
+  isolated.
+
+  Two discriminators now, both cheap: per entry, the source is already
+  exported, so a call in the text against no references from ORCA means the
+  data is absent rather than empty; per library, every entry answering
+  `-14`/`-15` says the library was never built. The pack records
+  `refs: unavailable (never compiled)` instead of an empty list, and says so
+  to the user, because it changes what the pack is worth.
+
+  The repair, `pb_object_regenerate`, **writes to the `.pbl`** — so it is
+  offered, never run inside a read-only flow. A review that silently
+  regenerated a customer's library to improve its own context would be doing
+  the thing this kit refuses to do everywhere else. `pb-review` gained the
+  matching note: an empty map costs call-graph ordering in the fix queue, and
+  any finding about who calls what then rests on reading text.
+
+- **A target that is not a git repository was told nothing at all.** Silence
+  was defensible — there is no `.gitignore` to be wrong about, and the install
+  has already succeeded. What it missed is that the install just wrote
+  generated files, one of which holds absolute paths with a username in them,
+  and `git init` there on any later day sweeps them into the first commit with
+  nothing in the way. The installer now says so in three lines, states there
+  is nothing to do today, and gives the rules for the day there is.
+
+  It does **not** write a `.gitignore` into the bundle, which was the obvious
+  fix and the wrong one: it would not cover `.mcp.json`, which lives at the
+  project root and is the file that carries the paths, and it would decide
+  something that belongs to the consumer — a team that vendors the bundle
+  deliberately has the opposite convention. Saying it decides nothing.
+
+  The distinction between "git answered and this is not a repository" and "no
+  git on this machine" is now explicit: the first gets the note, the second
+  keeps its silence, because nothing is known there. Both have a test.
+
+
 ## [0.5.2] - 2026-08-12
 
 Documentation only; no change in behaviour. Tagged because the tag is the

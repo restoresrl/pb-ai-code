@@ -94,6 +94,41 @@ So treat `-14` and `-15` as **empty, not broken**. Record "no ancestors"
 or "no outgoing refs" in the pack and move on. Do not report them to the
 user as errors, do not retry them, and do not let them abort the walk.
 
+**With one check first, because `-15` says two different things.** ORCA
+answers out of the reference information stored in the library, and that
+information is written when an entry is *compiled*. An entry that has
+never been regenerated has none — so ORCA reports no outgoing references
+for an object whose source plainly contains `Open(w_main)`. Same answer,
+opposite meaning: not "this calls nothing" but "nobody asked me". Move on
+from that one and the pack carries an **empty dependency map that looks
+like a finished answer**, which is the worst shape a wrong answer can
+take here — the review that follows will conclude the entry is isolated
+and reason from it.
+
+Two discriminators, both cheap:
+
+- **Per entry**: the source is already exported. If it contains a call,
+  an `Open(`, an ancestor use — and ORCA returned no references — the
+  data is *absent*, not empty.
+- **Per library**: if **every** entry answers `-14`/`-15`, that library
+  has almost certainly never been built. One object with no refs is
+  ordinary; twenty in a row is a fact about the library, not about the
+  objects. Measured on a real fixture: an application and a menu both
+  answered `PBORCA_OBJHASNOREFS` while their sources contained
+  `Open(w_genapp_main)` and `Open(w_genapp_about)`.
+
+When you conclude the data is absent, **say so in the pack** — a
+`refs: unavailable (never compiled)` marker, not an empty list — and say
+it to the user, because it changes what the pack is worth. The repair is
+`pb_object_regenerate`, which rebuilds the compiled form and with it the
+reference information.
+
+**It is a write.** It modifies the `.pbl`, so it is not yours to run
+inside a read-only flow: offer it, name what it changes, and let the user
+decide. A review that silently regenerated a customer's library to
+improve its own context would be doing exactly what this kit refuses to
+do elsewhere.
+
 **`.pbd` libraries are enumerable but not readable, and the error for
 that says the opposite.** A target's `LibList` routinely contains
 compiled `.pbd` libraries alongside `.pbl` ones — a vendored component,

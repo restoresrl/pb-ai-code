@@ -104,14 +104,20 @@ def run_cli(
 
 
 def install(
-    target: Path, *args: str, kit: Path | None = None, home: Path | None = None
+    target: Path,
+    *args: str,
+    kit: Path | None = None,
+    home: Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    environ = kit_env(home if home is not None else target.parent / "home", kit)
+    environ.update(env or {})
     result = run_cli(
         "install",
         "--target",
         str(target),
         *args,
-        env=kit_env(home if home is not None else target.parent / "home", kit),
+        env=environ,
     )
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
     return result
@@ -238,6 +244,25 @@ APPEON_MISSING = [
     "      Then re-run this installer and the server is configured.",
 ]
 
+
+#: Every golden target below is a plain directory, so the install ends by
+#: saying the project is not under version control. Silence used to be the
+#: rule here; what it missed is that `git init` on any later day sweeps the
+#: generated bundle - and an .mcp.json holding absolute paths - into the
+#: first commit with nothing in the way.
+def not_a_repo_note(bundle_root: str, *, mcp: bool = True) -> list[str]:
+    lines = [
+        "",
+        f"Note: this project is not a git repository, so nothing ignores {bundle_root}.",
+        "      Nothing to do today. If it ever becomes one, the bundle is generated",
+        "      and does not want committing - these are the lines:",
+        f"        {bundle_root}/",
+    ]
+    if mcp:
+        lines.append("        .mcp.json          # carries absolute paths for this machine")
+    return lines
+
+
 RESTART_HINT = (
     "Restart your assistant to pick up the MCP config, "
     "then confirm the pb_* tools are listed (/mcp)."
@@ -286,6 +311,7 @@ def test_ledger64_68_stdout_golden_claude_code(
         "",
         "Done.",
         RESTART_HINT,
+        *not_a_repo_note(".claude"),
     ]
 
 
@@ -339,6 +365,9 @@ def test_ledger12_47_stdout_golden_generic(
         *APPEON_MISSING,
         "",
         "Done.",
+        # No .mcp.json line: the generic harness prints the block instead of
+        # writing a file, so there is no MCP file to keep out of a commit.
+        *not_a_repo_note(".agent", mcp=False),
     ]
     # No restart hint: the generic harness has no client to restart.
     assert "pb-orca" in json.loads(block)["mcpServers"]
@@ -377,6 +406,7 @@ def test_ledger48_stdout_golden_skip_mcp_config(
         "Skipped MCP config (--skip-mcp-config). The skills expect the pb_* tools to be reachable.",
         "",
         "Done.",
+        *not_a_repo_note(".claude", mcp=False),
     ]
     assert not (target / ".mcp.json").exists()
 
@@ -519,15 +549,20 @@ def test_ledger69_71_hint_is_silent_when_the_bundle_is_already_ignored(
     assert result.stdout.splitlines()[-1] == RESTART_HINT
 
 
-def test_ledger72_hint_is_silent_when_the_target_is_not_a_repository(
+def test_a_target_that_is_not_a_repository_is_told_so_once(
     tmp_path: Path, staged_kit: Path
 ) -> None:
-    """Ledger 72: a target that is not a git repository is not nagged.
+    """Ledger 72, amended: not nagged, but not left in silence either.
 
-    A missing ``git`` executable is silent here too - the install has
-    already succeeded and the whole block is best effort. That is the
-    opposite of the script's provenance code, where a missing git killed
-    the run before anything was copied.
+    The original rule was silence - there is no .gitignore to be wrong
+    about, and the install has already succeeded. What that missed is that
+    the install just wrote generated files, one of which carries an
+    absolute path with a username in it, and `git init` here on any later
+    day sweeps them into the first commit with nothing in the way. So the
+    note states the fact and the two lines, says there is nothing to do
+    today, and decides nothing: writing a .gitignore ourselves would
+    decide something, and a team that vendors the bundle on purpose has
+    the opposite convention.
     """
     target = tmp_path / "target"
     target.mkdir()
@@ -535,8 +570,36 @@ def test_ledger72_hint_is_silent_when_the_target_is_not_a_repository(
     result = install(target, kit=staged_kit, home=tmp_path / "home")
 
     assert result.returncode == 0
+    # Not the repository wording: there is no repository to name.
     assert "not ignored by git" not in result.stdout
-    assert result.stdout.splitlines()[-1] == RESTART_HINT
+    assert "this project is not a git repository" in result.stdout
+    assert "Nothing to do today." in result.stdout
+    assert "        .claude/" in result.stdout
+    assert ".mcp.json" in result.stdout
+
+
+def test_the_note_is_absent_when_there_is_no_git_at_all(tmp_path: Path, staged_kit: Path) -> None:
+    """The other half of ledger 72, and it keeps its silence.
+
+    A machine with no git on PATH knows nothing about the target's version
+    control, so it says nothing about it - as opposed to a machine that
+    asked and got an answer. Simulated by handing the subprocess a PATH
+    that cannot resolve git.
+    """
+    target = tmp_path / "target"
+    target.mkdir()
+
+    # Not an empty PATH: on Windows that can stop the interpreter starting.
+    # The system directory is enough to run and is not where git lives.
+    bare = os.environ.get("SYSTEMROOT", "/usr") + os.sep + "System32"
+    if shutil.which("git", path=bare) is not None:
+        pytest.skip("git is reachable even from a bare PATH here")
+
+    result = install(target, kit=staged_kit, home=tmp_path / "home", env={"PATH": bare})
+
+    assert result.returncode == 0
+    assert "not a git repository" not in result.stdout
+    assert "not ignored by git" not in result.stdout
 
 
 def test_ledger73_hint_names_the_enclosing_repository(tmp_path: Path, staged_kit: Path) -> None:

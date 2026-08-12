@@ -621,6 +621,33 @@ def gitignore_note(
     return lines
 
 
+def not_a_repository_note(bundle_root: str, *, include_mcp_json: bool = False) -> list[Line]:
+    """The target is not under version control, and that is worth one line.
+
+    Silence was the old behaviour and it was defensible: there is no
+    ``.gitignore`` to be wrong about. But what the install just wrote is
+    generated, and one of the files carries an absolute path with the
+    user's name in it, so ``git init`` here on any later day sweeps both
+    into the first commit with nothing in the way. Writing a
+    ``.gitignore`` ourselves would prevent it and is not ours to write:
+    a team that vendors the bundle on purpose has the opposite
+    convention. Saying it costs three lines and decides nothing.
+    """
+    lines = [
+        BLANK,
+        Line(
+            f"Note: this project is not a git repository, so nothing ignores {bundle_root}.",
+            "yellow",
+        ),
+        Line("      Nothing to do today. If it ever becomes one, the bundle is generated"),
+        Line("      and does not want committing - these are the lines:"),
+        Line(f"        {bundle_root}/"),
+    ]
+    if include_mcp_json:
+        lines.append(Line("        .mcp.json          # carries absolute paths for this machine"))
+    return lines
+
+
 # --- status (ledger 77) ------------------------------------------------------
 
 

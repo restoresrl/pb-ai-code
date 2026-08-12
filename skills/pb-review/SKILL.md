@@ -410,6 +410,19 @@ confirmed entry set. It returns, per entry:
 Watch the budget summary. If too much was pruned to make the review
 fair, say so immediately and loop back to Step 0 (d).
 
+**Watch the dependency map for the other failure, the one that does not
+look like one.** ORCA reads outgoing references out of information
+written when an entry is compiled, so a library that has never been built
+answers "no references" for every entry — and the pack comes back with an
+empty dependency map that reads as a finished answer. `pb-context-build`
+now distinguishes the two cases and marks the pack
+`refs: unavailable (never compiled)` when it can tell. If you see that
+marker, or if the map is empty across the board while the sources plainly
+call each other, **say it in the report and say what it costs**: no
+call-graph ordering in the fix queue, and any finding about who calls
+what rests on reading text. `pb_object_regenerate` repairs it and writes
+to the `.pbl`, so it is the user's call, not yours.
+
 ## Step 1a — Pack-driven clarifications
 
 After reading the pack, ask only the **specific questions the pack
