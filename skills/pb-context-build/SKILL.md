@@ -403,11 +403,39 @@ points on monolithic codebases:
   honest about partial scans.
 - **Pruning order** when over budget: (a) drop `simple`-typed
   outgoing refs first (declarative refs are usually less load-bearing
-  than `open`-typed ones); (b) drop ancestors beyond depth 2; (c)
+  than `open`-typed ones); (a′) **when every ref is `simple`, rank them
+  instead** — see below; (b) drop ancestors beyond depth 2; (c)
   drop framework-level ancestors (`nonvisualobject`, `window`,
   `userobject`) since the language reference covers them — see
   [`appeon-query`](../appeon-query/SKILL.md); (d) skip the
   caller-discovery pass entirely.
+
+  **(a′) matters more often than (a).** Step (a) assumes the refs are a
+  mix of `simple` and `open`, and on a `nonvisualobject` they never are:
+  `open` is a window-opening reference, so a non-visual class has none
+  and step (a) degenerates to drop-everything-or-nothing. Measured on a
+  real persistence base class: 37 outgoing refs, **all `simple`, zero
+  `open`**, with a depth-1 expansion at 159% of the size cap. The type
+  told you nothing about what to cut.
+
+  Rank by these two, in order, and say in the pack which ones you kept
+  and why:
+
+  1. **Is the entry in the target's own inheritance or delegation
+     chain?** An ancestor, an interface the target owns, the datastore
+     it drives — these are the code the target's behaviour is *made of*,
+     and a review without them is guessing. Keep them.
+  2. **Size**, descending, among everything left. Two 20 KB peers cost
+     as much as the target itself and usually buy one finding between
+     them; ten 500-byte helpers cost nothing and often carry a contract.
+
+  What that produced on the case above: the target plus its two
+  interface classes plus its datastore — 4 entries, 95 KB, 62% of the
+  cap — with the eighteen referenced peers (21 KB, 17 KB, 15 KB, 14 KB
+  and so on) left out and **listed by name in `## Skipped`, with the
+  questions their absence leaves open**. That last part is the
+  obligation: a pruned pack is honest only if the reader can see the
+  shape of the hole.
 
 These caps are starting points, not law. Adjust if the user signals
 they want a deeper or shallower view.
