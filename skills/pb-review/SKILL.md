@@ -222,8 +222,13 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    `install_path` is required — there is no auto-pick; enumerate with
    `pb_discover_pb_install` and say which you chose),
    `pb_set_library_list`, `pb_set_current_application`. The last one
-   may rewrite the `.pbw` as a side effect; mention it if the session
-   ends with the user looking at `git status`.
+   may rewrite the `.pbw` as a side effect — **which is not worth
+   mentioning.** That file also changes when somebody opens the
+   workspace in the IDE and picks a different target, so a dirty `.pbw`
+   is noise. Report it only if the `@targets` block gained or lost an
+   entry; see
+   [`pb-context-build`](../pb-context-build/SKILL.md) under *Session
+   bring-up* for the one-line check.
 
    **On a `ws_objects` project you may skip the session and read the
    projection instead** — it is cheaper and a review writes nothing.

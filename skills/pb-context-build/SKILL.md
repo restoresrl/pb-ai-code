@@ -252,10 +252,34 @@ chose), then `pb_set_library_list`, then
 
 Two things to keep in mind:
 
-- `pb_set_current_application` **may rewrite the `.pbw`** as a side
-  effect. If the session ends with the user looking at `git status`,
-  advise reverting that file unless a target was really added or
-  removed.
+- **A modified `.pbw` is expected noise. Do not report it.**
+  `pb_set_current_application` may rewrite it as a side effect, and so
+  does a developer simply opening the workspace in the PB IDE and
+  selecting a different target — the `DefaultTarget` and
+  `DefaultRemoteTarget` lines move on their own, constantly, without
+  anybody deciding anything. Treating that as a finding, or advising a
+  revert, wastes the reader's attention on a file that changes by
+  breathing on it.
+
+  **The one part of that file worth a word is the target list.** If the
+  `@targets` block gained or lost an entry, the set of things the
+  workspace builds has changed, and that is worth raising. Nothing else
+  in there is.
+
+  ```
+  git diff -- '*.pbw' | grep -E '^[+-]' \
+      | grep -vE 'DefaultTarget|DefaultRemoteTarget|^[-+]{3}'
+  ```
+
+  Empty output means only the default-target lines moved: say nothing.
+  Non-empty means a target was added or removed: say that, specifically,
+  and do not bury it under a general remark about the `.pbw` being
+  dirty.
+
+  The same rule governs the other direction. A local, uncommitted `.pbw`
+  edit that has **disappeared** is not evidence that something went
+  wrong — the IDE reclaims that file routinely. Do not raise it as a
+  possible incident.
 - Sessions are not cheap to churn. Open one per unit of work, not one
   per object.
 - **The library list can be set once and only once.** A second

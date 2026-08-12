@@ -162,7 +162,13 @@ how a shared library gets quietly damaged.
    reconcile.
 
 `pb_set_current_application` may rewrite the `.pbw` as a side effect —
-mention it when the user inspects `git status` at the end.
+**do not mention it.** That file moves on its own whenever anyone opens
+the workspace in the IDE and selects a different target, so a dirty
+`.pbw` in the closing `git status` is noise and reporting it trains the
+reader to skim. The exception, and the only one, is a change to the
+`@targets` block: if a target was added or removed, say so specifically.
+[`pb-context-build`](../pb-context-build/SKILL.md) carries the check
+under *Session bring-up*.
 
 ### Resume — always redo the pre-flight
 

@@ -13,6 +13,35 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-12
+
+### Corrected
+
+- **A modified `.pbw` was being reported as if it meant something.** All
+  three session-bearing skills said to mention it when the user looks at
+  `git status` — `pb-context-build` went further and advised reverting
+  it. That is wrong about how PowerBuilder workspaces behave: the
+  `DefaultTarget` and `DefaultRemoteTarget` lines rewrite themselves the
+  moment anybody opens the workspace in the IDE and selects a different
+  target. No decision, no intent, and it happens constantly.
+  `pb_set_current_application` producing the same edit is one cause among
+  several, not a special one.
+
+  Reporting it spends the reader's attention on a file that changes if
+  you look at it sideways, and a stream of remarks about nothing teaches
+  people to skim the ones that matter.
+
+  **The one part of that file worth a word is the target list.** A
+  `@targets` block that gained or lost an entry means the set of things
+  the workspace builds has changed. The skills now say to check exactly
+  that — with a one-line diff filter — and to stay silent otherwise. The
+  rule runs in both directions: a local uncommitted `.pbw` edit that has
+  *disappeared* is the IDE reclaiming its file, not an incident to
+  investigate.
+
+  Full rule in `pb-context-build` under *Session bring-up*; short form in
+  `pb-review` and `pb-apply-plan`.
+
 ## [0.2.1] - 2026-08-12
 
 ### Added
