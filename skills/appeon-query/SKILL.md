@@ -89,11 +89,52 @@ fails to start.
 "database not found" — the server is wired up but the index has never
 been populated on this machine.
 
-In both cases: **tell the user, and do not fall back to fetching pages
-live or to answering from memory.** A PowerScript semantic you did not
-verify is a guess, and a guess inside a finding is worse than an
-absent finding. Mark anything resting on one as unverified, say what
-would settle it, and leave it to the user.
+In both cases: **tell the user, and never answer from memory.** A
+PowerScript semantic you did not verify is a guess, and a guess inside
+a finding is worse than an absent finding — it looks the same as a
+right one and arrives with a suggested edit attached.
+
+But "no MCP server" is not the same as "no index", and the difference
+is worth two minutes. Work down this ladder and stop at the first rung
+that answers:
+
+1. **The database itself, if a `pb-ai-code` checkout is on this
+   machine.** The MCP server is a thin wrapper over a SQLite file at
+   `docs/appeon-index/index.db`, and the file is useful without the
+   server. It is gitignored — every user builds their own — so it
+   exists only where somebody has run `update`, but where it exists it
+   is exact, offline, and costs nothing:
+
+   ```python
+   import sqlite3
+   db = sqlite3.connect(r"C:\path\to\pb-ai-code\docs\appeon-index\index.db")
+   c = db.cursor()
+   c.execute("select version, name, url, syntax, return_value "
+             "from pages where name = ?", ("Pos",))
+   print(c.fetchall())
+   ```
+
+   Columns: `id`, `version`, `url`, `category`, `kind`, `name`,
+   `description`, `syntax`, `arguments`, `return_value`, `examples`,
+   `see_also`, `scraped_at`. For a name you are unsure of, search
+   `pages_fts` and join back on `pages.id = pages_fts.rowid` — mind
+   that both tables have a `name` column, so qualify it.
+
+   A lookup answered this way is `verified-in-docs` exactly as if the
+   server had answered, and cite the `url` column, which is the real
+   Appeon page.
+
+2. **A budgeted live fetch**, when there is no checkout and a finding
+   genuinely turns on the semantic. Two or three pages, on the
+   behaviours your findings depend on — not background reading. The
+   objection to the web is **volume**, thousands of tokens per page,
+   not principle. Be warned that guessing the URL wastes the budget:
+   the page names are not derivable (`Pos` is `pos_func.html`), so
+   search rather than construct.
+
+3. **Neither** — then say so in the finding. `evidence:
+   unverified-semantics` with an `experiment:` naming the concrete test
+   that would settle it. That is an honest finding. Asserting it is not.
 
 The full recipe, in the [`pb-ai-code`](https://github.com/restoresrl/pb-ai-code)
 checkout (not part of a vendored install, so quote it rather than

@@ -31,6 +31,16 @@ one concrete case where it bit.
 - [isnull on numeric types](isnull-on-numeric.md) — `IsNull()` su
   `integer`/`long`/`ulong` ritorna sempre `false`, anche su
   sentinel `-1` wrappato.
+- [pos guarded as negative](pos-guarded-as-negative.md) — `Pos()`
+  torna **0** quando non trova, mai `-1`: la guardia `< 0` è morta e
+  il caso "non trovato" prosegue con un offset inventato.
+
+### Process and control flow
+
+- [halt in a shared library](halt-in-shared-library.md) —
+  `MessageBox` / `HALT CLOSE` dentro una `.pbl` che anche un target
+  headless carica: il servizio si pianta su un modale che nessuno vede,
+  o si spegne in silenzio.
 
 ### IO
 

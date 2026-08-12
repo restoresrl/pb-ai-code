@@ -147,6 +147,21 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    and `appname`. Say which you picked and why. If no target contains
    it, stop and say so: the entry is not reachable from any build.
 
+   **Shortlist first when there are many targets.** "Each target" is
+   fine for three and wasteful for fourteen. A `.pbt` is a text file and
+   its `LibList` is in it verbatim, so one grep for the library's
+   basename across `src/*.pbt` narrows the field for free; then call
+   `pb_target_info` on the survivors, because that is what parses the
+   liblist properly and resolves the relative paths. The grep decides
+   which targets to ask about; the tool still decides the answer.
+
+   When several targets qualify — nine of fourteen did, in one real
+   workspace — the choice is yours to justify, not to make silently.
+   Prefer the one whose application is the primary consumer of the code
+   under review, and say so; the library list you pick is recorded in
+   the plan header precisely because a different target would have given
+   a different set of callers.
+
 3. **Bring up the ORCA session**: `pb_session_open` (`pb_version` or
    `install_path` is required — there is no auto-pick; enumerate with
    `pb_discover_pb_install` and say which you chose),
@@ -194,13 +209,18 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    the user more than a missing one, because it looks the same as a
    right one and arrives with a suggested edit attached.
 
-   That leaves a real gap, so name what fills it. Without the index you
-   may spend **two or three** web lookups against `docs.appeon.com` on
-   the semantics a finding actually turns on — the `appeon-query` skill
-   discourages the web because it costs thousands of tokens per page,
-   which is an argument about volume, not a prohibition. Budget it: the
-   handful of behaviours your findings depend on, not background
-   reading.
+   That leaves a real gap, so name what fills it. **The absence of the
+   `appeon_*` tools does not mean the index is absent** — it is a
+   SQLite file, and the server is a wrapper over it. If a `pb-ai-code`
+   checkout is on this machine, query
+   `docs/appeon-index/index.db` directly and you get the same answer,
+   citable, for nothing; only if there is no checkout do you spend
+   **two or three** web lookups on the semantics a finding actually
+   turns on. The ladder and the SQL are in
+   [`appeon-query`](../appeon-query/SKILL.md) under *What to do when the
+   index isn't available* — follow it there rather than improvising,
+   and budget the web tier: the handful of behaviours your findings
+   depend on, not background reading.
 
    What you look up becomes `evidence: verified-in-docs` with the
    citation. What you cannot check becomes `evidence:
@@ -493,6 +513,38 @@ Connect them instead of merging them. Add **one line** pointing at this
 file, and after the apply loop promote what actually landed into the
 project's own numbering. Not before: a curated backlog should not fill
 up with findings that may yet be rejected.
+
+#### Never link the plan file into the installed bundle
+
+**Cite the catalog by slug and public URL, never by relative path.**
+
+```markdown
+See the antipattern catalog entry `pb-antipatterns/isnull-on-numeric`
+(<https://github.com/restoresrl/pb-ai-code/blob/main/docs/pb-antipatterns/isnull-on-numeric.md>).
+```
+
+What you must **not** write is a Markdown link whose target is the
+relative path `../.claude/pb-ai-code-docs/pb-antipatterns/<slug>.md` —
+which is where the file genuinely sits on your machine, and which is
+exactly the trap.
+
+The reason is that two correct decisions collide here. The plan file is
+work product: it goes into the reviewed project's repository, because
+the promise that another agent can resume it later only holds if it
+reaches the repository. The installed bundle is *not* work product: it
+is harness state, and the projects that consume this kit gitignore
+`.claude/` on purpose, so that a PB project commits nothing agentic.
+
+So a relative link from `.pb-review/` into `.claude/pb-ai-code-docs/`
+resolves on the machine that wrote it and is dead for everybody else —
+the colleague who pulls the branch, the reviewer reading it on the web,
+the agent that picks the plan up on another checkout. It fails in the
+worst way, too: silently, and only for the reader who was not there.
+
+The same rule covers `docs/wiki-notes.md` and the `pb-source-format`
+pages. Inside a skill file, relative links are right and the installer
+rewrites them. Inside the plan file, they are not: write the slug so a
+human can find it, and the URL so a machine can.
 
 Which document, and where: the backlog or plan document found in
 Pre-flight 0 — not `CHANGELOG.md`, which already gets its own entry.

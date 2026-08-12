@@ -13,6 +13,78 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+All of the below came out of one run: `/pb-review` against a real
+2426-source workspace whose library list crosses into a vendored `dep/`
+tree — the first time the kit has been pointed at a genuine
+`outside_source_tree` boundary rather than a synthetic one. The
+`outside_source_tree` reporting itself held, including on the basename
+collision that caused the `pb-orca-mcp` v0.2.7 bug; everything here is
+what the run found *around* it.
+
+### Corrected
+
+- **A plan file linked into a directory the consumer gitignores.** The
+  review writes its plan to `.pb-review/`, which is work product and gets
+  committed, and cited the antipattern catalog by relative path into
+  `.claude/pb-ai-code-docs/`, which is harness state and is gitignored on
+  purpose. Both decisions are right on their own; together they produce a
+  document whose references resolve only on the machine that wrote it, and
+  die silently for the colleague who pulls the branch. `pb-review` now
+  requires plan files to cite the catalog by slug plus public URL.
+
+- **`pb-context-build`'s prerequisite table conflated two conditions.**
+  One column, "Needs ORCA session?", answered `yes` for
+  `pb_object_query_hierarchy` and `pb_object_query_reference` — which
+  additionally need `pb_set_current_application`, and say so with a
+  distinct ORCA code (`PBORCA_CURRAPPLNOTSET`, -13). The prose under
+  *Session bring-up* had it right all along; the table is the quick
+  reference, and it is the table people read. It now has two columns and
+  names the error code.
+
+- **`appeon-query` treated "no MCP server" as "no index", and forbade the
+  web outright while `pb-review` told you to use it.** Two skills
+  disagreeing about the same rule, with `pb-review` resolving it by
+  describing the other's rule inaccurately. The index is a SQLite file and
+  the server is a wrapper over it, so a checkout of this repository can
+  answer a lookup with plain SQL — exactly, offline, citable, and at no
+  token cost. Both skills now share one ladder: local database, then a
+  budgeted live fetch, then `unverified-semantics` with an `experiment`.
+  Never memory.
+
+### Documented
+
+- **`source_size` is not the size of the export.**
+  `pb_library_entry_information` reports it in UTF-16 code units, so on a
+  UTF-8 workspace it is ~2× what the entry contributes to the budget
+  (measured: `source_size: 41076` for a 20 577-byte export). It is the
+  obvious field to reach for when sizing a pack before exporting, and
+  overstating by 2× prunes scope that did not need pruning. Recorded in
+  `pb-context-build`'s budget mechanics.
+
+- **Shortlist targets by grep before calling `pb_target_info` on each.**
+  "Each target" is fine for three and wasteful for fourteen, which is what
+  the workspace above had. A `.pbt` is text and its `LibList` is in it
+  verbatim, so grep narrows the field for free and the tool still decides
+  the answer. `pb-review` also now says that when several targets qualify —
+  nine of fourteen did — the choice must be justified rather than made
+  silently, because a different target yields a different set of callers.
+
+### Added
+
+- Two antipattern catalog entries, both from findings in that run, both
+  with a mechanical detection recipe rather than a judgement call:
+  - **`pos-guarded-as-negative`** — `Pos()` returns 0 when it finds
+    nothing, never -1, so a `< 0` guard is dead and the not-found case
+    proceeds from an invented offset. Sibling of `isnull-on-numeric`: a
+    sentinel convention imported from another language, failing in the
+    safe-looking direction. The page is honest that the pattern appeared
+    **once** in 2426 sources — it earns its place on how it fails, not on
+    frequency — and it records why grep alone misses it.
+  - **`halt-in-shared-library`** — `MessageBox` and `HALT CLOSE` inside a
+    `.pbl` that headless targets also link. The modal blocks a thread on a
+    window station nobody watches, with no log line; the `HALT` stops the
+    service and skips cleanup. New *Process and control flow* category.
+
 ## [0.1.10] - 2026-08-12
 
 ### Corrected

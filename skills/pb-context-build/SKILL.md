@@ -40,16 +40,25 @@ to [`pb-scaffold`](../pb-scaffold/SKILL.md).
 All from [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp).
 This skill never replaces a primitive; it sequences them.
 
-| Primitive | Purpose | Needs ORCA session? |
-|---|---|---|
-| `pb_workspace_info(lib_path)` | Project shape, projection directory, source encoding, git root, `outside_source_tree`, `source_protection` | no — and no PB install either |
-| `pb_target_info(path)` | Parse a `.pbt` (or `.pbw`) into liblist + app metadata | no |
-| `pb_library_directory(lib_path, entry_type?)` | List entries in a PBL, optionally filter by type | **yes** |
-| `pb_object_query_hierarchy(lib_path, entry_name, entry_type)` | Inheritance chain (ancestors) of an entry | yes |
-| `pb_object_query_reference(lib_path, entry_name, entry_type)` | **Outgoing** refs of an entry (callees, ancestors used, types declared, windows opened). `ref_type` ∈ {`simple`, `open`} | yes |
-| `pb_library_entry_information(lib_path, entry_name, entry_type)` | Metadata for an entry (timestamps, size, base class, comment) | yes |
-| `pb_library_entry_export(lib_path, entry_name, entry_type)` | Source **body** of one entry, as a string in the response | yes |
-| `pb_library_export_sources(lib_path)` | Every entry in the library written out as `.sr*` files, in one call | yes |
+| Primitive | Purpose | Session | Current app |
+|---|---|---|---|
+| `pb_workspace_info(lib_path)` | Project shape, projection directory, source encoding, git root, `outside_source_tree`, `source_protection` | no — and no PB install either | no |
+| `pb_target_info(path)` | Parse a `.pbt` (or `.pbw`) into liblist + app metadata | no | no |
+| `pb_library_directory(lib_path, entry_type?)` | List entries in a PBL, optionally filter by type | **yes** | no |
+| `pb_object_query_hierarchy(lib_path, entry_name, entry_type)` | Inheritance chain (ancestors) of an entry | yes | **yes** |
+| `pb_object_query_reference(lib_path, entry_name, entry_type)` | **Outgoing** refs of an entry (callees, ancestors used, types declared, windows opened). `ref_type` ∈ {`simple`, `open`} | yes | **yes** |
+| `pb_library_entry_information(lib_path, entry_name, entry_type)` | Metadata for an entry (timestamps, size, base class, comment) | yes | no |
+| `pb_library_entry_export(lib_path, entry_name, entry_type)` | Source **body** of one entry, as a string in the response | yes | no |
+| `pb_library_export_sources(lib_path)` | Every entry in the library written out as `.sr*` files, in one call | yes | no |
+
+**Two prerequisites, not one.** The last column exists because ORCA
+distinguishes them and reports them separately: a session that is open
+with a library list but no current application answers
+`PBORCA_LIBLISTNOTSET (-12)` or `PBORCA_CURRAPPLNOTSET (-13)`, not
+"entry not found". The two query primitives are the ones that need the
+full bring-up; everything else works as soon as the session is up. If a
+`pb_object_query_*` call comes back with `-13`, nothing is wrong with
+your arguments — `pb_set_current_application` has not run yet.
 
 **Direction note.** ORCA's `PBORCA_ObjectQueryReference` returns
 **outgoing** refs of the queried object — what it calls and uses, not
@@ -375,6 +384,18 @@ points on monolithic codebases:
   (~50 K tokens). Track as you go; if you cross it before reaching
   the outgoing-refs expansion, stop and report what you have. The
   target entry and its inheritance chain take precedence.
+
+  **`source_size` is not the size of the export.**
+  `pb_library_entry_information` reports it in UTF-16 code units, so on
+  a UTF-8 workspace — which is what `ws_objects/` projections and ORCA's
+  own `UTF-8` export encoding produce — it is very close to **twice**
+  the bytes the entry actually contributes. Measured on a real library:
+  `source_size: 41076` for an entry `pb_object_export_file` wrote as
+  20 577 bytes. Halve it before adding it to the budget, or the pack
+  looks 2× more expensive than it is and scope gets pruned that did not
+  need pruning. The error is at least conservative — it never lets you
+  blow the cap by surprise — but it is a real distortion at the moment
+  you are deciding what to leave out.
 - **Default expansion depth**: ancestors = 3, outgoing refs = 1. Both
   configurable per invocation.
 - **Caller discovery (opt-in) caps**: max 500 ORCA queries on the
