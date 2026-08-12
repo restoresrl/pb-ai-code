@@ -466,6 +466,47 @@ Write-Host ("Rewrote knowledge-base links in {0} skill file(s)." -f $rewritten) 
 # the version pin: a copy made by hand stays on whatever tag was current the day
 # it was made, and the pin quietly becomes documentation instead of config.
 $mcpServers = Get-McpServerBlock -Path $mcpSourceFile
+
+# --- The Appeon documentation index, configured when this machine can host it ---
+#
+# harness/mcp-servers.json cannot carry this server: it is committed and shared,
+# and this server needs an absolute interpreter path plus a database each
+# developer builds locally. But the file we are about to WRITE is neither -
+# <target>/.mcp.json is generated and gitignored, so it is per-machine by
+# construction and absolute paths belong in it perfectly well.
+#
+# So decide here, on the machine that has the answer. All three parts live in
+# this source checkout, which is where the installer is running from:
+$appeonPython = Join-Path $source '.venv\Scripts\python.exe'
+$appeonDb = Join-Path $source 'docs\appeon-index\index.db'
+$appeonModule = Join-Path $source 'tools\pb-appeon-index\src\pb_appeon_index'
+$appeonNote = $null
+
+if ((Test-Path -LiteralPath $appeonPython) -and
+    (Test-Path -LiteralPath $appeonDb) -and
+    (Test-Path -LiteralPath $appeonModule)) {
+
+    $mcpServers['pb-appeon-index'] = [ordered]@{
+        command = $appeonPython
+        args    = @('-m', 'pb_appeon_index', 'serve-mcp')
+        env     = [ordered]@{ PB_APPEON_INDEX_DB = $appeonDb }
+    }
+    # The database is REFERENCED, never copied. One file serves every project,
+    # so rebuilding the index once - `pb-appeon-index update --version <slug>` -
+    # updates every project already configured, with no re-install.
+    $appeonNote = "pb-appeon-index configured -> $appeonDb"
+}
+else {
+    # Say what is missing and how to get it. A gap with an actionable answer,
+    # rather than a server silently absent that every new session reports as a
+    # mystery.
+    $missing = @()
+    if (-not (Test-Path -LiteralPath $appeonDb)) { $missing += 'the index database' }
+    if (-not (Test-Path -LiteralPath $appeonPython)) { $missing += 'a .venv interpreter' }
+    if (-not (Test-Path -LiteralPath $appeonModule)) { $missing += 'the pb-appeon-index tool' }
+    $appeonNote = "pb-appeon-index NOT configured - missing " + ($missing -join ', ')
+}
+
 $mcpOutcome = $null
 if ($SkipMcpConfig) {
     Write-Host "Skipped MCP config (-SkipMcpConfig). The skills expect the pb_* tools to be reachable." -ForegroundColor Yellow
@@ -493,6 +534,24 @@ else {
     $mcpOutcome = 'printed (location is client-specific)'
 }
 
+# --- The Appeon index, reported either way ---
+if (-not $SkipMcpConfig) {
+    if ($mcpServers.Contains('pb-appeon-index')) {
+        Write-Host ("Appeon index      {0}" -f $appeonDb) -ForegroundColor Green
+        Write-Host "                  referenced, not copied - rebuilding it once updates every project"
+    }
+    else {
+        Write-Host ""
+        Write-Host "Note: $appeonNote" -ForegroundColor Yellow
+        Write-Host "      The PowerScript reference lookups degrade to reading the"
+        Write-Host "      database directly, or to web fetches. To build the index:"
+        Write-Host "        cd $source"
+        Write-Host "        uv venv ; uv pip install -e "".[dev]"""
+        Write-Host "        .venv\Scripts\pb-appeon-index update"
+        Write-Host "      Then re-run this installer and the server is configured."
+    }
+}
+
 # --- Marker file (UTF-8, CRLF, so other tools and git diff it cleanly) ---
 $markerLines = @(
     "# Skills, commands, knowledge base and MCP config installed from pb-ai-code.",
@@ -501,7 +560,8 @@ $markerLines = @(
     "# Installed: $now",
     "# Source:    pb-ai-code @ $sha ($branch)",
     "# Harness:   $Harness",
-    "# MCP:       $mcpOutcome"
+    "# MCP:       $mcpOutcome",
+    "# Appeon:    $appeonNote"
 )
 if ($isDirty) {
     $markerLines += "# WARN: source repo had uncommitted changes at install time."

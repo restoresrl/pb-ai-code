@@ -280,10 +280,10 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    for **comparing**.
 
 4. **Note which reference tools you have.** If the `appeon_*` tools are
-   absent, the Appeon doc index is not configured on this machine (the
-   normal state — see the `appeon-query` skill for why and how to turn
-   it on). You can still review: most findings rest on reading the code,
-   not on the language reference. But a finding whose truth depends on
+   absent, the Appeon doc index has not been built on this machine — see
+   the `appeon-query` skill for the two commands that build it and the
+   re-install that wires it up. You can still review: most findings rest
+   on reading the code, not on the language reference. But a finding whose truth depends on
    a PowerScript semantic you could not verify must say so in its body
    and name the experiment that would settle it. **Do not assert
    language behaviour from memory inside a finding** — a wrong one costs

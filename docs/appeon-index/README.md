@@ -108,14 +108,19 @@ Inputs and outputs:
 
 ## Wiring up the MCP server
 
-This server is **not** in the repository's committed `.mcp.json`, and
-deliberately so: it needs a Python environment and a database that only
-exist once you have built them, so shipping it would hand every fresh
-clone one server that works and one that fails to start. Add it yourself,
-once the index exists.
+**The installer configures this server for you** once the index exists.
+`scripts/install-skills.ps1` runs from this checkout, so it can resolve
+the interpreter and the database to absolute paths and write them into
+the target's `.mcp.json` — a generated, gitignored, per-machine file.
+The committed `harness/mcp-servers.json` cannot carry those paths, which
+is why the entry is not in it and why this was once a manual step.
 
-Point `command` at the interpreter of the virtualenv you installed
-`pb_appeon_index` into, with **absolute** paths:
+So the sequence is: build the index (above), then re-run the installer.
+It prints `pb-appeon-index configured -> <db path>`, or names what is
+missing if you have not built it yet.
+
+The block it writes looks like this — worth reading if you are wiring up
+a client the installer does not know about:
 
 ```jsonc
 {
@@ -137,7 +142,7 @@ Relative paths do work when the client launches servers with the
 repository as their working directory — the server itself falls back to
 `./docs/appeon-index/index.db` on that assumption — but which clients do
 that is not something to rely on. Absolute paths cost nothing and remove
-the question.
+the question, which is why the installer writes them.
 
 Where the block goes depends on the client:
 [`docs/install.md`](../install.md) has the table.

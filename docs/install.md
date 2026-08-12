@@ -291,8 +291,8 @@ and served as four MCP tools. It makes a language lookup cost ~400
 tokens instead of a few thousand. Without it, the `appeon-query` skill
 tells you it is not built rather than guessing.
 
-It takes two steps you have to do yourself, and the paths it needs are
-machine-specific, which is why it is not in `harness/mcp-servers.json`:
+You build it once; the installer wires it up for you. Only the first
+half is yours to do, in this repository:
 
 ```pwsh
 # 1. A Python environment with this repository's tools installed
@@ -303,23 +303,34 @@ uv pip install -e ".[dev]"
 .venv\Scripts\pb-appeon-index update
 ```
 
-Then add a second server entry by hand, pointing at that interpreter. The
-installer only ever writes the keys it owns, so an entry you add here survives
-re-installs. Use an **absolute** path unless you are certain your client
-launches servers with the repository as their working directory:
+Then re-run `scripts\install-skills.ps1` for your project. The installer
+runs *from this checkout*, so it knows the absolute path to that
+interpreter and to the database, and it writes them into the target's
+`.mcp.json` — which is generated per machine and gitignored, and is
+therefore the one place absolute paths belong. `harness/mcp-servers.json`
+is committed and shared, so it could never carry them; that is the whole
+reason this used to be a manual step.
 
-```json
-"pb-appeon-index": {
-  "command": "C:\\path\\to\\pb-ai-code\\.venv\\Scripts\\python.exe",
-  "args": ["-m", "pb_appeon_index", "serve-mcp"],
-  "env": { "PB_APPEON_INDEX_DB": "C:\\path\\to\\pb-ai-code\\docs\\appeon-index\\index.db" }
-}
+The installer says which way it went, on both paths:
+
+```
+Appeon index: pb-appeon-index configured -> C:\...\docs\appeon-index\index.db
 ```
 
-On macOS or Linux the interpreter is `.venv/bin/python` instead.
+or, if you have not built the index yet, it names what is missing and
+gives the two commands above. The same line is recorded in the marker
+file it leaves in the target, so a session that finds the tools absent
+can see why.
 
-The database is never redistributed: each developer builds it locally from
-the live site. Full detail, including the multi-version config, is in
+**The database is referenced, never copied.** Every project points at the
+one file in this checkout, so `pb-appeon-index update` — a new PB release,
+say — reaches every configured project at once, with no re-install.
+Re-run the installer for changed *skills*, not for a changed index.
+
+It is also never redistributed: each developer builds it locally from the
+live site, which is why it cannot simply ship in the repository and why
+the installer has to find it rather than place it. Full detail, including
+the multi-version config, is in
 [`appeon-index/README.md`](appeon-index/README.md).
 
 ## 4. Optional: the `pb-format` formatter

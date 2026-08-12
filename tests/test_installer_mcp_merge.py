@@ -120,7 +120,14 @@ def test_unrelated_servers_do_not_trigger_the_warning(tmp_path: Path) -> None:
     )
 
     merged = json.loads(config.read_text(encoding="utf-8"))["mcpServers"]
-    assert set(merged) == {"some-other-server", "postgres", "pb-orca"}
+
+    # Not an exact-set assertion: the installer also configures
+    # `pb-appeon-index` when this machine has the documentation index built,
+    # and the index is gitignored — so it is present on a developer's box and
+    # absent on CI. Assert what the merge promises instead: the project's own
+    # servers survive, ours is written, and nothing else appears.
+    assert {"some-other-server", "postgres", "pb-orca"} <= set(merged)
+    assert set(merged) - {"some-other-server", "postgres", "pb-orca"} <= {"pb-appeon-index"}
 
 
 def test_malformed_config_is_left_alone(tmp_path: Path) -> None:

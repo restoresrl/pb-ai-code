@@ -78,12 +78,13 @@ switch skills.
 Two different situations, and they need different things said.
 
 **The `appeon_*` tools are not listed at all.** The `pb-appeon-index`
-server is not in this project's MCP configuration. This is the normal
-state: the installer deliberately does not add it, because unlike
-`pb-orca` it needs an absolute path to a Python interpreter and to a
-database that only exists once someone builds it, so shipping it
-everywhere would give every project one server that works and one that
-fails to start.
+server is not in this project's MCP configuration, and there is exactly
+one reason for that: **the index has never been built on this machine.**
+The installer adds the server by itself wherever it finds one — it runs
+from the `pb-ai-code` checkout, so it knows the absolute paths — and
+where it does not find one it says so, in its output and in the marker
+file it leaves in the target. So this is a state with a cause and a
+two-command cure, not a configuration anybody chose.
 
 **The tools are listed but `appeon_search` errors** with something like
 "database not found" — the server is wired up but the index has never
@@ -136,28 +137,32 @@ that answers:
    unverified-semantics` with an `experiment:` naming the concrete test
    that would settle it. That is an honest finding. Asserting it is not.
 
-The full recipe, in the [`pb-ai-code`](https://github.com/restoresrl/pb-ai-code)
-checkout (not part of a vendored install, so quote it rather than
-linking to it):
+**There is one thing to do, and it is not editing an MCP config.** The
+installer wires this server up by itself whenever the machine can host
+it — it runs from the `pb-ai-code` checkout, so it knows the absolute
+paths that a committed, shared config could never carry, and the
+`.mcp.json` it writes is generated and gitignored, which makes it the
+right place for them.
+
+So the server is absent for exactly one reason: **the index has never
+been built on this machine.** In the `pb-ai-code` checkout:
 
 ```pwsh
-uv venv                          # 1. an environment with the tools
+uv venv                                 # an environment with the tools
 uv pip install -e ".[dev]"
-.venv\Scripts\pb-appeon-index update   # 2. scrape and index (idempotent)
+.venv\Scripts\pb-appeon-index update    # scrape and index (idempotent)
 ```
 
-Then add a second server to the project's MCP config, with **absolute**
-paths:
+Then re-run `scripts\install-skills.ps1` for the project, and the four
+`appeon_*` tools appear. The permission file already pre-approves them.
 
-```json
-"pb-appeon-index": {
-  "command": "C:\\path\\to\\pb-ai-code\\.venv\\Scripts\\python.exe",
-  "args": ["-m", "pb_appeon_index", "serve-mcp"],
-  "env": { "PB_APPEON_INDEX_DB": "C:\\path\\to\\pb-ai-code\\docs\\appeon-index\\index.db" }
-}
-```
+**The database is referenced, never copied.** Every project points at the
+one file in the checkout, so rebuilding the index — to add a PB release,
+say, `pb-appeon-index update --version pb2025` after adding it to
+`config.toml` — updates every configured project at once, with no
+re-install. One file, many consumers; a new session picks up the new
+content. Re-running the installer is for changed *skills*, not for a
+changed index.
 
-The Claude Code permission file the installer writes already
-pre-approves the four `appeon_*` tools, so nothing else is needed once
-the server starts. Full detail: `docs/appeon-index/README.md` and
-`docs/install.md` §3 in that repository.
+Full detail: `docs/appeon-index/README.md` and `docs/install.md` §3 in
+that repository.

@@ -13,6 +13,80 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-12
+
+The installer now configures the Appeon doc index by itself. This removes
+the last piece of the kit that a user had to wire up by hand, and with it
+a dichotomy that was confusing on its own terms: one of the two MCP
+servers arrived configured and the other arrived as a paragraph of
+instructions, with nothing in the product explaining why.
+
+### Added
+
+- **`install-skills.ps1` writes the `pb-appeon-index` server entry.** It
+  looks for three things in the checkout it is running from — the `.venv`
+  interpreter, `docs/appeon-index/index.db`, and the `pb_appeon_index`
+  module — and when all three are there it merges a server block into the
+  target's `.mcp.json` with absolute paths and a `PB_APPEON_INDEX_DB`
+  environment variable. The permission file already pre-approved the four
+  `appeon_*` tools, so nothing else changes: the tools simply appear.
+
+  The reason this could not be done before is worth recording, because it
+  looks like an oversight and was not. `harness/mcp-servers.json` is
+  committed and shared between machines, so it can hold `uvx --from
+  git+...` but never `C:\Users\...\.venv\Scripts\python.exe`. What
+  changed is noticing that the *target's* `.mcp.json` is neither
+  committed nor shared — the installer generates it, the consumer
+  gitignores it — and that the installer, running from the checkout, is
+  the one component that knows all three paths. Absolute paths were never
+  the problem; putting them in the wrong file was.
+
+- **The installer says which way it went, on both paths.** With the index
+  present: `Appeon index: pb-appeon-index configured -> <db>`. Without it:
+  the missing pieces named, and the two commands that build it. The same
+  line goes into the marker file in the target, so a later session that
+  finds the tools absent can read why instead of guessing.
+
+  This matters because the failure is silent by nature. A missing server
+  is not an error anywhere — the agent just never sees four tools it was
+  told to use, and the skill's fallback ladder quietly takes over.
+
+### Changed
+
+- **The database is referenced, never copied.** Every project points at
+  the one file in the checkout, so `pb-appeon-index update` — a new PB
+  release, say — reaches every configured project at once with no
+  re-install. Re-running the installer is for changed skills, not for a
+  changed index. Copying per project would have been the obvious
+  implementation and the wrong one: N stale copies instead of one live
+  file, and the update path would have needed a re-install nobody would
+  remember to run.
+
+- **The three places that documented the manual recipe now document the
+  automatic one**: `skills/appeon-query/SKILL.md`, `docs/install.md` §3,
+  and `docs/appeon-index/README.md`. The JSON block survives in the last
+  of these, for anyone wiring up a client the installer does not know
+  about, but it is no longer an instruction.
+
+- **`harness/claude-code/settings.json`'s leading comment** explained why
+  the installer did not configure this server. It now explains that it
+  does, and that the permissions below are inert until the index exists.
+
+- **`skills/pb-review/SKILL.md` pre-flight step 4** described absent
+  `appeon_*` tools as "the normal state". It is now a state with one
+  cause and a two-command cure, which is what a reviewer needs to be told.
+
+### Testing
+
+- `tests/test_installer_mcp_merge.py` asserted the exact set of servers
+  after a merge, and this change broke it — correctly, since the set grew.
+  Rewritten to assert the property instead of the snapshot: the project's
+  own servers survive, ours is written, and the only key that may appear
+  beyond those is `pb-appeon-index`. The exact-set form could not have
+  been kept, because the index is gitignored: present on a developer's
+  machine, absent on CI, so the true set depends on where the test runs.
+
+
 ## [0.3.1] - 2026-08-12
 
 Four gaps in `pb-apply-plan`, found by pointing a hand-written plan file
