@@ -349,8 +349,11 @@ def test_ledger51_the_missing_database_branch_prints_a_recipe(tmp_path: Path) ->
     result = _install(target, env=env)
 
     assert "Note: pb-appeon-index NOT configured - missing the index database" in result.stdout
-    assert "To build the index:" in result.stdout
-    assert f"git clone {REPO_URL}" in result.stdout
+    assert "To build the index" in result.stdout
+    # One command, and no clone: building an index used to require one, which
+    # is why machines that had the tool did not have an index.
+    assert f"uvx --from git+{REPO_URL} pb-appeon-index update --all" in result.stdout
+    assert "git clone" not in result.stdout
     assert "Then re-run this installer and the server is configured." in result.stdout
 
     assert appeon.SERVER_KEY not in _servers(target / ".mcp.json")

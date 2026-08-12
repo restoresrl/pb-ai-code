@@ -223,16 +223,18 @@ def installed_rows(*, commands: bool, settings: bool) -> list[str]:
 
 
 #: The failure branch of the Appeon probe, verbatim (ledger 51). The recipe
-#: clones: `cd <source>` assumed an installer running from a checkout, which
-#: is exactly what this port removed.
+#: is one command: the tool used to resolve its config.toml by walking
+#: up from its own module, which only finds a file inside a checkout, so a
+#: clone was genuinely required to build an index on a machine that already
+#: had the tool. The config ships in the wheel now.
 APPEON_MISSING = [
     "",
     "Note: pb-appeon-index NOT configured - missing the index database",
     "      The PowerScript reference lookups degrade to reading the",
-    "      database directly, or to web fetches. To build the index:",
-    "        git clone https://github.com/restoresrl/pb-ai-code",
-    '        cd pb-ai-code ; uv venv ; uv pip install -e ".[dev]"',
-    "        .venv\\Scripts\\pb-appeon-index update --db %USERPROFILE%\\.pb-appeon-index\\index.db",
+    "      database directly, or to web fetches. To build the index",
+    "      (once per machine - it scrapes docs.appeon.com, so give it",
+    "      a few minutes):",
+    "        uvx --from git+https://github.com/restoresrl/pb-ai-code pb-appeon-index update --all",
     "      Then re-run this installer and the server is configured.",
 ]
 

@@ -13,6 +13,49 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-12
+
+One defect, found by watching a fresh session install the kit and report the
+Appeon index as absent on a machine that has one.
+
+### Fixed
+
+- **Building the index required a clone, on a machine that already had the
+  tool.** `pb-appeon-index` resolved its `config.toml` by walking three
+  directories up from its own module. That lands on a real file inside a
+  checkout and, from a wheel, on `<site-packages>/../config.toml`, which does
+  not exist — so `uvx --from git+... pb-appeon-index update` died with a
+  `FileNotFoundError` naming a path nobody could make sense of. Hence the
+  recipe the installer printed began with `git clone`, and hence v0.5.0 could
+  install the kit from anywhere but could not get it an index.
+
+  `config.toml` now ships in the wheel and is found through
+  `importlib.resources`, with the checkout path as the fallback. The whole
+  recipe is one line:
+
+  ```pwsh
+  uvx --from git+https://github.com/restoresrl/pb-ai-code pb-appeon-index update --all
+  ```
+
+- **The default database path was relative to the working directory.**
+  `docs/appeon-index/index.db` is right inside this checkout and meaningless
+  anywhere else, where it would quietly build a second index next to whatever
+  the user happened to be standing in. It is now
+  `~/.pb-appeon-index/index.db` — what `mcp_server` already fell back to and
+  what the installer looks for, so one database serves every project. A
+  checkout whose index is where it has always been keeps using it: that path
+  still wins when the file exists.
+
+### Note on what this does not fix
+
+A machine with no index still has to build one, and that means scraping
+docs.appeon.com — one command now, but minutes rather than seconds. Shipping
+the database as a release asset is what would make a clean install work
+immediately, and that is a decision about redistributing scraped Appeon
+documentation rather than a technical one. It stays deliberate: the kit builds
+the index locally and does not redistribute it.
+
+
 ## [0.5.0] - 2026-08-12
 
 The kit installs itself, from the project that consumes it. Until now you

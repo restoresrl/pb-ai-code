@@ -518,9 +518,7 @@ APPEON_NOTE_SKIPPED = "not evaluated (--skip-mcp-config)"
 _APPEON_REFERENCED = (
     "                  referenced, not copied - rebuilding it once updates every project"
 )
-_APPEON_RECIPE_VENV = (
-    "        .venv\\Scripts\\pb-appeon-index update --db %USERPROFILE%\\.pb-appeon-index\\index.db"
-)
+_APPEON_RECIPE = f"        uvx --from git+{REPO_URL} pb-appeon-index update --all"
 
 
 def appeon_configured_note(db: str) -> str:
@@ -533,22 +531,30 @@ def appeon_configured(db: str) -> list[Line]:
 
 
 def appeon_missing(note: str) -> list[Line]:
-    """Say what is missing and how to get it.
+    """Say what is missing and how to get it, in one command.
 
-    A missing MCP server is an error nowhere: the failure is silent by
-    nature, so the gap gets an actionable answer instead of a server that
-    every new session reports as a mystery. The recipe clones — the old
-    ``cd <source>`` assumed an installer running from a checkout, which is
-    exactly what this port removed.
+    A missing MCP server is an error nowhere: the failure is silent by nature,
+    so the gap gets an actionable answer instead of a server that every new
+    session reports as a mystery.
+
+    The recipe used to begin with ``git clone``, and that was a real defect
+    rather than clumsy wording. ``pb-appeon-index`` resolved its
+    ``config.toml`` by walking up from its own module, which only lands on a
+    file when there is a checkout; run from a wheel it died with
+    ``FileNotFoundError`` on a path nobody could make sense of. So a clone
+    genuinely was the only way to build an index - on a machine that already
+    had the tool installed. The config now ships in the wheel and the default
+    database is ``~/.pb-appeon-index/index.db``, which is what the installer
+    looks for, so the whole thing is the one line below.
     """
     return [
         BLANK,
         Line(f"Note: {note}", "yellow"),
         Line("      The PowerScript reference lookups degrade to reading the"),
-        Line("      database directly, or to web fetches. To build the index:"),
-        Line(f"        git clone {REPO_URL}"),
-        Line('        cd pb-ai-code ; uv venv ; uv pip install -e ".[dev]"'),
-        Line(_APPEON_RECIPE_VENV),
+        Line("      database directly, or to web fetches. To build the index"),
+        Line("      (once per machine - it scrapes docs.appeon.com, so give it"),
+        Line("      a few minutes):"),
+        Line(_APPEON_RECIPE),
         Line("      Then re-run this installer and the server is configured."),
     ]
 

@@ -93,6 +93,11 @@ packages = [
 "docs/pb-antipatterns"  = "pb_ai_code/_kit/docs/pb-antipatterns"
 "docs/pb-source-format" = "pb_ai_code/_kit/docs/pb-source-format"
 "docs/wiki-notes.md"    = "pb_ai_code/_kit/docs/wiki-notes.md"
+# Not kit payload: pb-appeon-index needs its own config.toml at runtime, and
+# without it `uvx --from git+... pb-appeon-index update` dies on a path that
+# only exists in a checkout - which is why building an index used to require
+# `git clone`.
+"tools/pb-appeon-index/config.toml" = "pb_appeon_index/config.toml"
 
 [tool.hatch.build.targets.sdist]
 include = [
