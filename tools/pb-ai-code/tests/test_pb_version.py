@@ -218,6 +218,51 @@ def test_the_written_file_states_what_was_read_off_the_disk(tmp_path: Path) -> N
     assert "Not under version control" in written
 
 
+def test_the_hazard_is_stated_with_the_half_the_kit_already_covers(tmp_path: Path) -> None:
+    """Naming the risk without naming the mitigation produces a wrong conclusion.
+
+    It produced one twice. An agent read "a change cannot be undone" next to
+    a `pbl_only` workspace and told the user an import here is
+    unrecoverable, recommending a manual copy of the `.pbl` - while
+    `pb-apply-plan`, installed in the same directory, snapshots the library
+    before every fix and restores it byte for byte when the import fails.
+
+    So the file says both halves: a failed import is already covered, and a
+    successful change that later proves wrong is the risk that a copy or a
+    `git init` actually buys protection against.
+    """
+    target = tmp_path / "target"
+    target.mkdir()
+    assert run_install(target, "--pb-version", "22.0").returncode == 0
+
+    written = (target / "AGENTS.md").read_text(encoding="utf-8")
+    assert "pb-apply-plan" in written
+    assert "No manual copy is needed" in written
+    # The two halves, each identified as such.
+    assert "**failed** import" in written
+    assert "**successful** change" in written
+    # And the case neither protects.
+    assert "by a tool other than the apply loop" in written
+
+
+def test_a_workspace_with_both_projection_and_git_is_not_lectured(tmp_path: Path) -> None:
+    """The passage is about a hazard; where there is none it does not appear.
+
+    A project with a text projection under version control has a diff to
+    read and a history to return to, so the paragraph would be noise - and
+    noise in an instruction file is read as instruction.
+    """
+    target = tmp_path / "target"
+    (target / "ws_objects").mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(target)], check=True, capture_output=True)
+
+    assert run_install(target, "--pb-version", "22.0").returncode == 0
+
+    written = (target / "AGENTS.md").read_text(encoding="utf-8")
+    assert "text projection" in written
+    assert "**failed** import" not in written
+
+
 def test_the_kits_own_agents_md_is_never_the_one_installed(tmp_path: Path) -> None:
     """This repository has an AGENTS.md; it is about working on the kit.
 

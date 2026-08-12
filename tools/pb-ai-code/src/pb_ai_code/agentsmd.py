@@ -118,14 +118,31 @@ def _lines(facts: WorkspaceFacts) -> list[str]:
         )
     else:
         out.append(
-            "- **No text projection.** The `.pbl` is the only artefact: sources are "
-            "not diffable and an import cannot be reviewed after the fact."
+            "- **No text projection.** The `.pbl` is the only artefact, so a change "
+            "cannot be read as a diff after it lands."
         )
     if not facts.is_git:
-        out.append(
-            "- **Not under version control.** Nothing here has history, so a change "
-            "that damages a library cannot be undone from the repository."
-        )
+        out.append("- **Not under version control.** Nothing here has history.")
+
+    if not (facts.has_projection and facts.is_git):
+        # Said in full, because half of it read on its own produces the
+        # wrong conclusion - and did: an agent told the user an import here
+        # was unrecoverable and to take a manual copy, while the apply loop
+        # sitting in the same install already takes one.
+        out += [
+            "",
+            "  What that does and does not mean, because the two halves get confused:",
+            "",
+            "  - A **failed** import is not a hazard here. `pb-apply-plan` snapshots the",
+            "    `.pbl` before each fix and restores it byte for byte if the import or the",
+            "    compile fails, so the library has either advanced by exactly that fix or is",
+            "    identical to what it was. No manual copy is needed for that.",
+            "  - A **successful** change that later turns out to be wrong is the real risk:",
+            "    there is no history to go back to and no diff to read. That is what a copy,",
+            "    or `git init`, actually buys.",
+            "  - Anything written by hand, or by a tool other than the apply loop, has",
+            "    neither protection.",
+        ]
     out.append("")
     return out
 

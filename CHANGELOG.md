@@ -13,6 +13,48 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-08-13
+
+One correction, and the finding came from a text this release wrote.
+
+### Corrected
+
+- **The generated `AGENTS.md` named a hazard and hid its mitigation.** On a
+  workspace with no projection and no git it said *"a change that damages a
+  library cannot be undone from the repository"* — true to the letter, and
+  read by an agent as *an import here is unrecoverable*, which it then relayed
+  to the user with a recommendation to copy the `.pbl` by hand. The copy it
+  recommended is one `pb-apply-plan` already takes, before every fix, in the
+  bundle installed in the same directory.
+
+  It is the second time an agent has reached that conclusion on this workspace
+  shape. The first time it deduced it; this time it was told.
+
+  The block now says both halves, because half of it read alone produces the
+  wrong answer:
+
+  - a **failed** import is already covered — the `.pbl` is snapshotted before
+    each fix and restored byte for byte, so it has either advanced by exactly
+    that fix or is identical to what it was;
+  - a **successful** change that later proves wrong is the residual risk,
+    untouched by any of that: nothing to diff, nothing to return to. That is
+    what a copy or a `git init` actually buys;
+  - anything written by hand, or by a tool other than the apply loop, has
+    neither protection.
+
+  It appears only where the hazard is real. A project with a projection under
+  version control does not get the paragraph — noise in an instruction file is
+  read as instruction.
+
+- **`pb-review` had the same gap and did not know it.** The pre-flight records
+  `mode=pbl_only` in the plan header and everything it says about
+  `source_protection` and line endings assumes a repository, so a review of a
+  workspace with neither had no guidance and could reach the same wrong
+  conclusion. It now states the two halves in the same terms, and says to
+  record the shape in the plan header either way: a reader months later needs
+  to know the review was written against a workspace with no history.
+
+
 ## [0.6.0] - 2026-08-13
 
 The installer asks which PowerBuilder version the project uses, and writes the

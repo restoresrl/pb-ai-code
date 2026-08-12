@@ -94,6 +94,29 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    overwritten at the next update of that dependency. Either keep it
    out of scope or say plainly that the finding belongs upstream.
 
+   **`pbl_only` with no git is a real condition, and it is not the one
+   people conclude.** Everything below about `source_protection` and line
+   endings assumes a repository; with neither a projection nor version
+   control there is no diff to read and no history to return to, and the
+   obvious conclusion — *an import here is unrecoverable, take a manual
+   copy first* — is wrong in a way that matters, because it has been
+   reached twice by agents reading this workspace shape. Say it in halves:
+
+   - A **failed** import is already covered. `pb-apply-plan` snapshots the
+     `.pbl` before each fix and restores it byte for byte when the import
+     or the compile fails, so the library has either advanced by exactly
+     that fix or is identical to what it was. Recommending a manual copy
+     for that case tells the user the kit does not do the one thing it
+     most carefully does.
+   - A **successful** change that later proves wrong is the residual risk,
+     and it is untouched by any of that: nothing to diff, nothing to
+     revert to. That is the thing worth naming in the report, and the
+     thing a copy or a `git init` actually buys.
+
+   Record the shape in the plan header either way; a reader months later
+   needs to know the review was written against a workspace with no
+   history.
+
    **When the *target itself* is vendored, the whole review is an
    upstream review, and that changes where its output goes.** This is a
    legitimate thing to ask for — reviewing a shared framework from the
