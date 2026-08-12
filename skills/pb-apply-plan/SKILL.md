@@ -47,7 +47,7 @@ scheduled run — the defaults are:
 | Each fix | confirm the diff | apply `evidence: code-read` **and `verified-in-docs`**. Set `unverified-semantics` and `requires_discussion` to `deferred` with a reason — not `skipped`, or they can never come back |
 | Branch | the user's call, asked at Step 3 | read the convention from the repository: several branches or a merge history means cut `pb-review/<context-slug>-<date>`; a single branch with linear history means the project commits to it directly, so use it. **When there is no signal either way, cut the branch** — an unwanted branch is deleted in one command, an unwanted commit on the default branch is not. Say which you chose and why |
 | Fix targets an `outside_source_tree` library | ask: skip, or take it upstream | **skip that fix**, record the reason, carry on with the queue. Unlike `source_protection` this is not fatal to the run — it disqualifies one finding, not all of them |
-| A compile error | show, decide, retry | revert it from the snapshot, mark it `failed`, and **stop only the fixes that depend on it** — the independent remainder of the queue is unaffected and should run. Report at the end |
+| A compile error | show, decide, retry | restore the file from the snapshot **and re-import it** — copying the file back is only half a revert, since the failed import already wrote the broken source into the `.pbl` — then mark it `failed` and **stop only the fixes that depend on it**. The independent remainder of the queue is unaffected and should run. Report at the end |
 | Two compile errors in one run | show, decide, retry | **stop the whole queue.** One failure is a bad patch; two is a bad assumption about the workspace, and continuing tests that assumption on more of the library |
 | Dependency cycle | ask which edge to cut | do not guess. Stop and report |
 | CHANGELOG promotion | offer | never. Leave `[Unreleased]` |
@@ -507,8 +507,36 @@ refusing). Only then look at `success`:
   Read the leading `Library:` / `Object:` / `Function:` items as the
   location and say so, rather than listing them as failures.
 
-  Then revert from the snapshot, mark it `failed`, and continue with the
-  fixes that do not depend on it — see the unattended table.
+  Then **restore the file from the snapshot _and re-import it_**, mark
+  the fix `failed`, and continue with the fixes that do not depend on it
+  — see the unattended table.
+
+  **Copying the snapshot back is only half a revert, and the half it
+  leaves out is the one that matters.** A failed import still wrote the
+  rejected source into the `.pbl` (see below). Restore only the file and
+  you get:
+
+  - the projection holding the good source,
+  - the `.pbl` holding the object that does not compile,
+  - and `git status` showing both as modified, with no hint that they
+    now disagree.
+
+  That is the exact drift this whole flow exists to prevent, produced on
+  the failure path, where nobody is looking for it. Measured: after a
+  file-only restore, exporting the entry returned the broken source
+  while the text on disk read correctly.
+
+  So the revert is two steps, and the second is not optional:
+
+  ```
+  copy <snapshot> over the projection file
+  pb_object_import_file(lib_path, <that file>)      # must come back success: true
+  ```
+
+  If that re-import **also** fails, stop the queue and say so plainly:
+  the known-good source no longer compiles, which means something else
+  in the workspace moved underneath you, and no further fix in this run
+  can be trusted.
 
 **What a failed compile leaves behind**, measured rather than assumed:
 
