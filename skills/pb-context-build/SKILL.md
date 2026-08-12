@@ -138,9 +138,22 @@ directory is the primitive that returns the whole file.
 whole library to disk in one call — reach for it when you want to
 **grep** across a library rather than read it (every caller of a
 name, every `Dynamic Call`, every use of a literal), and when the
-library is large enough that per-entry calls would dominate. Bear in
-mind it materializes files: on a `pbl_only` project it *creates* a
-source projection that did not exist, which changes the shape of the
+library is large enough that per-entry calls would dominate.
+
+**Do not read its response.** It returns one record per entry, each
+carrying the full absolute path, so the reply grows with the library
+and none of it is content. Measured: 21 entries came back as ~5.5 KB of
+JSON, about 262 bytes an entry. Extrapolated to the libraries you would
+actually reach for it on, that is ~25 KB for a 96-entry library and
+**~84 KB for a 327-entry one** — over half the whole source budget,
+spent on repeated paths. The primitive you reached for to save context
+costs more of it than the entries you were avoiding. Take `count`,
+`skipped` and `failed` from the response, take the `dest_dir` you
+already passed, and go to the files.
+
+Bear in mind it materializes files: on a `pbl_only` project it
+*creates* a source projection that did not exist, which changes the
+shape of the
 repository. Say so before running it there.
 
 ## Step 0 — Ask the workspace what it is
