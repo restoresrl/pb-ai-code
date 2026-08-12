@@ -124,6 +124,20 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    case and needs none of this: keep the CHANGELOG entry, and list only
    the local findings in it.
 
+   **A `.pbd` in the library list is a third case, and it looks like a
+   bug when you meet it.** Compiled libraries enumerate but carry no
+   source: `pb_library_directory` lists their entries happily, and
+   every `pb_library_entry_export` or `pb_library_entry_information`
+   on those same names answers `PBORCA_OBJNOTFOUND (-3)`, *"was not
+   found"*. The name is right and the library is right — the source
+   simply is not there. See
+   [`pb-context-build`](../pb-context-build/SKILL.md) for the detail.
+   In the report, list such references under `## Skipped` as
+   unreadable-by-construction rather than silently dropping them: an
+   outgoing ref into a `.pbd` is a real dependency, and the fact that
+   this review could not read it is exactly the kind of gap
+   `## Skipped` exists to make visible.
+
    **Also read `source_protection`.** `unprotected` means git rewrites
    the `.sr*` line endings, so the index and the working tree differ by
    exactly the bytes ORCA writes — an applied fix can leave

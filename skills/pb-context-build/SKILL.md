@@ -94,6 +94,36 @@ So treat `-14` and `-15` as **empty, not broken**. Record "no ancestors"
 or "no outgoing refs" in the pack and move on. Do not report them to the
 user as errors, do not retry them, and do not let them abort the walk.
 
+**`.pbd` libraries are enumerable but not readable, and the error for
+that says the opposite.** A target's `LibList` routinely contains
+compiled `.pbd` libraries alongside `.pbl` ones — a vendored component,
+a shared library shipped without source. `pb_library_directory` works
+on them and returns a full listing: names, types, sizes, timestamps.
+Every per-entry call on those same names then fails:
+
+| call | on a `.pbd` |
+| --- | --- |
+| `pb_library_directory` | **works** — full entry list |
+| `pb_library_entry_export` | `PBORCA_OBJNOTFOUND (-3)` |
+| `pb_library_entry_information` | `PBORCA_OBJNOTFOUND (-3)` |
+
+Measured on a translation library whose `.pbd` listed 24 entries: the
+directory named `gettext` and `n_gettext`, and exporting either
+answered *"'gettext' was not found"*.
+
+The wording is the trap. "Was not found" reads as a misspelled name or
+the wrong library, and the honest reaction — check the spelling, then
+look in the other libraries — is wasted work, because the name is
+right and the library is right. What is missing is the *source*: a
+`.pbd` is compiled output and carries none.
+
+So: **before exporting an entry, look at the extension of the library
+it lives in.** When a ref resolves into a `.pbd`, do not try to read
+it and do not treat it as a stale reference. Record it in the pack as
+present-but-unreadable, with the library that owns it, and say so —
+the source lives in whatever project builds that `.pbd`, which is the
+same conversation as a vendored `outside_source_tree` library.
+
 **Which read primitive to use.** `pb_library_entry_export` puts the
 body straight into your context and is the right default for the
 handful of entries in a pack — with one thing to know: it returns the
