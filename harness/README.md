@@ -7,16 +7,28 @@ same way it does for `skills/` and `commands/`.
 
 | File | Materialized as | Scope |
 | --- | --- | --- |
-| `mcp-servers.json` | `<target>/.mcp.json` (`-Harness claude-code`) | every MCP client — the block is identical, only its location differs |
+| `mcp-servers.json` | `<target>/.mcp.json` (`--harness claude-code`) | Claude Code and Cursor take this JSON as written; other clients need it translated — see below |
 | `claude-code/settings.json` | `<target>/.claude/settings.json` | Claude Code only |
 
-`mcp-servers.json` sits at the top level, not under `claude-code/`, because
-the `mcpServers` block is the same JSON for Cursor, Codex CLI, Copilot and
-the rest. A per-harness copy would be the same content in several files,
-which is the drift this layout exists to avoid. What differs per harness is
-the destination path, and that is the installer's job. For a harness whose
-path we do not know, `-Harness generic` prints the block instead of guessing
-where to put it.
+`mcp-servers.json` sits at the top level, not under `claude-code/`, because it
+is the one *statement of fact* — which server, launched how, with which
+arguments — and that does not change per client. A per-harness copy would be
+the same content in several files, which is the drift this layout exists to
+avoid.
+
+What changes per client is both the destination path **and the syntax**. This
+file used to claim the block was identical everywhere; it is not, and the
+claim was the kind that makes someone paste JSON into a file that cannot read
+it. Claude Code and Cursor take this object as written. Codex CLI wants TOML,
+`[mcp_servers.<name>]`. OpenCode fuses command and arguments into one array
+and calls the environment key `environment`. Continue is YAML with a `name`
+field inside the entry. Aider has no MCP at all.
+
+Translating is the installer's job, per harness — and only the Claude Code
+translation is written and verified today. For anything else, `--harness
+generic` prints the block and says it is yours to place, because guessing both
+a path and a dialect for a client nobody has tested would look like it
+worked.
 
 ## Why the installer writes the MCP config at all
 

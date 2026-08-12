@@ -4,7 +4,22 @@
     configuration into the places an AI coding assistant actually reads.
 
 .DESCRIPTION
-    The canonical copies live in this repository, in agent-neutral locations:
+    DEPRECATED as of v0.5.0, and kept for one release so an existing consumer
+    is not stranded mid-upgrade. The supported installer is the CLI, run from
+    inside the project being installed into and needing no clone of this
+    repository at all:
+
+        uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install
+
+    That is not a repackaging of this script - it inverts its direction. This
+    one runs *from* a checkout and points at a target, which is why every
+    consumer needed a clone on the machine and a path to it. The CLI is
+    fetched, runs in the current directory, and reports the same things in the
+    same words. It will be deleted in the release after this one.
+
+    The rest of this description is how this script works, for as long as it
+    is here. The canonical copies live in this repository, in agent-neutral
+    locations:
 
         skills/<name>/SKILL.md      Agent Skills (agentskills.io) format
         commands/<name>.md          slash-command wrappers
@@ -23,9 +38,10 @@
       * on a consumer project - a PowerBuilder workspace - as a vendored
         snapshot, matching the drop-in convention PB projects already use.
 
-    Installing into a consumer also copies the two documentation trees the
-    skills link to, because a review skill whose antipattern catalog is
-    missing cannot do its job. They land beside the skills, as
+    Installing copies the two documentation trees the skills link to, because
+    a review skill whose antipattern catalog is missing cannot do its job.
+    "Into a consumer", this used to say - but a self-install copies them too,
+    and always has. They land beside the skills, as
     `pb-ai-code-docs/`, and the links inside the installed skills are
     rewritten to point at them. They deliberately do NOT land in the
     consumer's own `docs/`, which belongs to the host project.
@@ -113,8 +129,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Documentation trees the skills link to. Vendored into a consumer so the
-# bundle is self-contained; not copied on a self-install, where the repository's
-# own docs/ already sits where the links point.
+# bundle is self-contained - and copied on a self-install too, which this
+# comment used to deny. The code has always copied them unconditionally, commit
+# e04a11d recanted the claim in its message, and docs/install.md describes the
+# copying. A reader who believed the comment would port a behaviour that never
+# existed, so it is corrected here rather than left as a curiosity.
 $docTrees = @('pb-antipatterns', 'pb-source-format')
 
 # Loose documentation files the skills link to, copied alongside the trees.

@@ -21,10 +21,8 @@ PowerBuilder **IDE** install; everything else is below. The rest of this page
 is why each step exists and what to do when one fails.
 
 ```pwsh
-# 0. Once per machine: uv, and git credentials for the private repositories.
+# 0. Once per machine: uv.
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-git ls-remote https://github.com/restoresrl/pb-orca-mcp    # priming git auth;
-                                                           # writes nothing
 
 # 1. Is PowerBuilder reachable? No assistant involved yet.
 uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.8 --python 3.12-x86 `
@@ -34,19 +32,22 @@ uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.8 --python 3.12-x8
 uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.8 --python 3.12-x86 `
     pb-orca-mcp check C:\your\project\workspace.pbw --pb-version 22.0
 
-# 3. Install the skills AND the MCP config into your PowerBuilder project.
-git clone https://github.com/restoresrl/pb-ai-code
-cd pb-ai-code
-.\scripts\install-skills.ps1 -Target C:\your\project
+# 3. From the root of your project: install the skills AND the MCP config.
+cd C:\your\project
+uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install
+
+# 4. What landed?
+uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code status
 ```
 
 Steps 1 and 2 must print `Doctor OK` and `Check OK`. **If they do not, stop
 there** — nothing downstream can work around a PowerBuilder that is not
 reachable, and both commands tell you what is wrong.
 
-There is no fourth step. The installer writes the `pb-orca` server entry into
+There is no fifth step. The installer writes the `pb-orca` server entry into
 your project's `.mcp.json`, so you do not create it by hand; any other MCP
-servers already in that file are left alone.
+servers already in that file are left alone. Step 4 is optional and reads only
+the marker the install left behind.
 
 Open your assistant **with your PowerBuilder project as the working
 directory** — not this repository — confirm the `pb_*` tools are listed (in
@@ -56,15 +57,18 @@ in your own words, naming an object, a `.pbl` or a `.pbt`.
 From then on you work in your own project. You come back here only to re-run
 the installer when the kit has changed.
 
-Four things that trip people up, each covered in detail below. Step 0 needs a
+Three things that trip people up, each covered in detail below. Step 0 needs a
 new shell afterwards, because the installer puts `uv` on `PATH` and the current
-session will not see it. These repositories are **private**, so step 1 fails
-with a git authentication error until access has been granted — that is what
-the `ls-remote` in step 0 is for, and if *it* is refused, ask for access rather
-than debugging anything else. `--python 3.12-x86` is **not
-optional**, because PowerBuilder's ORCA DLL is 32-bit and `ctypes` cannot load
-it from a 64-bit interpreter. And `--pb-version` is only needed when several
-PowerBuilder versions are installed, which `check` will tell you.
+session will not see it. `--python 3.12-x86` is **not optional**, because
+PowerBuilder's ORCA DLL is 32-bit and `ctypes` cannot load it from a 64-bit
+interpreter. And `--pb-version` is only needed when several PowerBuilder
+versions are installed, which `check` will tell you.
+
+Note what step 3 does *not* need: a clone of `pb-ai-code`, a path to one, or
+PowerShell. `uv` fetches the repository and runs the CLI, which writes into the
+directory you are standing in. That is also what lets you hand the whole job to
+your assistant — see the agent checklist at the top of the
+[README](../README.md#agents-setting-this-up-in-a-powerbuilder-project).
 
 ## Requirements
 
@@ -146,12 +150,23 @@ Where the installer puts it:
 | --- | --- |
 | Claude Code | `.mcp.json` at the project root — written by `-Harness claude-code`. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you; then use `-SkipMcpConfig`. |
 | Cursor | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user) |
-| Codex CLI, Gemini CLI, Copilot, others | that client's MCP config file — the JSON shape is the same |
+| Codex CLI, Gemini CLI, Copilot, others | that client's MCP config file, in that client's own shape — **not** the same JSON; see below |
 
 Only Claude Code's location is written automatically, because it is the one
-whose on-disk contract this repository has actually verified. `-Harness
+whose on-disk contract this repository has actually verified. `--harness
 generic` prints the block and tells you it is yours to place: inventing a path
 for a client we have not tested would look like it worked.
+
+**And it is not only the location that differs.** This page used to say the
+JSON shape was the same everywhere; that is wrong, and the correction is worth
+stating because it is what would send you pasting a block into a file that
+cannot read it. Claude Code and Cursor take the `mcpServers` object as written.
+Codex CLI wants TOML, `[mcp_servers.<name>]`. OpenCode fuses command and
+arguments into a single array and spells the environment key `environment`
+rather than `env`. Continue is YAML and carries a `name` field inside the
+entry. Aider has no MCP support at all. So take the printed block as the
+*content* — which server, which command, which arguments — and translate it
+into your client's own form.
 
 Servers already in the target file are preserved — only the `pb-orca` key is
 written. If one of them turns out to be another copy of `pb-orca-mcp` under a
@@ -311,16 +326,17 @@ therefore the one place absolute paths belong. `harness/mcp-servers.json`
 is committed and shared, so it could never carry them; that is the whole
 reason this used to be a manual step.
 
-The installer says which way it went, on both paths:
+The installer says which way it went, on both paths. On stdout:
 
-```
-Appeon index: pb-appeon-index configured -> C:\...\docs\appeon-index\index.db
+```text
+Appeon index      C:\...\docs\appeon-index\index.db
+                  referenced, not copied - rebuilding it once updates every project
 ```
 
-or, if you have not built the index yet, it names what is missing and
-gives the two commands above. The same line is recorded in the marker
-file it leaves in the target, so a session that finds the tools absent
-can see why.
+or, if you have not built the index yet, it names what is missing and gives
+the commands above. The marker file records the same decision in its own
+words - `# Appeon:    pb-appeon-index configured -> <db>` - so a session that
+finds the tools absent can read why without re-running anything.
 
 **The database is referenced, never copied.** Every project points at the
 one file in this checkout, so `pb-appeon-index update` — a new PB release,

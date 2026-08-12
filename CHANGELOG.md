@@ -13,6 +13,134 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-12
+
+The kit installs itself, from the project that consumes it. Until now you
+cloned this repository and ran a PowerShell script that pointed at a target;
+now you stand in your PowerBuilder project and run one command that needs no
+clone at all:
+
+```pwsh
+uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install
+```
+
+That inverts the direction of the whole thing, which is the point. The goal it
+serves: a user opens their repository with an agentic editor, gives the agent
+this URL, and the agent reads the instructions here and sets everything up. An
+agent cannot follow instructions it cannot read, so **the three repositories
+are now public** — there is no customer code in any of them.
+
+### Added
+
+- **`pb-ai-code`, a Python CLI, with `install` and `status`.** It ships in the
+  wheel, so `uv` fetches it, builds it and runs it; it writes into the current
+  directory. `status` reads the marker back with no network and answers in
+  prose or, with `--json`, in a form an agent can check.
+
+- **The kit travels inside the wheel.** This is the change that makes the rest
+  possible, and it was not obvious: `[tool.hatch.build.targets.wheel]` packaged
+  only the two Python tools, so a wheel built from a clean checkout carried 18
+  files and **not one** that the installer needs — an installer with nothing to
+  install. Six `force-include` mappings fix it, and there is a trap inside the
+  fix: `force-include` ignores `.gitignore` **and** ignores `exclude`, both
+  verified, so mapping the `docs` root would drag the 4.5 MB Appeon index into
+  the wheel from any machine that had built one. The six paths are named one by
+  one for that reason, and a test asserts the payload is set-equal to
+  `git ls-files` over them, with no `*.db` anywhere.
+
+- **A README section written for a machine.** Prerequisites with the command
+  that checks each one, how to pick a layout, the command, a mechanical
+  verification, what to say about restarting, and a branch for each way it
+  fails. `AGENTS.md` points at it, since that is the file most harnesses read
+  first.
+
+- **The version comes from the tag**, via `hatch-vcs`. `pyproject.toml` said
+  `0.1.10` while the tag was `v0.4.0` — invisible until the day the CLI stamps
+  a marker from it, which is this day. Verified end to end: on a tag the
+  distribution reports the release; one commit past, `0.5.1.dev1+g<sha>`, a
+  build that says out loud it is not a release. CI needs `fetch-depth: 0` for
+  it, because a shallow clone silently produces `0.1.dev1+g<sha>` with nothing
+  but a `UserWarning`.
+
+### Changed
+
+- **`scripts/install-skills.ps1` is deprecated** and kept for one release so
+  nobody is stranded mid-upgrade. Its description now says so, and two comments
+  that had been contradicted by its own code — and by a commit message that
+  recanted them — are corrected rather than carried into the port.
+
+- **The MCP block is not the same JSON for every client**, and three documents
+  in this repository said it was. Codex CLI wants TOML,
+  `[mcp_servers.<name>]`; OpenCode fuses command and arguments into one array
+  and spells the environment key `environment`; Continue is YAML with a `name`
+  inside the entry; Aider has no MCP at all. Only Cursor shares Claude Code's
+  shape. Corrected in `harness/README.md` and `docs/install.md`, because that
+  sentence is exactly what makes someone paste a block into a file that cannot
+  read it.
+
+- **`docs/install.md` advertised a line the installer does not print.** The
+  `pb-appeon-index configured -> <db>` sentence is the *marker's* value; stdout
+  says `Appeon index      <db>` and a second line. Both are documented now, as
+  what they are.
+
+- **The marker's update recipe names the harness.** The old one named
+  `-Target` and `-Harness`; a port that dropped the flags would tell a
+  `generic` consumer to install a different layout on top of their own.
+
+- The two planning documents are in English, as `AGENTS.md` requires of
+  documentation.
+
+### Verified rather than assumed
+
+The port was checked by running both installers against identically seeded
+targets — an existing `.mcp.json` with a third-party server, a differently
+cased duplicate ORCA key, a `settings.json` that differs — and diffing
+everything: the file set, the contents, the merged servers, stdout. For
+`claude-code` they agree. Under `generic` there is exactly one difference and
+it is deliberate: the marker moves out of the skills directory into the bundle
+root, which is what two documents already described.
+
+Along the way, two premises that were being taken on faith were measured.
+`uv` **does** write PEP 610 `direct_url.json` for a VCS install — from a bare
+URL with `commit_id` and no `requested_revision`, from a tag with the revision
+verbatim — which is what the marker's `# Source:` line and its update recipe
+rest on. And `git+file://` is not a substitute for testing the real URL: it
+makes `uv` panic with `AmbiguousAuthority`.
+
+### Fixed
+
+Nineteen findings came out of an adversarial pass over the port. The four that
+were losses:
+
+- **A UTF-16LE `.mcp.json` was rejected.** PowerShell's `Get-Content -Raw`
+  decoded it and rewrote the file as UTF-8; the port saw NULs, failed the
+  strict parse and refused a perfectly good file. UTF-16LE is what `>` and
+  `Out-File` produce in Windows PowerShell 5.1, which is the shell these shops
+  still have.
+- **A blank `--commands-dir` half-installed the target**, dying in the middle
+  of the copy with an unhandled `FileNotFoundError` — the exact state the
+  validate-everything-first rule exists to prevent. The whole family is closed
+  now: a path component that is blank or whitespace-padded is refused, in one
+  place, before anything is written. Worth recording why: a trailing space does
+  not crash the PowerShell script, it exits 0 and creates *two* directories,
+  one of them named with a trailing space that most Windows tooling cannot
+  open. Silent corruption, not an error.
+- **A `--skills-dir` not named `skills`** produced a bundle whose cross-links
+  were dead: 13 links in 6 files spell that segment out. (The verification
+  first said 59; the count was checked before it went into a permanent comment,
+  and 59 is the number of *sibling* links between skills, which are unaffected.)
+- **The coordinated document change was missing.** The marker's `# Source:`
+  value is no longer a bare sha, and two documents told an agent to read it as
+  one.
+
+And one that killed the report mid-flight: **any character the console codepage
+cannot encode.** On Windows a redirected stdout is opened with the ANSI
+codepage and `errors='strict'`, so one accented character in a path truncated
+the report with a traceback and left the target without a marker. PowerShell
+was lossy but alive. It is lossy but alive again — and it fired on this machine
+while the findings were being read, which is how it was caught.
+
+
 ## [0.4.0] - 2026-08-12
 
 The installer now configures the Appeon doc index by itself. This removes

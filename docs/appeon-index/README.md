@@ -116,8 +116,9 @@ The committed `harness/mcp-servers.json` cannot carry those paths, which
 is why the entry is not in it and why this was once a manual step.
 
 So the sequence is: build the index (above), then re-run the installer.
-It prints `pb-appeon-index configured -> <db path>`, or names what is
-missing if you have not built it yet.
+It prints `Appeon index      <db path>` and records the decision in the
+marker as `# Appeon:    pb-appeon-index configured -> <db path>`, or names
+what is missing if you have not built it yet.
 
 The block it writes looks like this — worth reading if you are wiring up
 a client the installer does not know about:

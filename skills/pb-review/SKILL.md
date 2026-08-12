@@ -718,7 +718,7 @@ summary table at the top.
 - **library**: <absolute path of the .pbl holding the target>
 - **resolved target**: <the .pbt whose LibList contains it> — applib=<…>, liblist=<…>
 - **generated**: <YYYY-MM-DD HH:MM>
-- **source skill**: pb-review @ <pb-ai-code git sha — see below>
+- **source skill**: pb-review @ <pb-ai-code version — see below>
 - **version bump proposed**: <in the project's own scheme — see Step 3>
 
 ## Understanding
@@ -767,10 +767,10 @@ fields are not decoration: they are what makes it collectable.
 - **page**: `pb-source-format/userobject.md` | `pb-antipatterns/<slug>.md`
 - **section**: `Variants observed` | `Canonical form` | `Open questions`
   | `new page`
-- **observed-against**: `pb-ai-code @ <sha>` — from the installer's
+- **observed-against**: `pb-ai-code @ <version>` — from the installer's
   marker file, `_installed-from-pb-ai-code.txt`, inside whatever
   directory this harness installed into (`.claude/`, `.agent/`, …), the
-  `# Source:` line
+  `# Version:` line
 - **evidence**: `compiled clean` (and how — the tool call and its
   result) | `observed only`
 - **repro**: the smallest snippet that shows it
@@ -781,12 +781,14 @@ fields are not decoration: they are what makes it collectable.
 
 Two fields carry the weight. **`observed-against`** says which version of
 the wiki this was new *against*, so whoever collects it can tell a
-discovery from something already documented since. **`evidence`** is the
-gate: `compiled clean` means the entry went through
-`pb_object_import_file` with `errors: []`, so the claim is a fact about
-PowerBuilder rather than an impression. A note marked `observed only`
-is still worth writing — it just does not get applied without someone
-reproducing it.
+discovery from something already documented since. A marker written by
+the old PowerShell installer carries no `# Version:` line; there, the
+token after `pb-ai-code @` on the `# Source:` line is a short commit sha,
+and that is the answer. **`evidence`** is the gate: `compiled clean`
+means the entry went through `pb_object_import_file` with `errors: []`,
+so the claim is a fact about PowerBuilder rather than an impression. A
+note marked `observed only` is still worth writing — it just does not get
+applied without someone reproducing it.
 
 If the discovery arrives during the apply loop rather than the review —
 which is usual, since that is where things compile — write it into the
@@ -810,12 +812,15 @@ is a realistic collision. `pb-apply-plan` needs the absolute path, and
 it needs to know which target's library list this review assumed.
 
 The **source skill** line is the reproducibility record: which version of
-the kit produced this plan. Read the sha from the marker the installer
-leaves next to the skills — `_installed-from-pb-ai-code.txt`, the
-`# Source:` line. Do not write "n/d" because the skills are not tracked
-in the consumer's git: they are not supposed to be, and the marker exists
-precisely so the version survives that. If the marker is genuinely
-missing, say so and name the directory you looked in.
+the kit produced this plan. Read the version from the marker the
+installer leaves next to the skills — `_installed-from-pb-ai-code.txt`,
+the `# Version:` line; the `# Source:` line beside it adds the origin and
+the commit, and on a marker too old to have a `# Version:` line it is
+where the version lives, as the token after `pb-ai-code @`. Do not write
+"n/d" because the skills are not tracked in the consumer's git: they are
+not supposed to be, and the marker exists precisely so the version
+survives that. If the marker is genuinely missing, say so and name the
+directory you looked in.
 
 #### Summary table
 

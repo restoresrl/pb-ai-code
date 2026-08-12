@@ -15,6 +15,105 @@ skills are plain Markdown in the [Agent Skills](https://agentskills.io)
 an installer materializes them into whatever directory your assistant
 reads. Nothing here assumes a particular vendor.
 
+## Agents: setting this up in a PowerBuilder project
+
+**If you are an AI coding agent and someone has asked you to set this kit up
+in the project they have open, this section is the whole job.** It is written
+for a machine to follow: every branch is stated, and every step has a check
+that is mechanical rather than "see if it looks right". Nothing below needs a
+clone of this repository.
+
+### 1. Check the prerequisites
+
+| Needed for | Check | If it is missing |
+| --- | --- | --- |
+| Running the installer at all | `uv --version` | Stop and tell the user. `uv` is installed with `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 \| iex"`, but that is their machine — ask before running it |
+| Anything that touches a `.pbl` | Windows, and a PowerBuilder **IDE** install, 2019 or later | Say so and continue. The install still works and the knowledge base is still useful; only the ORCA tools will not start |
+
+Do not check for a PowerBuilder workspace first. A repository holding PB
+sources is a valid target whether or not a `.pbw` is where you expect it.
+
+### 2. Decide which layout to write
+
+| You are | Use |
+| --- | --- |
+| Claude Code | nothing — it is the default |
+| anything else (Codex CLI, OpenCode, Cursor, Windsurf, Continue, Aider, …) | `--harness generic --skills-dir <dir> --commands-dir <dir>` |
+
+Be straight with the user about what that second row means today: only Claude
+Code's on-disk contract is verified here, so `generic` writes the skills and
+the knowledge base where you say, and **prints** the MCP server block instead
+of guessing which file your client reads. You place that block. Inventing a
+path for a client nobody has tested would look like it worked.
+
+The two directories must be siblings and the skills one must be named
+`skills` — the knowledge base contains links that spell that segment out, and
+the installer refuses rather than writing a bundle whose cross-links are dead.
+`.agent/skills` and `.agent/commands` are the conventional answer.
+
+### 3. Install
+
+Run this **from the root of the user's project**:
+
+```pwsh
+uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install
+```
+
+That is the whole install. `uv` fetches this repository, builds it, and runs
+the CLI, which writes into the current directory — there is no checkout to
+make and no path to work out. Append the tag to the URL to pin a version; with
+no tag you get the default branch.
+
+Add `--dry-run` first if you want to show the user what would be written. It
+prints the plan and what the MCP merge would do, and writes nothing.
+
+### 4. Verify, mechanically
+
+```pwsh
+uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code status --json
+```
+
+`"installed": true` and a `"source"` naming a version is the pass. The same
+answer in prose, plus what the install did, is in
+`<skills-dir>/_installed-from-pb-ai-code.txt` — that file is the only record
+the project keeps of where the kit came from, and `status` reads it back with
+no network.
+
+Then read the installer's own output rather than assuming: it names every
+file it wrote, says whether each MCP server was added, updated, already
+current or left alone, and warns when it replaced a `settings.json` whose
+content differed. If it printed a warning, relay it.
+
+### 5. Tell the user to restart you
+
+Skill *bodies* are read from disk when invoked, so they are live immediately.
+The **list** of skills and the **MCP servers** are read when your session
+starts, so the `pb_*` tools do not exist until the user restarts. Say that
+plainly; an agent that starts working without them will report the kit as
+broken.
+
+If the installer said the bundle directory is not ignored by git, offer the
+`.gitignore` lines it printed. The bundle is generated: it is updated by
+re-running the installer, not by editing it, and it does not want committing.
+
+### 6. When it fails
+
+- **`uvx` cannot resolve the URL** — the machine has no network, or `git` is
+  not on PATH. Report which.
+- **"Target is not a directory"** — you passed `--target` at a path that does
+  not exist. The installer never creates it, on purpose.
+- **The MCP config could not be parsed** — the project's existing
+  `.mcp.json` is not valid JSON. The installer leaves it untouched and prints
+  the block to merge by hand. Do not repair the file without asking; it is the
+  user's.
+- **Two ORCA servers** — the project already has `pb-orca-mcp` under another
+  key. The installer says so and changes nothing. Two of them means two
+  processes driving a single-session library; the user picks which to keep.
+
+Then read [`AGENTS.md`](AGENTS.md) if you are going to work on *this*
+repository, or [`docs/install.md`](docs/install.md) for the human-facing
+version of the above with the reasoning attached.
+
 ## What it does
 
 The primary use case is **code review and refactoring of legacy
@@ -45,26 +144,29 @@ hand, committed, and resumed by a different assistant days later.
 
 ## Install
 
-Three steps, in order: connect the MCP server, install the skills, and
-optionally add the doc index and the formatter.
+From the root of your PowerBuilder project:
 
 ```pwsh
-git clone https://github.com/restoresrl/pb-ai-code
-cd pb-ai-code
-.\scripts\install-skills.ps1 -Target ..\my-pb-app
+uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install
 ```
 
-That is the middle of the sequence, not the start. **Go to
-[`docs/install.md`](docs/install.md)**: the
-[Quickstart](docs/install.md#quickstart) at the top is the whole thing with
-nothing explained — five commands and one JSON block — and the rest of the
-page is why each step exists, where the `mcpServers` block goes for each
+There is nothing to clone. `uv` fetches this repository, and the CLI writes
+the skills, the knowledge base and the MCP server configuration into the
+directory you ran it from. `pb-ai-code status` says what landed; re-running
+`install` is also how you update.
+
+Or hand the job to your assistant: point it at this repository's URL and ask
+it to set the kit up. The [section above](#agents-setting-this-up-in-a-powerbuilder-project)
+is written for exactly that, which is why it reads like a checklist.
+
+**[`docs/install.md`](docs/install.md)** is the same thing with the reasoning
+attached: why each step exists, where the `mcpServers` block goes for each
 client, how to verify the stack before trusting it, and what to do when your
 assistant has no slash commands or no skill discovery.
 
-Two things worth knowing before you begin: these repositories are **private**,
-so you need access granted before the first command will run, and everything
-that touches a `.pbl` needs Windows with a PowerBuilder **IDE** install.
+One thing worth knowing before you begin: everything that touches a `.pbl`
+needs Windows with a PowerBuilder **IDE** install. The knowledge base and the
+formatter work anywhere.
 
 ## Dependencies
 
@@ -90,11 +192,12 @@ format. The knowledge pages and the formatter work anywhere.
 
 ## Status
 
-Alpha, in internal dogfooding. The review flow and the knowledge base
-are written and being exercised against real codebases; the repository
-is private until real use confirms the shape. Testing orchestration and
-runtime trace analysis are designed but deferred — see
-[`PLAN.md`](PLAN.md).
+Alpha, in internal dogfooding. The review flow and the knowledge base are
+written and being exercised against real codebases. Public since v0.5.0, which
+is also the release that made the kit install itself from this URL rather than
+from a clone — the two go together, since an agent cannot follow instructions
+it cannot read. Testing orchestration and runtime trace analysis are designed
+but deferred — see [`PLAN.md`](PLAN.md).
 
 ## Contributing
 

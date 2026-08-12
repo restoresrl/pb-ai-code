@@ -6,6 +6,17 @@ by Codex, Cursor, Copilot, Zed, Claude Code and others. It is not the
 guide for *using* the dev kit on a PowerBuilder project: that is the
 [README](README.md) and [`docs/install.md`](docs/install.md).
 
+> **Were you asked to install this kit into someone's PowerBuilder project?**
+> Then you are in the wrong file, and the right one is
+> [README.md § Agents: setting this up in a PowerBuilder project](README.md#agents-setting-this-up-in-a-powerbuilder-project).
+> It is a checklist with a check at every step. The short of it: from the
+> root of their project, run
+> `uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install`,
+> verify with `pb-ai-code status --json`, and tell them to restart you so the
+> MCP servers and the skill list are picked up.
+>
+> Everything below is about editing *this* repository instead.
+
 ## Context
 
 `pb-ai-code` is an **agentic dev kit for PowerBuilder**: skills,

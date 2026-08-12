@@ -62,7 +62,7 @@ of the plan file under `.pb-review/`.
 
 - **page**: `pb-source-format/userobject.md`
 - **section**: `Variants observed`
-- **observed-against**: `pb-ai-code @ 1e23691`
+- **observed-against**: `pb-ai-code @ 0.5.0`
 - **evidence**: `compiled clean` — `pb_object_import_file` returned
   `errors: []`, `sync: "ok"`
 - **repro**: <the smallest snippet that shows it>
@@ -74,10 +74,16 @@ Six fields, and two of them do the work.
 
 **`observed-against`** is the version of the kit the note was new
 *against*. It comes from the marker the installer leaves next to the
-skills — `.claude/_installed-from-pb-ai-code.txt`, the `# Source:` line.
-Without it, whoever collects the note has to re-establish whether the
-thing is still undocumented; with it, that is a one-line check. This is
-the reason the marker records a commit rather than a date.
+skills — `.claude/_installed-from-pb-ai-code.txt`, the `# Version:` line,
+with `# Source:` beside it naming the origin and the commit it was built
+from. Without it, whoever collects the note has to re-establish whether
+the thing is still undocumented; with it, that is a one-line check. This
+is the reason the marker records a version rather than a date.
+
+A marker written by the old PowerShell installer has no `# Version:`
+line. There the version is the token after `pb-ai-code @` on the
+`# Source:` line, and it is a short commit sha — which is why the
+collecting step below accepts either.
 
 **`evidence`** is the quality gate, and it has two values.
 `compiled clean` means the claim was proved by the compiler, and names
@@ -111,8 +117,10 @@ written yet is how you get a tool that fits nothing.
 1. Look in the plan files: `<project>/.pb-review/*.md`, section
    `## Notes for the wiki`.
 2. For each note, check `observed-against` against this repository's
-   history for that page. If the page changed since that commit, read the
-   change first — the fact may already be there.
+   history for that page. Resolve it first: a version is the tag `v<x>`
+   (a `.dev`/`+g<sha>` one carries its commit in the local part), a bare
+   sha is the commit. If the page changed since, read the change first —
+   the fact may already be there.
 3. Apply `compiled clean` notes to the named page and section. For
    `observed only`, either reproduce it first or record it under
    **Open questions** on that page, which is what that section is for.

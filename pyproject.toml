@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.18"]
+requires = ["hatchling>=1.18", "hatch-vcs>=0.4"]
 build-backend = "hatchling.build"
 
 [project]
 name = "pb-ai-code"
-version = "0.1.10"
+dynamic = ["version"]
 description = "Agentic dev kit for PowerBuilder: skills, knowledge base and orchestration on top of pb-orca-mcp"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,7 +27,6 @@ classifiers = [
     "Topic :: Software Development :: Code Generators",
 ]
 dependencies = [
-    "chardet>=5.2",
     "requests>=2.31",
     "beautifulsoup4>=4.12",
     # Ceiling because `mcp` 2.0.0 removed `mcp.server.fastmcp`, which
@@ -53,21 +52,53 @@ dev = [
 [project.scripts]
 pb-source-analyzer = "pb_source_analyzer.__main__:main"
 pb-appeon-index = "pb_appeon_index.__main__:main"
+pb-ai-code = "pb_ai_code.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/restoresrl/pb-ai-code"
 Issues = "https://github.com/restoresrl/pb-ai-code/issues"
 
+[tool.hatch.version]
+# The tag is the version. `pyproject.toml` used to carry a literal, and it sat
+# three minors behind `git tag` without anything noticing; the marker file this
+# repository's installer writes now quotes the number, so a stale literal would
+# be the number every consumer reads. A build one commit past a tag says so out
+# loud (`0.5.1.dev1+g<sha>`). CI must check out with `fetch-depth: 0` - a
+# shallow, tagless clone silently produces `0.1.dev1+g<sha>` and only a
+# UserWarning.
+source = "vcs"
+
 [tool.hatch.build.targets.wheel]
 packages = [
     "tools/pb-source-analyzer/src/pb_source_analyzer",
     "tools/pb-appeon-index/src/pb_appeon_index",
+    "tools/pb-ai-code/src/pb_ai_code",
 ]
+
+# The kit itself travels in the wheel, under the package that installs it, so
+# `uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install`
+# has something to install. force-include is the only mechanism that reaches
+# such a build - the sdist `include` above does not affect the wheel.
+#
+# Map these six paths and NEVER the docs/ root. force-include ignores
+# .gitignore AND ignores `exclude` (both verified): mapping "docs" pulls
+# docs/appeon-index/index.db into the wheel from any developer machine that has
+# built it, and that database is never redistributed. Whole directories rather
+# than file lists, because the installer discovers its inputs by glob - a new
+# skill must ship with no build change.
+[tool.hatch.build.targets.wheel.force-include]
+"skills"                = "pb_ai_code/_kit/skills"
+"commands"              = "pb_ai_code/_kit/commands"
+"harness"               = "pb_ai_code/_kit/harness"
+"docs/pb-antipatterns"  = "pb_ai_code/_kit/docs/pb-antipatterns"
+"docs/pb-source-format" = "pb_ai_code/_kit/docs/pb-source-format"
+"docs/wiki-notes.md"    = "pb_ai_code/_kit/docs/wiki-notes.md"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "tools/pb-source-analyzer",
     "tools/pb-appeon-index",
+    "tools/pb-ai-code",
     "tests",
     "docs",
     "skills",
@@ -88,11 +119,19 @@ testpaths = [
     "tests",
     "tools/pb-source-analyzer/tests",
     "tools/pb-appeon-index/tests",
+    "tools/pb-ai-code/tests",
 ]
 # --import-mode=importlib: both tools ship a tests/ package, and under the
 # default "prepend" mode the second one to be collected shadows the first
 # (same package name), so a plain `pytest` fails in collection.
 addopts = "-ra --strict-markers --import-mode=importlib"
+# `--strict-markers` is on, so a marker must be declared before it is used.
+# `slow` is for the two tests that build a wheel and populate a throwaway
+# environment: tens of seconds each, and the only tests that prove the
+# packaged payload — the thing that makes `uvx --from git+...` work at all.
+markers = [
+    "slow: builds a wheel or a virtual environment (tens of seconds)",
+]
 
 [tool.ruff]
 line-length = 100
@@ -100,6 +139,7 @@ target-version = "py310"
 src = [
     "tools/pb-source-analyzer/src",
     "tools/pb-appeon-index/src",
+    "tools/pb-ai-code/src",
 ]
 
 [tool.ruff.lint]
@@ -109,4 +149,4 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.10"
 strict = true
 warn_unused_ignores = true
-mypy_path = "tools/pb-source-analyzer/src:tools/pb-appeon-index/src"
+mypy_path = "tools/pb-source-analyzer/src:tools/pb-appeon-index/src:tools/pb-ai-code/src"

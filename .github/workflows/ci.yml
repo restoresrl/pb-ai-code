@@ -9,9 +9,10 @@ on:
 jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
-    # windows-latest, and not only for parity with pb-orca-mcp: the link tests
-    # run scripts/install-skills.ps1 for real and check what lands, which is
-    # the check that has caught something every time it has been run.
+    # windows-latest, and not only for parity with pb-orca-mcp: the install
+    # writes Windows paths and a `.claude/` layout, and the link check runs
+    # against what lands - the check that has caught something every time it
+    # has been run.
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -20,6 +21,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        # hatch-vcs derives the version from `git describe`. checkout
+        # defaults to depth 1, which has no tags: the build then produces
+        # `0.1.dev1+g<sha>` and says so only in a UserWarning, so CI would
+        # ship mis-versioned wheels without going red.
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -42,6 +49,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        # hatch-vcs derives the version from `git describe`. checkout
+        # defaults to depth 1, which has no tags: the build then produces
+        # `0.1.dev1+g<sha>` and says so only in a UserWarning, so CI would
+        # ship mis-versioned wheels without going red.
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:
@@ -59,7 +72,11 @@ jobs:
       # been failing in the sibling repository for three tagged releases while
       # `ruff check` passed, and nobody looked.
       - name: Format check
+        # Path-scoped on purpose: `ruff format --check .` fails today on
+        # skills/appeon-query/SKILL.md and skills/pb-review/SKILL.md,
+        # because ruff formats Python inside Markdown fences.
         run: ruff format --check tools tests
 
       - name: Types
-        run: mypy tools/pb-source-analyzer/src tools/pb-appeon-index/src
+        # Not `mypy tools`: that fails with `Duplicate module named "tests"`.
+        run: mypy tools/pb-source-analyzer/src tools/pb-appeon-index/src tools/pb-ai-code/src
