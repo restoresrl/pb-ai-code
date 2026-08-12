@@ -648,6 +648,60 @@ def not_a_repository_note(bundle_root: str, *, include_mcp_json: bool = False) -
     return lines
 
 
+# --- The PowerBuilder version and AGENTS.md ----------------------------------
+
+
+def agents_md_written(rel: str, pb_version: str | None) -> list[Line]:
+    """One line for the file, one for what is still missing from it."""
+    lines = [Line(f"agents    {rel}  (created; the project's own file, never rewritten)", "green")]
+    if pb_version is None:
+        # Said once, here, where the fact lives. pb_session_open has no
+        # auto-pick and the sources cannot be asked - an object keeps the
+        # release it was last saved under - so an unstated version is a
+        # gap somebody has to close, not a default to fall back on.
+        lines.append(
+            Line("          PowerBuilder version not stated - fill it in there, or", "yellow")
+        )
+        lines.append(Line("          re-run with --pb-version 22.0"))
+    return lines
+
+
+def agents_md_exists(rel: str, pb_version: str | None) -> list[Line]:
+    """It is theirs. Print the block; do not touch the file.
+
+    An installer that appended to a hand-maintained instruction file would
+    corrupt it a little on every update, and the corruption would be read
+    by an agent as instructions.
+    """
+    lines = [
+        BLANK,
+        Line(f"Note: {rel} already exists, so it was left alone.", "yellow"),
+    ]
+    if pb_version is not None:
+        lines.append(
+            Line(f"      It should record that this project uses PowerBuilder {pb_version}")
+        )
+        lines.append(Line("      and that a migration invalidates that line. Suggested section:"))
+    else:
+        lines.append(Line("      Nothing was written to it. Suggested section:"))
+    return lines
+
+
+def agents_md_unwritable(rel: str, why: str) -> list[Line]:
+    """The bundle landed; one more file did not."""
+    return [
+        BLANK,
+        Line(f"Note: {rel} could not be written: {why}", "yellow"),
+        Line("      Everything else was installed. The file is the project's own and"),
+        Line("      can be created by hand."),
+    ]
+
+
+def quoted_block(text: str) -> list[Line]:
+    """Indent a block for the user to copy, blank lines kept blank."""
+    return [Line(f"        {line}") if line else BLANK for line in text.splitlines()]
+
+
 # --- status (ledger 77) ------------------------------------------------------
 
 

@@ -13,6 +13,66 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-13
+
+The installer asks which PowerBuilder version the project uses, and writes the
+project an `AGENTS.md` when it has none.
+
+### Added
+
+- **`--pb-version`, and a question when there is a terminal.** Every ORCA call
+  needs the version: `pb_session_open` takes it explicitly, there is no
+  auto-pick, and these machines routinely carry 19, 22 and 25 side by side —
+  so opening a library under the wrong one and re-importing an object rewrites
+  it to that release, quietly.
+
+  It is **asked, never deduced**, and the reason is not squeamishness. An
+  exported object carries `appruntimeversion`, which looks like the answer and
+  is not: PowerBuilder migrates the objects it touches and leaves the rest, so
+  an object holds the release it was *last saved under*. Real projects built
+  with 2022 contain DataWindows still marked release 6. A sniffed answer is
+  plausible, specific, and sometimes four majors wrong.
+
+  A bad value is a usage error, exit 2, raised before the first file is
+  copied — the half-installed target is what that rule exists to prevent. No
+  value at all is recorded as **not stated**, which is a gap somebody can
+  close rather than a number nobody checked.
+
+- **`AGENTS.md`, created when the project has none.** The bundle says how
+  PowerBuilder works; nothing said what *this* project is. `AGENTS.md` is the
+  cross-tool convention — Codex, Cursor, Copilot, Zed and Claude Code all read
+  it — so it suits a kit that refuses to assume a vendor.
+
+  It states only what was established: the version a person gave, the `.pbw`
+  and `.pbt` files actually on disk, whether there is a `ws_objects/`
+  projection, whether there is git. And it says out loud that a migration —
+  in the IDE, or with a tool like PowerGen — invalidates the version line,
+  because nothing in this kit will notice one.
+
+  **An existing `AGENTS.md` is never touched.** Not rewritten, not appended
+  to, not backed up and replaced: it is hand-maintained, every agent that
+  opens the project reads it, and an installer that edited it a little on each
+  update would be corrupting instructions. The section is printed instead, for
+  the user to place.
+
+  A re-install reads the version back out of the file, so an update is not an
+  interrogation — and a non-interactive re-install, which is the shape an agent
+  runs, cannot silently downgrade a stated version to "not stated".
+
+- **The marker records it** as `# PB:`, so `status` reports it with no network.
+
+- **The README's agent checklist gained the step**, because an agent driving
+  `uvx` has no terminal and will never see the prompt: it has to put the
+  question to the user and pass `--pb-version` itself.
+
+### Changed
+
+- The generated bundle is now **seven** paths rather than six under
+  `claude-code`. The seventh is written, not copied — and the kit's own
+  `AGENTS.md`, which is about working on the kit, is still never shipped into
+  a customer's project.
+
+
 ## [0.5.3] - 2026-08-13
 
 Two corrections, both found by pointing a fresh session at a test fixture and

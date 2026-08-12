@@ -47,7 +47,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import EXIT_OK, NotInstalled, PbAiCodeError
+from . import EXIT_OK, NotInstalled, PbAiCodeError, UsageError
+from . import agentsmd as agentsmd_mod
 from . import appeon as appeon_mod
 from . import apply as apply_mod
 from . import gitignore as gitignore_mod
@@ -55,6 +56,7 @@ from . import harness as harness_mod
 from . import kit as kit_mod
 from . import marker as marker_mod
 from . import mcpconfig as mcp_mod
+from . import pbversion as pbversion_mod
 from . import plan as plan_mod
 from . import provenance as provenance_mod
 from . import report as report_mod
@@ -313,6 +315,7 @@ def _write_markers(
     identity: SourceIdentity,
     mcp: _McpResult,
     settings_replaced: str | None,
+    pb_version: str | None = None,
 ) -> None:
     """The last write of the run: one marker per root, each atomic.
 
@@ -329,6 +332,7 @@ def _write_markers(
         appeon_note=mcp.appeon_note,
         contents=contents,
         settings_replaced=settings_replaced,
+        pb_version=pb_version,
     )
     for root in plan.roots:
         marker_mod.write(root.marker_path, text)
@@ -389,6 +393,10 @@ def _cmd_install(args: argparse.Namespace) -> int:
     kit = kit_mod.load_kit()
     identity = provenance_mod.resolve(kit)
     plan = plan_mod.build_plan(kit, adapter, target, skip_mcp_config=skip_mcp_config)
+    # Before the first byte is written and before the first line is printed:
+    # a bad --pb-version is a usage error, and an interactive question asked
+    # halfway through a report reads as an interruption of it.
+    pb_version = _resolve_pb_version(args, target)
 
     reporter = Reporter()
     reporter.block(
@@ -416,13 +424,62 @@ def _cmd_install(args: argparse.Namespace) -> int:
         else:
             reporter.block(report_mod.appeon_missing(mcp.appeon_note))
 
-    _write_markers(plan, adapter, identity, mcp, settings_replaced)
+    _write_agents_md(reporter, target, pb_version)
+
+    _write_markers(plan, adapter, identity, mcp, settings_replaced, pb_version)
 
     reporter.block(report_mod.done())
     if adapter.restart_hint is not None and not skip_mcp_config:
         reporter.line(report_mod.restart_hint(adapter.restart_hint))
     _gitignore_hint(reporter, adapter, target, skip_mcp_config=skip_mcp_config)
     return EXIT_OK
+
+
+def _resolve_pb_version(args: argparse.Namespace, target: Path) -> str | None:
+    """The flag, else the person, else what a previous install recorded.
+
+    Never the sources. An object carries the release it was last saved
+    under rather than the release of the IDE working on it, so a 2022
+    project can hold release 6 DataWindows and a sniffed answer is
+    plausible, specific and sometimes four majors wrong.
+    """
+    if args.pb_version:
+        try:
+            return pbversion_mod.parse(args.pb_version).value
+        except pbversion_mod.InvalidPbVersion as exc:
+            # Ledger 14: everything that can fail fails before the first
+            # copy. A traceback here would leave a half-installed target.
+            raise UsageError(str(exc)) from exc
+    previous = agentsmd_mod.read_version(target)
+    answer = pbversion_mod.ask(previous)
+    if answer is not None:
+        return answer.value
+    return previous
+
+
+def _write_agents_md(reporter: Reporter, target: Path, pb_version: str | None) -> None:
+    """Create the project's own instruction file, or print what it should say.
+
+    Never both, and never an edit: an existing AGENTS.md is hand-maintained,
+    it is read by every agent that opens the project, and an installer that
+    appended to it on each update would corrupt instructions a little at a
+    time.
+    """
+    is_git = gitignore_mod.check(target, ".").is_repo
+    facts = agentsmd_mod.survey(target, pb_version=pb_version, is_git=is_git)
+    rel = agentsmd_mod.FILE_NAME
+    try:
+        created = agentsmd_mod.create(target, facts)
+    except OSError as exc:
+        # The install has already succeeded; a target that will not take
+        # one more file is a thing to report, not to fail on.
+        reporter.block(report_mod.agents_md_unwritable(rel, str(exc)))
+        return
+    if created:
+        reporter.block(report_mod.agents_md_written(rel, pb_version))
+        return
+    reporter.block(report_mod.agents_md_exists(rel, pb_version))
+    reporter.block(report_mod.quoted_block(agentsmd_mod.block(facts)))
 
 
 # --- status ------------------------------------------------------------------
@@ -524,6 +581,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--commands-dir",
         default=None,
         help="target-relative commands directory; must be a sibling of --skills-dir",
+    )
+    p_install.add_argument(
+        "--pb-version",
+        default=None,
+        help=(
+            "PowerBuilder version this project is developed with (e.g. 22.0). "
+            "Asked interactively when omitted and there is a terminal; never "
+            "deduced from the sources"
+        ),
     )
     p_install.add_argument(
         "--skip-mcp-config",

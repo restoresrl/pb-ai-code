@@ -249,6 +249,7 @@ def render(
     appeon_note: str,
     contents: tuple[str, ...],
     settings_replaced: str | None = None,
+    pb_version: str | None = None,
 ) -> str:
     """Assemble the marker, ``\\n``-joined; :func:`write` supplies the CRLF.
 
@@ -263,6 +264,11 @@ def render(
         key_line("Version", identity.version),
         key_line("Source", source_value(identity)),
         key_line("Harness", adapter.id),
+        # What the user stated, never what an object claimed: an object
+        # keeps the release it was last saved under. AGENTS.md is where it
+        # is maintained; this is a copy for `status`, and a stale one the
+        # day someone migrates without saying so.
+        key_line("PB", pb_version or "not stated - see AGENTS.md"),
         key_line("MCP", mcp_outcome),
         key_line("Appeon", appeon_note),
     ]

@@ -270,7 +270,14 @@ def test_ledger9_claude_code_writes_exactly_its_own_layout(tmp_path: Path) -> No
     because that is where the client looks for it.
     """
     _install(tmp_path)
-    assert sorted(path.name for path in tmp_path.iterdir()) == [".claude", ".mcp.json"]
+    # AGENTS.md is the third path at the root, and the only one written
+    # rather than copied: the project's own instruction file, created when
+    # absent and never rewritten afterwards.
+    assert sorted(path.name for path in tmp_path.iterdir()) == [
+        ".claude",
+        ".mcp.json",
+        "AGENTS.md",
+    ]
     assert sorted(path.name for path in (tmp_path / ".claude").iterdir()) == [
         "_installed-from-pb-ai-code.txt",
         "commands",
@@ -325,6 +332,7 @@ def test_ledger12_14_a_blank_commands_dir_is_no_commands_directory(tmp_path: Pat
     assert "Traceback" not in result.stderr
     # The whole install, not the half of it that runs before the crash.
     assert sorted(path.name for path in tmp_path.iterdir()) == [
+        "AGENTS.md",
         "_installed-from-pb-ai-code.txt",
         "pb-ai-code-docs",
         "skills",

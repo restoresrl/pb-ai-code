@@ -321,7 +321,17 @@ def test_ledger21_the_copy_set_is_closed(tmp_path: Path) -> None:
     install(target, home=tmp_path / "home")
 
     installed = files_under(target)
-    expected = {".mcp.json", f".claude/{MARKER_NAME}", ".claude/settings.json"}
+    # AGENTS.md joins the set deliberately: it is the project's own
+    # instruction file, created only when absent and never rewritten, and
+    # it is where the PowerBuilder version lives - the one fact the sources
+    # cannot be asked for, since an object keeps the release it was last
+    # saved under.
+    expected = {
+        ".mcp.json",
+        "AGENTS.md",
+        f".claude/{MARKER_NAME}",
+        ".claude/settings.json",
+    }
     for skill in (REPO_ROOT / "skills").iterdir():
         if not skill.is_dir():
             continue
@@ -343,8 +353,15 @@ def test_ledger21_the_copy_set_is_closed(tmp_path: Path) -> None:
     expected.add(".claude/pb-ai-code-docs/wiki-notes.md")
     assert installed == expected
 
-    forbidden = ("install.md", "README.md", "AGENTS.md", "CHANGELOG.md", "install-skills.ps1")
+    forbidden = ("install.md", "README.md", "CHANGELOG.md", "install-skills.ps1")
     assert not [name for name in installed if name.rsplit("/", 1)[-1] in forbidden]
+    # AGENTS.md is written, not copied, and the difference matters: this
+    # repository has one of its own - instructions for working on the kit -
+    # and shipping it into a customer's PowerBuilder project would tell an
+    # agent to go and edit the kit.
+    written = (target / "AGENTS.md").read_text(encoding="utf-8")
+    assert "PowerBuilder facts an agent needs" in written
+    assert "pb-ai-code" not in written.splitlines()[0]
     assert not [name for name in installed if name.endswith(".db")]
     assert not [name for name in installed if "appeon-index/" in name]
 

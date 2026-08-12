@@ -51,9 +51,35 @@ The two directories must be siblings and the skills one must be named
 the installer refuses rather than writing a bundle whose cross-links are dead.
 `.agent/skills` and `.agent/commands` are the conventional answer.
 
-### 3. Install
+### 3. Ask the user which PowerBuilder version this project uses
 
-Run this **from the root of the user's project**:
+**Ask. Do not work it out.** You will be tempted, because the answer looks
+readable: an exported object carries `appruntimeversion`. It is not the
+project's version. PowerBuilder migrates the objects it touches and leaves the
+rest, so an object holds the release it was *last saved under* — a project
+built with 2022 can contain DataWindows still marked release 6. An answer read
+off one object is plausible, specific, and sometimes four majors wrong.
+
+It matters because `pb_session_open` takes the version explicitly and has no
+auto-pick, and these machines routinely carry 19, 22 and 25 side by side.
+Opening a library under the wrong one and re-importing an object rewrites it to
+that release, quietly.
+
+So put the question to the user — *"which PowerBuilder version is this project
+developed with?"* — and pass what they say:
+
+```pwsh
+uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install --pb-version 22.0
+```
+
+If they do not know, install without the flag. The version is then recorded as
+**not stated**, which is a gap somebody can close later — and better than a
+number nobody checked.
+
+### 4. Install
+
+Run this **from the root of the user's project**, with the version from step 3
+if you have one:
 
 ```pwsh
 uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install
@@ -67,15 +93,15 @@ no tag you get the default branch.
 Add `--dry-run` first if you want to show the user what would be written. It
 prints the plan and what the MCP merge would do, and writes nothing.
 
-### 4. Verify, mechanically
+### 5. Verify, mechanically
 
 ```pwsh
 uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code status --json
 ```
 
 `"installed": true` and a `"source"` naming a version is the pass. The same
-answer in prose, plus what the install did, is in
-`<skills-dir>/_installed-from-pb-ai-code.txt` — that file is the only record
+answer in prose, plus what the install did and the PowerBuilder version it was
+told, is in `<skills-dir>/_installed-from-pb-ai-code.txt` — that file is the only record
 the project keeps of where the kit came from, and `status` reads it back with
 no network.
 
@@ -84,7 +110,7 @@ file it wrote, says whether each MCP server was added, updated, already
 current or left alone, and warns when it replaced a `settings.json` whose
 content differed. If it printed a warning, relay it.
 
-### 5. Tell the user to restart you
+### 6. Tell the user to restart you
 
 Skill *bodies* are read from disk when invoked, so they are live immediately.
 The **list** of skills and the **MCP servers** are read when your session
@@ -92,11 +118,17 @@ starts, so the `pb_*` tools do not exist until the user restarts. Say that
 plainly; an agent that starts working without them will report the kit as
 broken.
 
+The install also creates an `AGENTS.md` if the project has none — the project's
+own instruction file, carrying the PowerBuilder version and what was read off
+the disk. If one already exists it is **never** touched: the installer prints
+the section instead, for the user to place. Relay it rather than editing their
+file yourself.
+
 If the installer said the bundle directory is not ignored by git, offer the
 `.gitignore` lines it printed. The bundle is generated: it is updated by
 re-running the installer, not by editing it, and it does not want committing.
 
-### 6. When it fails
+### 7. When it fails
 
 - **`uvx` cannot resolve the URL** — the machine has no network, or `git` is
   not on PATH. Report which.

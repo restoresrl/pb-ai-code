@@ -617,7 +617,7 @@ def test_ledger60_the_recipe_reproduces_this_layout_and_not_another(tmp_path: Pa
     assert sorted(path.name for path in target.iterdir()) == before, (
         "following the update recipe installed a second, different layout"
     )
-    assert before == [".agent"]
+    assert before == [".agent", "AGENTS.md"]
 
 
 def test_ledger60_a_directory_with_a_space_stays_pasteable() -> None:
