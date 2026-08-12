@@ -13,6 +13,46 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-12
+
+### Added
+
+The two catalog entries v0.2.0 identified and did not write. Both came
+out of the same review as the rest of that release; the plan file holding
+them was in a disposable clone, so they are recorded here from the
+findings rather than from the note.
+
+- **`exception-factory-not-thrown`** — `if err <> "" then f_make_ex(...)`:
+  the exception is constructed and discarded, because a call in statement
+  position is a legal expression whose value nothing has to use. Three
+  things hide it: the compiler has no objection, an exception factory
+  with a short name reads as an imperative in that position, and the
+  function then carries on and returns success, so the failure surfaces
+  somewhere else entirely. Seen in the `init()` of a persistence base
+  class with 149 descendants, where a DataWindow build error was dropped
+  and `init()` returned TRUE — the same file raises correctly twice a few
+  hundred lines away, so it was a missing keyword, not a convention.
+  Carries a grep recipe, because reading does not catch a defect whose
+  wrong form is one word shorter than the right one.
+
+- **`disablebind-defeats-bind-variables`** — `DisableBind=1` in the
+  transaction's `DBParm` makes PowerBuilder substitute values into the
+  statement text instead of binding them, so `:name` stays the syntax
+  everyone trusts while no longer providing the property it is trusted
+  for. The flag sits in a constructor two or three classes above any SQL,
+  it is set for good reasons (`Identity='SCOPE_IDENTITY()'` requires it),
+  and it applies to every statement on that connection.
+
+  The page deliberately does **not** claim a vulnerability: whether
+  PowerBuilder escapes as it inlines was not verified. It is written
+  around the review lesson, which holds either way — read the
+  transaction's `DBParm` before drawing a conclusion from the statement
+  in front of you — plus the small experiment that settles it and the
+  instruction to record the answer next to the flag.
+
+New *SQL and data access* category. `throw-factory-loses-subtype` now
+points at its sibling instead of saying it has none.
+
 ## [0.2.0] - 2026-08-12
 
 Thirteen rounds of pointing the kit at a real 2426-source PowerBuilder

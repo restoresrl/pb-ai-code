@@ -56,6 +56,18 @@ one concrete case where it bit.
   `catch (n_X ex) ... throw f_make_ex(...)` perde la sottoclasse
   specifica di `ex`; usare `throw ex` per ri-lanciare preservando
   il type concreto.
+- [exception factory not thrown](exception-factory-not-thrown.md) —
+  `if err <> "" then f_make_ex(...)`: l'eccezione viene costruita e
+  scartata. Manca `throw`, il compilatore non ha nulla da dire, e la
+  riga si legge come gestione dell'errore.
+
+### SQL and data access
+
+- [DisableBind defeats bind variables](disablebind-defeats-bind-variables.md)
+  — `DisableBind=1` nel DBParm fa sì che PB inlinei i valori nel testo
+  SQL: `:name` resta la sintassi che tutti riconoscono come sicura, ma
+  non è più un bind. Il flag sta due classi più su, lontano da ogni
+  statement.
 
 ## How a new entry gets here
 

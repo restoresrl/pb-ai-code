@@ -103,5 +103,7 @@ subtype as `<subtype>`. If it returns the base type, flag it.
 
 ## Related
 
-- (no siblings yet — first exception-handling antipattern in the
-  catalog)
+- [`exception-factory-not-thrown`](exception-factory-not-thrown.md) —
+  the sibling: the same factory, called in statement position, so the
+  exception is built and discarded and nothing is raised at all. This
+  page is about losing the type; that one is about losing the raise.
