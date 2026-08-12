@@ -99,11 +99,18 @@ application-level helper is the one to look at.
 
 - A warehouse-management product line (review run 2026-08-12): the
   transaction framework's `duplicate()` method used `MessageBox` +
-  `HALT CLOSE` on connection failure. The library was loaded by 9 of 13
-  targets, **4 of them headless** — a REST API server and three
-  service-side executables. It had no callers at the time, which is the
-  only reason it had never fired; the finding was ranked on severity,
-  not likelihood.
+  `HALT CLOSE` on connection failure. The library was loaded by 10 of
+  the 14 targets, **5 of them headless** — two REST servers and three
+  Windows services — with an unattended ETL executable as a likely
+  sixth. It had no callers at the time, which is the only reason it had
+  never fired; the finding was ranked on severity, not likelihood.
+
+  Worth noting how the count was obtained, because it is the step that
+  turns this from an opinion into a finding: grep the `.pbt` files for
+  the library name, then read the target table in the project's own
+  `AGENTS.md` to see which of those targets have no desktop. Neither
+  half is enough alone — the `.pbt` says who links it, the target table
+  says who runs headless.
 
 ## Related
 

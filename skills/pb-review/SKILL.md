@@ -155,7 +155,7 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    liblist properly and resolves the relative paths. The grep decides
    which targets to ask about; the tool still decides the answer.
 
-   When several targets qualify — nine of fourteen did, in one real
+   When several targets qualify — ten of fourteen did, in one real
    workspace — the choice is yours to justify, not to make silently.
    Prefer the one whose application is the primary consumer of the code
    under review, and say so; the library list you pick is recorded in
