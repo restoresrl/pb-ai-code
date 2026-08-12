@@ -13,6 +13,11 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-12
+
+Documentation only; no change in behaviour. Tagged because the tag is the
+version of the whole toolchain and `HEAD` is meant to coincide with one.
+
 ### Added
 
 - **A drafted request to Appeon**, `docs/appeon-index/redistribution-request.md`,
