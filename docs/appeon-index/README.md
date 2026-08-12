@@ -108,6 +108,13 @@ Inputs and outputs:
 
 ## Wiring up the MCP server
 
+> **On redistributing the index.** Each developer builds their own, and the
+> database is never shipped. That is deliberate: the PowerBuilder manuals
+> reserve reproduction rights, so a built index attached to a release would
+> need Appeon's written permission. A drafted request for exactly that is in
+> [`redistribution-request.md`](redistribution-request.md) — unsent, and
+> nothing changes until it is answered.
+
 **The installer configures this server for you** once the index exists.
 `scripts/install-skills.ps1` runs from this checkout, so it can resolve
 the interpreter and the database to absolute paths and write them into

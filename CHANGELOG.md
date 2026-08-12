@@ -13,6 +13,26 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+### Added
+
+- **A drafted request to Appeon**, `docs/appeon-index/redistribution-request.md`,
+  asking for written permission to attach the built documentation index to
+  releases. Unsent. It exists because the alternative to asking is
+  interpreting a clause that is not ambiguous: the PowerBuilder manuals say no
+  part may be "reproduced, transmitted, or translated in any form or by any
+  means, electronic […] without the prior written permission of Appeon Inc.",
+  and a database attached to a GitHub release is exactly that.
+
+  Worth recording what the check found, since the question will come back: the
+  documentation is free to read, `docs.appeon.com` publishes no `robots.txt`
+  and carries no terms-of-use notice on the pages, so nothing forbids the
+  local scraping the kit does today. Public access and redistribution rights
+  are different things, and only the second one is withheld.
+
+  Nothing changes in the meantime. The index is built locally, once per
+  machine, and is not redistributed.
+
+
 ## [0.5.1] - 2026-08-12
 
 One defect, found by watching a fresh session install the kit and report the
