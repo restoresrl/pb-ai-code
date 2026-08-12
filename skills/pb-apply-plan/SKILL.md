@@ -510,12 +510,42 @@ refusing). Only then look at `success`:
   Then revert from the snapshot, mark it `failed`, and continue with the
   fixes that do not depend on it — see the unattended table.
 
-**What a failed compile leaves behind.** Nothing was synced, and the
-`.pbl` may hold partially-parsed source while the file on disk still
-holds exactly what you wrote. That asymmetry is deliberate — it is
-what lets you iterate on the file. So when you retry, **re-import the
-whole corrected file**; never assume the entry in the `.pbl` is
-intact.
+**What a failed compile leaves behind**, measured rather than assumed:
+
+- **`synced_files` is empty.** Nothing was written to the projection, so
+  the file on disk still holds exactly what you wrote. That asymmetry is
+  deliberate — it is what lets you iterate on the file.
+- **The `.pbl` was written anyway, with the whole rejected source.** Not
+  a truncated fragment: exporting the entry afterwards returns the
+  complete text including the line that failed to compile. So the entry
+  is *present and broken*, and the library and the projection agree with
+  each other — both hold the bad version. Nothing is in a torn state;
+  it is simply wrong in both places.
+- **Recovery is a plain re-import of the corrected file.** No rescue, no
+  special path. Verified: after re-importing the good source, all 24
+  entries of the library exported byte-identical to their pre-failure
+  state.
+
+**Do not verify a `.pbl` by hashing it.** This is the instrument
+everyone reaches for — "did the loop leave the library as it was?" — and
+it answers wrongly. After the recovery above, with every entry's source
+byte-identical to before, the `.pbl` **hash still differed** and git
+reported:
+
+```
+src/example.pbl | Bin 159232 -> 159232 bytes
+1 file changed, 0 insertions(+), 0 deletions(-)
+```
+
+Same size, different bytes, no content change: a container reorganizes
+internally on every write. Size does not grow, so there is no bloat to
+worry about — but a hash comparison, or a glance at `git status`, will
+tell you something changed when nothing did.
+
+**Compare exported sources instead.** `pb_library_export_sources` to a
+scratch directory before and after, then diff the two directories. That
+is the only comparison that answers the question you are actually
+asking, and on a library of any size it costs one call each way.
 
 **The string API, for the cases that want it.**
 `pb_library_entry_export` / `pb_compile_entry_import` move the source
