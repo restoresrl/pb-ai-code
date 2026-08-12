@@ -352,9 +352,42 @@ downstream skill needs the caller set. When activated:
 "who mentions this name", `pb_library_export_sources` on the
 candidate libraries plus a grep over the resulting files answers it
 in a couple of calls instead of a thousand. Being textual, it also
-catches the dynamic invocations ORCA cannot see — and it will produce
-false positives (comments, similarly-named identifiers). Offer it as
-the fast pass; reserve the inversion for when exactness matters.
+catches the dynamic invocations ORCA cannot see. Offer it as the fast
+pass; reserve the inversion for when exactness matters.
+
+**Two things make its false positives worse than "some noise", and both
+have cheap fixes.** Measured against ORCA on one real name, plain grep
+returned 5 files where 3 were real — a 40% false-positive rate, on a
+name chosen for being ordinary.
+
+1. **PowerBuilder names are compositional, so substring matches are the
+   rule, not the exception.** The conventions that make a codebase
+   readable — `<base>_anc` for ancestors, `<base>_sqlsrv10` for
+   variants, `regola_<base>` for a related concept — guarantee that
+   short names are prefixes and infixes of long ones. Grepping
+   `spedizione_anc` matched `regola_spedizione_anc`, a different class,
+   in seven places in one file; ORCA answered `PBORCA_OBJHASNOREFS`
+   for it, so the reference does not exist at all. Anchor on word
+   boundaries — `grep -rlE '\bname\b'` — which is correct here because
+   `_` counts as a word character, so `\b` rejects
+   `regola_spedizione_anc` while keeping `spedizione_anc`. That one
+   change took the same query from 5 files to 3.
+
+2. **Grep has no idea what a library is, and names collide.** The
+   filesystem search spans every projection directory, while the
+   review is scoped to one target's library list. One workspace had
+   **20 entry names duplicated across libraries**, and `u_app` — the
+   application object every target defines — existed in **13** of
+   them. Grepping it answers with thirteen unrelated classes, twelve
+   of which are not in the build you resolved to. Restrict the search
+   to the projection directories of the libraries in the resolved
+   `LibList`, and say in the pack that you did.
+
+Both errors are **over-reporting**, which is the direction that costs
+most: the caller count is what a reviewer sets a finding's blast radius
+from, and an inflated one turns a dead method into an urgent fix. When
+a caller count decides a priority, spend the ORCA queries on that one
+name and say which number came from which method.
 
 For very-base userobjects with hundreds of callers, do not chase the
 full set: give a count and the top-N by liblist proximity.
