@@ -13,6 +13,97 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-12
+
+The write loop is now atomic, and the shape of it is documented with a
+diagram. Everything below was measured against two live workspaces — one
+with a `ws_objects` projection under git, one with neither — rather than
+reasoned about.
+
+**Why a minor bump.** The apply loop changes shape: the work happens in a
+scratch directory, the project is written to only after a compile has
+already succeeded, and a failed import is undone by restoring a file
+rather than by re-importing. A queue that ran under 0.2.x lands the same
+fixes, but what it leaves behind on failure is different.
+
+### The guarantee
+
+After each fix the `.pbl` has **either advanced by exactly that fix, or
+is byte-identical to what it was before it**. There is no third state.
+
+### Corrected
+
+- **A failed import damages the compiled half of a `.pbl`, and the
+  skill's recovery could not repair it.** A `.pbl` holds source *and*
+  compiled p-code. Measured on one entry: a failed import grew the
+  source by the edited line (`source_size` 3920 → 3962) while the
+  compiled form **shrank by 1218 bytes** (`object_size` 6792 → 5574) —
+  the event that failed to compile lost its p-code. So the entry is left
+  with new text and a mutilated object, and the previous advice
+  ("re-import the corrected file") reproduces the code with a fresh
+  compilation timestamp instead of restoring what was there.
+
+  The loop now snapshots the `.pbl` file before every import and copies
+  it back on failure. Verified: source size, object size and
+  `create_time` all return exactly, which no re-import can achieve.
+
+- **The obvious verification was blind to the failure it was meant to
+  catch.** Diffing exported sources — which 0.2.x's guidance
+  recommended, and which this project used to check its own earlier
+  work — returns the source half only, so an entry whose p-code is
+  damaged exports byte-identical text.
+
+- **Editing happened inside the project.** The export wrote the
+  projection itself, so a fix was visible in `git status` before anybody
+  had confirmed it, and a failure needed two files restored. Now the
+  export goes to a scratch directory with an explicit `dest_dir`, the
+  project receives a write only on success, and a `pbl_only` project
+  does not even acquire a `.pb-orca/` working directory.
+
+- **The rollback is no longer a question.** Leaving a library in the
+  state a failed import produces is not a decision anyone would take, so
+  the restore is immediate and automatic. The real decision — retry or
+  abandon — is then made with the library already sound.
+
+### Measured and documented
+
+- **Importing from a scratch file still updates `ws_objects`.** This was
+  doubted, and it was worth doubting: the earlier evidence came from an
+  import whose source file *was* the projection, which proves nothing.
+  Re-measured properly — `synced_files` carries the projection path and
+  the file on disk changes. The sync follows the library, not the source
+  path. On a project with no projection the response says
+  `sync: "not_applicable"`. So the loop never copies anything into
+  `ws_objects` by hand.
+
+- **Overwriting a `.pbl` under a live ORCA session is safe.** The copy
+  succeeds while the session holds the library, and the next export
+  returns the restored content. No session recycling.
+
+- **A `.pbl` hash is not an equality check**, and now the reason is in
+  the format wiki rather than being folklore: the compiled half carries
+  a compilation timestamp, so re-importing identical source yields
+  identical sizes and different bytes.
+
+- **Export just in time, never batched.** Two fixes on one entry — or
+  one fix spread across `also_in` — would otherwise have the second
+  editing text that lacks the first, and importing it would undo the
+  first **with no error**. The one failure in this flow that no gate can
+  catch, because the import succeeds.
+
+- **Never pass PowerScript through a shell argument.** Git Bash rewrites
+  arguments beginning with `//`, so a comment line arrives with one
+  slash and becomes a syntax error. Found while testing this loop, on
+  the loop's own test edit.
+
+### Added
+
+- A flow diagram of the write loop in `pb-apply-plan`, covering both
+  project modes in one path — the only difference is whether there is a
+  projection to keep in step, and the import handles that itself.
+- A section in the format wiki's index on the two halves of a `.pbl`
+  and what each one does under a failed import.
+
 ## [0.2.2] - 2026-08-12
 
 ### Corrected

@@ -47,7 +47,7 @@ scheduled run — the defaults are:
 | Each fix | confirm the diff | apply `evidence: code-read` **and `verified-in-docs`**. Set `unverified-semantics` and `requires_discussion` to `deferred` with a reason — not `skipped`, or they can never come back |
 | Branch | the user's call, asked at Step 3 | read the convention from the repository: several branches or a merge history means cut `pb-review/<context-slug>-<date>`; a single branch with linear history means the project commits to it directly, so use it. **When there is no signal either way, cut the branch** — an unwanted branch is deleted in one command, an unwanted commit on the default branch is not. Say which you chose and why |
 | Fix targets an `outside_source_tree` library | ask: skip, or take it upstream | **skip that fix**, record the reason, carry on with the queue. Unlike `source_protection` this is not fatal to the run — it disqualifies one finding, not all of them |
-| A compile error | show, decide, retry | restore the file from the snapshot **and re-import it** — copying the file back is only half a revert, since the failed import already wrote the broken source into the `.pbl` — then mark it `failed` and **stop only the fixes that depend on it**. The independent remainder of the queue is unaffected and should run. Report at the end |
+| A compile error | restore, then show and decide | **the restore is not a decision** — copy the `.pbl` snapshot back immediately, in both modes, then mark the fix `failed` and **stop only the fixes that depend on it**. The independent remainder of the queue is unaffected and should run. Report at the end |
 | Two compile errors in one run | show, decide, retry | **stop the whole queue.** One failure is a bad patch; two is a bad assumption about the workspace, and continuing tests that assumption on more of the library |
 | Dependency cycle | ask which edge to cut | do not guess. Stop and report |
 | CHANGELOG promotion | offer | never. Leave `[Unreleased]` |
@@ -384,32 +384,133 @@ Two fields change the flow before any diff is computed:
 
 If neither field is present, go straight to (a).
 
+### The write is atomic — the shape of one fix
+
+Every fix goes through the same five moves, and the point of the shape is
+a single guarantee:
+
+> **After each fix the `.pbl` has either advanced by exactly that fix, or
+> is byte-identical to what it was before it. There is no third state.**
+
+Nothing is edited inside the project. A scratch directory holds the work,
+the project receives a write only when the compile has already succeeded,
+and the rollback is a file copy rather than a repair.
+
+```
+                    ┌──────────────────────────────┐
+                    │   next fix from the queue    │
+                    └───────────────┬──────────────┘
+                                    │
+   ┌────────────────────────────────▼─────────────────────────────────┐
+   │  <tmp>/  =  the work area, ALWAYS, in both project modes         │
+   │                                                                  │
+   │   1. snapshot the .pbl  →  <tmp>/<fix-id>.pbl.bak   + verify     │
+   │   2. export the entry   →  <tmp>/<entry>       (dest_dir=<tmp>)  │
+   │   3. copy it aside      →  <tmp>/<entry>.orig    (the pristine)  │
+   └────────────────────────────────┬─────────────────────────────────┘
+                                    │
+   ┌────────────────────────────────▼─────────────────────────────────┐
+   │   4. EDIT  <tmp>/<entry>                                         │
+   │      diff shown =  <tmp>/<entry>  vs  <tmp>/<entry>.orig         │
+   │      the project is still untouched at this point                │
+   └────────────────────────────────┬─────────────────────────────────┘
+                                    │
+                          ┌─────────▼─────────┐
+                          │  user confirms?   │──no──► skip + impact check
+                          └─────────┬─────────┘        discard <tmp>
+                                    │ yes
+   ┌────────────────────────────────▼─────────────────────────────────┐
+   │   5. IMPORT   pb_object_import_file( <tmp>/<entry> )             │
+   └────────────────────────────────┬─────────────────────────────────┘
+                                    │
+                    ┌───────────────▼───────────────┐
+                    │          success ?            │
+                    └──┬─────────────────────────┬──┘
+                 true  │                         │  false
+   ┌──────────────────▼─────────────┐  ┌─────────▼──────────────────────┐
+   │ 6a. the .pbl advanced          │  │ 6b. RESTORE, automatically     │
+   │                                │  │     copy <tmp>/<fix>.pbl.bak   │
+   │  ws_objects project?           │  │       over the .pbl            │
+   │   yes → the projection was     │  │                                │
+   │         already written by     │  │     nothing else to undo, in   │
+   │         the import itself;     │  │     either mode: the project   │
+   │         verify, do not copy    │  │     was never written to       │
+   │   no  → nothing to propagate   │  │                                │
+   │                                │  │     verify byte-identity       │
+   │  status = applied              │  │     keep the failed edit       │
+   │  tick the CHANGELOG            │  │     status = failed            │
+   │  discard <tmp>                 │  │     stop only its dependents   │
+   └──────────────┬─────────────────┘  └─────────────┬──────────────────┘
+                  └───────────┬────────────────────  ┘
+                              │
+                 ┌────────────▼─────────────┐
+                 │ second error this run?   │──yes──► stop the whole queue
+                 └────────────┬─────────────┘
+                              │ no  →  next fix
+```
+
+**One snapshot at a time.** The snapshot taken before fix N already
+contains fixes 1..N-1, so a late failure never costs the earlier work —
+verified: after a deliberate failure at the second fix, the first was
+still in the library and the project showed exactly the two files that
+fix had touched. Once a fix reaches a terminal state its snapshot is
+rubbish: reverting the *whole run* is git's job, not scratch's. So the
+scratch cost is one copy of one library — 8.4 MB copied in 38 ms on the
+largest library measured.
+
+**Export just in time, never in a batch at the start of the queue.** Two
+fixes on the same entry, or one fix spread over `also_in`, would
+otherwise have the second one editing text that does not contain the
+first — and importing it would undo the first **with no error at all**.
+That is the one failure in this whole flow that no gate can catch,
+because the import succeeds.
+
 ### (a) Get the current source and present the diff
 
-Export the entry to a file:
+Snapshot the library first — it is the only thing that makes step (b)'s
+failure branch a revert instead of a repair:
+
+```
+copy  <lib_path>  →  <tmp>/<fix-id>.pbl.bak      and confirm it is there
+```
+
+A snapshot that silently failed to write is worse than none, because
+from here on the procedure assumes it exists.
+
+Then export the entry **into the scratch directory**:
 
 ```jsonc
 pb_object_export_file {
   "lib_path":   "<lib_path from fix.entry>",
   "entry_name": "<entry_name from fix.entry>",
-  "entry_type": "<entry_type from fix.entry>"
+  "entry_type": "<entry_type from fix.entry>",
+  "dest_dir":   "<tmp>"
 }
 ```
 
+**`dest_dir` is not optional here.** Omit it and on a `ws_objects`
+project ORCA writes the projection itself — the file becomes the thing
+you are about to edit in place, and the project is dirty before you have
+decided anything. With `dest_dir` set, a failed fix leaves the project
+untouched by construction rather than by rollback, and a `pbl_only`
+project does not even acquire a `.pb-orca/` working directory.
+
 ORCA writes the file itself, so it is byte-identical to what the IDE
-would produce: correct `$PBExportHeader$` / `$PBExportComments$`
-lines, correct BOM for the workspace encoding, and whatever line endings the .pbl actually holds. The
-response gives you the path. On a `ws_objects` project that path is
-the projection file; on a `pbl_only` project it is a working file
-under `.pb-orca/`.
+would produce: correct `$PBExportHeader$` / `$PBExportComments$` lines,
+correct BOM for the workspace encoding, and whatever line endings the
+`.pbl` actually holds.
+
+Copy it once more to `<tmp>/<entry>.orig`. That copy is the pristine
+reference the diff is computed against, and keeping it makes the two
+project modes behave identically — there is no branch here for "read the
+projection instead".
 
 **Do not trust the source captured in the plan file's context pack** —
 the file on disk is the truth, and time has passed since the review.
 
 Read the exported file, compute a unified diff between it and the
 patched version implied by the Suggested fix (or, for a
-`requires_discussion` fix, the body of the chosen option), and show
-it:
+`requires_discussion` fix, the body of the chosen option), and show it:
 
 ```
 fix-01 — Null deref in `n_logger::flush()` on empty buffer
@@ -428,49 +529,43 @@ Ask: "Apply this fix?"
 
 ### (b) On yes — edit the file, then import it
 
-**"The first line of the function body" is ambiguous on disk.** PowerBuilder
-writes the first statement on the signature line, after the `;`. Inserting
-there displaces that statement, which is how a one-line guard produced six
-compile errors in testing: the declaration it pushed down was then used before
-it was declared. Put a new statement on its own line *after* the signature
-line, leaving what was there where it was, and check
-[`pb-src-format`](../pb-src-format/SKILL.md) when the layout is unfamiliar.
+**"The first line of the function body" is ambiguous on disk.**
+PowerBuilder writes the first statement on the signature line, after the
+`;`. Inserting there displaces that statement, which is how a one-line
+guard produced six compile errors in testing: the declaration it pushed
+down was then used before it was declared. Put a new statement on its own
+line *after* the signature line, leaving what was there where it was, and
+check [`pb-src-format`](../pb-src-format/SKILL.md) when the layout is
+unfamiliar.
 
-**First, copy the exported file to a scratch path outside the project, and
-keep it until this fix is resolved.** Two lines of work that make the rest of
-this section possible:
-
-- On a `ws_objects` project the export in (a) wrote **the projection itself**,
-  and you are about to edit it in place. Once you do, the pre-fix source
-  exists nowhere.
-- **`git checkout` is not the fallback.** This skill never commits a fix, so
-  restoring from `HEAD` throws away every fix already applied in this run. On
-  a queue of ten, a failure at fix-07 would cost fixes 01 through 06.
-
-So "revert" below means: re-import the snapshot you took here. Without it,
-the failure branch has nothing to revert to and the only exits are shipping a
-`.pbl` that does not compile or losing the earlier work.
-
-1. **Edit the exported file in place** with ordinary text tools.
-   Three rules:
+1. **Edit `<tmp>/<entry>`** with ordinary text tools. Three rules:
    - Leave the `$PBExportHeader$` / `$PBExportComments$` lines alone.
-     They carry the entry's name, type and comment metadata; ORCA
-     wrote them correctly and the import reads them back. Touching
-     them is how comment metadata gets silently lost.
-   - **Do not translate newlines.** Keep whatever the export gave you — usually CRLF, but see the pre-flight: a `.pbl` can hold LF. An editor that
-     normalizes to LF turns one fix into a whole-file diff, and puts
-     LF into the `.pbl`.
+     They carry the entry's name, type and comment metadata; ORCA wrote
+     them correctly and the import reads them back. Touching them is how
+     comment metadata gets silently lost.
+   - **Do not translate newlines.** Keep whatever the export gave you —
+     usually CRLF, but a `.pbl` can hold bare LF, and one measured
+     library held 663 of an entry's 704 line breaks that way. An editor
+     that normalizes to LF turns one fix into a whole-file diff.
    - **Do not re-encode.** Preserve the BOM you found.
+
+   **Never pass PowerScript through a shell argument.** Git Bash rewrites
+   arguments that begin with `//` (MSYS path conversion), so a comment
+   line arrives with one slash and becomes a syntax error. Write the text
+   to a file and have the editing step read it from there. Observed while
+   testing this very loop.
+
 2. **Optionally normalize style.** If the workspace ships a
-   `.pb-format.toml`, run `pb-format format <path>` on the file
-   before importing — see [`pb-format`](../pb-format/SKILL.md). Skip
-   this when the tool is not installed or the workspace has no config;
-   it is opt-in by design and its absence changes nothing else.
+   `.pb-format.toml`, run `pb-format format <path>` on the file before
+   importing — see [`pb-format`](../pb-format/SKILL.md). Skip this when
+   the tool is not installed or the workspace has no config; it is opt-in
+   by design and its absence changes nothing else.
+
 3. **Import it:**
 
 ```jsonc
 pb_object_import_file {
-  "file_path": "<path returned by pb_object_export_file>",
+  "file_path": "<tmp>/<entry>",
   "lib_path":  "<lib_path from fix.entry>"
 }
 ```
@@ -478,112 +573,89 @@ pb_object_import_file {
 Entry name, type and comment are inferred from the file, so there is
 nothing else to pass and nothing to keep in sync by hand.
 
-**Reading the response.** Branch on `"error" in response` first — that
-is a tool or state failure (bad path, session not configured, ORCA
-refusing). Only then look at `success`:
+**Reading the response.** Branch on `"error" in response` first — that is
+a tool or state failure (bad path, session not configured, ORCA
+refusing). Only then look at `success`.
 
-- `success: true`, `errors: []` → mark the fix **applied**. The
-  response also carries `sync` and `synced_files`: on a `ws_objects`
-  project the text projection was updated **in the same call**, so
-  there is no propagation step to remember and no second file to keep
-  aligned. If `sync: "failed"`, surface `sync_error` — the `.pbl`
-  changed but the text file did not, and the two now disagree.
-- `success: false` with a populated `errors` array → **compile
-  diagnostics, not a tool failure**. Each item carries
-  `message_number`, `message_text`, `line`, `column` and `level_name`,
-  but do not trust their shape — this is ORCA's raw callback output and
-  measured against a real failure it looked like this:
+#### On success
 
-  - `message_number` was empty on every item; the code (`C0051`) was
-    inside `message_text`.
-  - `column` was `0` on every item.
-  - `line` is relative to the **function**, not the file.
-  - the first few items are *context headers* — library, object,
-    function — and they carry `level_name: "error"`, while the actual
-    errors carry `level_name: "unknown(4)"`. Presented literally, the
-    headers read as errors and the errors read as unknown.
+Mark the fix **applied**. The projection needs no work from you:
 
-  So render `message_text` as the message and treat the rest as hints.
-  Read the leading `Library:` / `Object:` / `Function:` items as the
-  location and say so, rather than listing them as failures.
+- on a `ws_objects` project the import **writes the projection itself**,
+  even though the file you imported came from `<tmp>`. Measured: the
+  response's `synced_files` carried the projection path and the file on
+  disk changed. The sync follows the *library*, not the source path.
+- on a `pbl_only` project the response says `sync: "not_applicable"` and
+  `synced_files` is empty, because there is nothing to propagate to.
 
-  Then **restore the file from the snapshot _and re-import it_**, mark
-  the fix `failed`, and continue with the fixes that do not depend on it
-  — see the unattended table.
+**Never copy the scratch file into `ws_objects` yourself.** The
+projection must mirror the library, and the import already made it so.
+If `sync: "failed"`, surface `sync_error` — the `.pbl` changed and the
+text file did not, and the two now disagree.
 
-  **Copying the snapshot back is only half a revert, and the half it
-  leaves out is the one that matters.** A failed import still wrote the
-  rejected source into the `.pbl` (see below). Restore only the file and
-  you get:
+#### On failure — restore, do not repair
 
-  - the projection holding the good source,
-  - the `.pbl` holding the object that does not compile,
-  - and `git status` showing both as modified, with no hint that they
-    now disagree.
-
-  That is the exact drift this whole flow exists to prevent, produced on
-  the failure path, where nobody is looking for it. Measured: after a
-  file-only restore, exporting the entry returned the broken source
-  while the text on disk read correctly.
-
-  So the revert is two steps, and the second is not optional:
-
-  ```
-  copy <snapshot> over the projection file
-  pb_object_import_file(lib_path, <that file>)      # must come back success: true
-  ```
-
-  If that re-import **also** fails, stop the queue and say so plainly:
-  the known-good source no longer compiles, which means something else
-  in the workspace moved underneath you, and no further fix in this run
-  can be trusted.
-
-**What a failed compile leaves behind**, measured rather than assumed:
-
-- **`synced_files` is empty.** Nothing was written to the projection, so
-  the file on disk still holds exactly what you wrote. That asymmetry is
-  deliberate — it is what lets you iterate on the file.
-- **The `.pbl` was written anyway, with the whole rejected source.** Not
-  a truncated fragment: exporting the entry afterwards returns the
-  complete text including the line that failed to compile. So the entry
-  is *present and broken*, and the library and the projection agree with
-  each other — both hold the bad version. Nothing is in a torn state;
-  it is simply wrong in both places.
-- **Recovery is a plain re-import of the corrected file.** No rescue, no
-  special path. Verified: after re-importing the good source, all 24
-  entries of the library exported byte-identical to their pre-failure
-  state.
-
-**Do not verify a `.pbl` by hashing it.** This is the instrument
-everyone reaches for — "did the loop leave the library as it was?" — and
-it answers wrongly. After the recovery above, with every entry's source
-byte-identical to before, the `.pbl` **hash still differed** and git
-reported:
+`success: false` with a populated `errors` array is **compile
+diagnostics, not a tool failure**. Restore first, then report.
 
 ```
-src/example.pbl | Bin 159232 -> 159232 bytes
-1 file changed, 0 insertions(+), 0 deletions(-)
+copy  <tmp>/<fix-id>.pbl.bak  →  <lib_path>
 ```
 
-Same size, different bytes, no content change: a container reorganizes
-internally on every write. Size does not grow, so there is no bloat to
-worry about — but a hash comparison, or a glance at `git status`, will
-tell you something changed when nothing did.
+That is the whole rollback. Do not ask first: leaving a library in the
+state a failed import produces is not a decision anybody would take, and
+the real decision — fix the file and retry, or abandon the fix — is
+better made with the library already sound. There is nothing else to
+undo, in either project mode, because the project was never written to.
 
-**Compare exported sources instead.** `pb_library_export_sources` to a
-scratch directory before and after, then diff the two directories. That
-is the only comparison that answers the question you are actually
-asking, and on a library of any size it costs one call each way.
+**Why a file copy and not a re-import.** A `.pbl` holds the source *and*
+the compiled p-code, and a failed import damages them differently.
+Measured on one entry: the source grew by the edited line
+(`source_size` 3920 → 3962) while the compiled form **shrank by 1218
+bytes** (`object_size` 6792 → 5574) — the event that failed to compile
+lost its p-code. So the entry is not "old code with new text"; it is new
+text with a mutilated object. Restoring the file brought both back
+exactly, `create_time` included, which no re-import can do because
+recompiling stamps a fresh timestamp.
+
+**And exporting the source cannot detect any of this**, which is why the
+obvious verification is the wrong one: an export returns the source half
+only, so a library whose p-code is damaged exports byte-identical text.
+
+Then verify and report:
+
+- the `.pbl` must be **byte-identical to the snapshot**. Here a hash
+  comparison is valid, because it compares a copy against its own
+  source — unlike comparing two independently compiled containers, which
+  differ by timestamp even when the code is the same.
+- keep the failed edit in `<tmp>` so it can be iterated on.
+- render `message_text` as the message. Do not trust the array's shape:
+  measured against real failures, `message_number` was empty on every
+  item and the code (`C0031`, `C0051`) was inside `message_text`;
+  `column` was always `0`; `line` is relative to the **function**, not
+  the file; and the leading `Library:` / `Object:` / `Event:` items are
+  *context headers* carrying `level_name: "error"` while the actual
+  error carries `level_name: "unknown(4)"`. Presented literally, the
+  headers read as errors and the error reads as unknown. Read the
+  headers as the location and say where it failed.
+- mark the fix `failed`, stop only the fixes that depend on it, and
+  continue with the rest — see the unattended table.
+
+**Overwriting the `.pbl` under a live ORCA session is safe.** Measured:
+the copy succeeds while the session holds the library in its list, and
+the next `pb_library_entry_export` returns the restored content. No
+session recycling, no reopening.
 
 **The string API, for the cases that want it.**
-`pb_library_entry_export` / `pb_compile_entry_import` move the source
-as a string instead of a file, and keep the projection in step just
-the same. Use them when the object is small, or when the patch is a
-mechanical transform on a string you already hold. The export returns
-the **body** (no header lines) and the import ignores header lines if
-present, so there is no asymmetry to compensate for. The file API
-remains the default: the source never passes through the conversation
-as a tool argument.
+`pb_library_entry_export` / `pb_compile_entry_import` move the source as
+a string instead of a file, and keep the projection in step just the
+same. Use them when the object is small, or when the patch is a
+mechanical transform on a string you already hold. The export returns the
+**body** (no header lines) and the import ignores header lines if
+present, so there is no asymmetry to compensate for. The file API remains
+the default: the source never passes through the conversation as a tool
+argument. The `.pbl` snapshot is required either way — the failure
+behaviour is the same.
 
 ### (c) On no — skip with impact check
 

@@ -117,6 +117,42 @@ The skill that triggers this behavior is
 - Not project-specific. Conventions, naming, and patterns specific to
   one codebase belong outside this wiki (layer 3 — deferred).
 
+## A `.pbl` holds two things, and only one of them is here
+
+Every page in this wiki describes the **source** form of an entry — the
+text an export produces and an import consumes. A `.pbl` also holds the
+**compiled p-code**, and several behaviours that look mysterious from
+the source side are explained by that second half:
+
+- **Importing the same source twice produces different `.pbl` bytes.**
+  The compiled form carries a compilation timestamp, so a re-import
+  reproduces the code and re-stamps the time. Sizes match, bytes do
+  not. Consequence: a `.pbl` hash is not an equality check, and
+  `git status` will report a library as modified after a change that
+  reverted itself. Only restoring the file from a copy gives byte
+  identity back.
+- **A failed import damages the two halves differently.** Measured on
+  one entry: the source grew by the edited line (`source_size`
+  3920 → 3962) while the compiled form **shrank by 1218 bytes**
+  (`object_size` 6792 → 5574) — the event that failed to compile lost
+  its p-code. The entry is left with new text and a mutilated object,
+  not with old code.
+- **An export cannot show you any of this.** It returns the source
+  half, so an entry whose p-code is damaged exports byte-identical
+  text. Verifying a library by diffing exported sources is therefore
+  blind to exactly the failure mode a bad import produces.
+
+`pb_library_entry_information` reports the two sizes separately —
+`source_size` (in UTF-16 code units, so halve it for the exported
+bytes) and `object_size` — which is the only view of the compiled half
+the tooling offers.
+
+The write loop in
+[`pb-apply-plan`](../../skills/pb-apply-plan/SKILL.md) is built around
+these facts: it snapshots the `.pbl` file before every import and
+restores that file on failure, because no re-import can undo what a
+failed one did.
+
 ## Source of truth caveat
 
 No authoritative spec exists. Everything here is observation. Treat
