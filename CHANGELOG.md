@@ -13,77 +13,158 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
-All of the below came out of one run: `/pb-review` against a real
-2426-source workspace whose library list crosses into a vendored `dep/`
-tree — the first time the kit has been pointed at a genuine
-`outside_source_tree` boundary rather than a synthetic one. The
-`outside_source_tree` reporting itself held, including on the basename
-collision that caused the `pb-orca-mcp` v0.2.7 bug; everything here is
-what the run found *around* it.
+## [0.2.0] - 2026-08-12
 
-### Corrected
+Thirteen rounds of pointing the kit at a real 2426-source PowerBuilder
+workspace and fixing what broke. Nineteen defects, each found by running
+the flow rather than reading it, each fixed against the case that
+exposed it. The rounds stopped when one of them found nothing new.
+
+**Why a minor bump.** Several of these change what a review *does* — a
+new resolution flavour, a different rule for where artefacts go, a
+pruning step the old order did not have — so a project pinned to
+v0.1.10 gets different behaviour, not just better wording.
+
+**What this pass could not have found.** The workspace is one product
+line: one vendor's conventions, one language, one PB release. The
+sixteenth defect was still novel at round twelve, so the honest reading
+of "a round found nothing" is *this* round found nothing, on the
+mechanisms it exercised — not that the kit is clean.
+
+### Corrected — the review flow
 
 - **A plan file linked into a directory the consumer gitignores.** The
-  review writes its plan to `.pb-review/`, which is work product and gets
-  committed, and cited the antipattern catalog by relative path into
-  `.claude/pb-ai-code-docs/`, which is harness state and is gitignored on
-  purpose. Both decisions are right on their own; together they produce a
-  document whose references resolve only on the machine that wrote it, and
-  die silently for the colleague who pulls the branch. `pb-review` now
-  requires plan files to cite the catalog by slug plus public URL.
+  plan goes into the reviewed project's repository; the installed bundle
+  is harness state and does not. Together they produced a document whose
+  catalog references resolve only on the machine that wrote it. Plan
+  files now cite by slug plus public URL. The rule was also worded around
+  `.claude/` in four places — it is about the bundle, not one assistant,
+  and under `-Harness generic` the bundle is elsewhere.
 
-- **`pb-context-build`'s prerequisite table conflated two conditions.**
-  One column, "Needs ORCA session?", answered `yes` for
-  `pb_object_query_hierarchy` and `pb_object_query_reference` — which
-  additionally need `pb_set_current_application`, and say so with a
-  distinct ORCA code (`PBORCA_CURRAPPLNOTSET`, -13). The prose under
-  *Session bring-up* had it right all along; the table is the quick
-  reference, and it is the table people read. It now has two columns and
-  names the error code.
+- **The in-memory export was offered as a way to measure `.pbl`-vs-file
+  drift.** It returns the object *body*: no export headers, and no binary
+  section. On an `olecustomcontrol` the omitted tail was 8 196 bytes,
+  **40% of the file**, so the comparison reports a mismatch that is not
+  drift. `pb_object_export_file` to a scratch directory is the one that
+  returns the whole file — verified byte-identical on an OLE-bearing
+  window, binary tail included, despite `export_include_binary`
+  defaulting to false at the session level.
 
-- **`appeon-query` treated "no MCP server" as "no index", and forbade the
-  web outright while `pb-review` told you to use it.** Two skills
-  disagreeing about the same rule, with `pb-review` resolving it by
-  describing the other's rule inaccurately. The index is a SQLite file and
-  the server is a wrapper over it, so a checkout of this repository can
-  answer a lookup with plain SQL — exactly, offline, citable, and at no
-  token cost. Both skills now share one ladder: local database, then a
-  budgeted live fetch, then `unverified-semantics` with an `experiment`.
-  Never memory.
+- **A vendored target had nowhere honest to put its output.** Reviewing a
+  shared framework from the project that consumes it is legitimate, but
+  every finding is `outside_source_tree`, the apply loop refuses them all,
+  and the flow would still have appended an `[Unreleased]` section to the
+  consuming project's `CHANGELOG.md` listing fixes that will never be made
+  there. The plan file is still written; the changelog entry is not, the
+  handoff is not offered, and Pre-flight 0 records that the prior-review
+  history it looks for lives in another repository.
 
-### Documented
+- **The target list came from a filesystem glob.** `src/*.pbt` and the
+  `.pbw` disagree in both directions: the glob missed targets in
+  subdirectories and picked up two orphaned `.pbt` files no workspace
+  declares. `pb_target_info` on the `.pbw` answers authoritatively in one
+  sessionless call; the grep shortcut still applies, over the paths it
+  returns.
 
-- **`source_size` is not the size of the export.**
-  `pb_library_entry_information` reports it in UTF-16 code units, so on a
-  UTF-8 workspace it is ~2× what the entry contributes to the budget
-  (measured: `source_size: 41076` for a 20 577-byte export). It is the
-  obvious field to reach for when sizing a pack before exporting, and
-  overstating by 2× prunes scope that did not need pruning. Recorded in
-  `pb-context-build`'s budget mechanics.
+- **Free-form intent had one sentence instead of a procedure.** It said to
+  guess a naming pattern and enumerate libraries — which on this workspace
+  found one DataWindow when asked for "the shipment tracking flow", while a
+  content grep found sixteen entries across five libraries. The domain is
+  spelled in the codebase's language and its vendors' names. Now Flavor D
+  in `pb-context-build`, with the `pbl_only` fallback and the
+  group-by-library presentation.
 
-- **Shortlist targets by grep before calling `pb_target_info` on each.**
-  "Each target" is fine for three and wasteful for fourteen, which is what
-  the workspace above had. A `.pbt` is text and its `LibList` is in it
-  verbatim, so grep narrows the field for free and the tool still decides
-  the answer. `pb-review` also now says that when several targets qualify —
-  eleven of fourteen did — the choice must be justified rather than made
-  silently, because a different target yields a different set of callers.
+### Corrected — context building
+
+- **The prerequisite table conflated "session open" with "current
+  application set."** ORCA reports them separately (`-12` vs `-13`); the
+  two query primitives need both. The table now has two columns and names
+  the codes.
+
+- **The library list is set once per session.** A second
+  `pb_set_library_list` answers `PBORCA_DUPOPERATION (-2)`. The wording
+  invites shrugging it off, and carrying on means every later query
+  answers against the *previous* workspace — plausibly, with entries that
+  resolve. Close the session and open again.
+
+- **Neither ORCA size field is the size of the export.** `source_size` is
+  UTF-16 code units, so halve it — verified on userobject, window, menu
+  and datawindow. `object_size`, which is the only size a
+  `pb_library_directory` listing carries and therefore what a library
+  scope has to budget from, is unrelated: 2.7×–7.9× **over** for
+  PowerScript entries and 0.58×–0.67× **under** for DataWindows. On one
+  library the listing totalled 216 KB against 158 KB of real source, with
+  the four DataWindows — 77% of the bytes — looking like a third.
+
+- **The pruning order's first step is a no-op on non-visual objects.**
+  "Drop `simple`-typed refs first" assumes a mix; a `nonvisualobject` has
+  no `open` refs at all. Measured: 37 refs, all `simple`, depth-1 at 159%
+  of the cap. Step (a′) ranks by inheritance/delegation membership then by
+  size, and requires listing what was cut.
+
+- **The grep shortcut for callers over-reports, and the caveat did not
+  say how to stop it.** PowerBuilder names are compositional, so short
+  names are infixes of long ones as a rule: `spedizione_anc` matched
+  `regola_spedizione_anc`, which ORCA says references nothing. Anchoring
+  with `\b` took the query from 5 files to 3. And grep does not know what
+  a library is — one workspace had 20 entry names duplicated across
+  libraries, `u_app` in thirteen.
+
+- **`.pbd` libraries enumerate but cannot be read.**
+  `pb_library_directory` lists their entries; every
+  `pb_library_entry_export` and `pb_library_entry_information` on those
+  same names answers `PBORCA_OBJNOTFOUND (-3)`, *"was not found"* — as if
+  you had mistyped it. Refs into a compiled library are now recorded as
+  present-but-unreadable.
+
+- **`pb_library_export_sources` returns more than it saves.** One record
+  per entry, each carrying the absolute path: 5.5 KB for 21 entries,
+  extrapolating to ~84 KB for a 327-entry library — over half the source
+  budget, in repeated paths. Take `count`/`skipped`/`failed` and go to
+  the files.
+
+### Corrected — the installer
+
+- **The duplicate-ORCA-server warning never fired on the shapes that
+  occur.** It matched the hyphenated package name inside a server's
+  definition, missing both `-m pb_orca_mcp` (underscores, because that is
+  the module name) and a stale entry keyed `pb-orca-mcp` whose value names
+  nothing. Now folds `_` to `-` and inspects the key.
+
+- **A config that could not be parsed was rewritten anyway.**
+  `ConvertFrom-Json` accepts `{ "mcpServers": { "broken": , } }`, yielding
+  `null`, so the documented guarantee rested on a parser too lenient to
+  enforce it. `JsonDocument.Parse` validates first.
+
+- **Nothing said the bundle directory wants gitignoring.** A
+  `-Harness generic` install lands in `.agent/`, which that consumer's
+  `.gitignore` did not cover, so the next `git add -A` would commit it.
+  The installer now checks and prints the missing rule. That check was
+  wrong on the first attempt: `git check-ignore -q -- '.agent/'` — with a
+  trailing slash — returns 0 citing a **blank** `.gitignore` line, so the
+  hint silently never fired.
 
 ### Added
 
-- Two antipattern catalog entries, both from findings in that run, both
-  with a mechanical detection recipe rather than a judgement call:
-  - **`pos-guarded-as-negative`** — `Pos()` returns 0 when it finds
-    nothing, never -1, so a `< 0` guard is dead and the not-found case
-    proceeds from an invented offset. Sibling of `isnull-on-numeric`: a
-    sentinel convention imported from another language, failing in the
-    safe-looking direction. The page is honest that the pattern appeared
-    **once** in 2426 sources — it earns its place on how it fails, not on
-    frequency — and it records why grep alone misses it.
-  - **`halt-in-shared-library`** — `MessageBox` and `HALT CLOSE` inside a
-    `.pbl` that headless targets also link. The modal blocks a thread on a
-    window station nobody watches, with no log line; the `HALT` stops the
-    service and skips cleanup. New *Process and control flow* category.
+- **`tests/test_installer_mcp_merge.py`** — runs the installer against
+  planted configurations and asserts the duplicate warning fires, the
+  unrelated servers survive, no false positive on a project that merely
+  has other servers, and a malformed config is left untouched. It found
+  the lenient-parser defect while being written for the other one.
+
+- **Two antipattern catalog entries**, both from findings in these runs,
+  both with a mechanical detection recipe:
+  `pos-guarded-as-negative` (PowerScript's not-found sentinel is 0, never
+  -1, so the `< 0` guard is dead and the code proceeds from an invented
+  offset) and `halt-in-shared-library` (`MessageBox` and `HALT CLOSE` in a
+  `.pbl` that headless targets also link). New *Process and control flow*
+  category.
+
+- **What to read in a DataWindow**, since the bug-risk list is entirely
+  PowerScript and a `.srd` is not: `update=yes` on key columns, the
+  `updatewhereclause` contract against what the framework does at runtime,
+  raw SQL versus `PBSELECT`, retrieval arguments concatenated rather than
+  bound, and `release N;` against the target's PB release.
 
 ## [0.1.10] - 2026-08-12
 
