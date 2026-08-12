@@ -663,23 +663,29 @@ See the antipattern catalog entry `pb-antipatterns/isnull-on-numeric`
 (<https://github.com/restoresrl/pb-ai-code/blob/main/docs/pb-antipatterns/isnull-on-numeric.md>).
 ```
 
-What you must **not** write is a Markdown link whose target is the
-relative path `../.claude/pb-ai-code-docs/pb-antipatterns/<slug>.md` —
-which is where the file genuinely sits on your machine, and which is
-exactly the trap.
+What you must **not** write is a Markdown link that points at the
+installed knowledge base — `../<bundle-dir>/pb-ai-code-docs/pb-antipatterns/<slug>.md`,
+where `<bundle-dir>` is whatever this harness uses: `.claude/`,
+`.agent/`, or whatever `-SkillsDir` was given. That is where the file
+genuinely sits on your machine, and it is exactly the trap. The rule is
+about the *installed bundle*, not about any one assistant, so do not
+read it as applying only to the directory name you happen to see.
 
 The reason is that two correct decisions collide here. The plan file is
 work product: it goes into the reviewed project's repository, because
 the promise that another agent can resume it later only holds if it
 reaches the repository. The installed bundle is *not* work product: it
-is harness state, and the projects that consume this kit gitignore
-`.claude/` on purpose, so that a PB project commits nothing agentic.
+is harness state, reinstalled from `pb-ai-code` whenever it changes, and
+a PB project is meant to commit nothing agentic at all.
 
-So a relative link from `.pb-review/` into `.claude/pb-ai-code-docs/`
-resolves on the machine that wrote it and is dead for everybody else —
-the colleague who pulls the branch, the reviewer reading it on the web,
-the agent that picks the plan up on another checkout. It fails in the
-worst way, too: silently, and only for the reader who was not there.
+So a relative link from `.pb-review/` into the bundle resolves on the
+machine that wrote it and is dead for everybody else — the colleague who
+pulls the branch, the reviewer reading it on the web, the agent that
+picks the plan up on another checkout. It fails in the worst way, too:
+silently, and only for the reader who was not there. And it fails
+whether or not the bundle directory happens to be gitignored: if it is,
+the target is absent; if it is not, the target is a snapshot of a
+knowledge base that has since moved on.
 
 The same rule covers `docs/wiki-notes.md` and the `pb-source-format`
 pages. Inside a skill file, relative links are right and the installer
@@ -757,8 +763,9 @@ fields are not decoration: they are what makes it collectable.
 - **section**: `Variants observed` | `Canonical form` | `Open questions`
   | `new page`
 - **observed-against**: `pb-ai-code @ <sha>` — from the installer's
-  marker file, `.claude/_installed-from-pb-ai-code.txt`, the `# Source:`
-  line
+  marker file, `_installed-from-pb-ai-code.txt`, inside whatever
+  directory this harness installed into (`.claude/`, `.agent/`, …), the
+  `# Source:` line
 - **evidence**: `compiled clean` (and how — the tool call and its
   result) | `observed only`
 - **repro**: the smallest snippet that shows it

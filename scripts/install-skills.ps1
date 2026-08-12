@@ -519,3 +519,41 @@ Write-Host "Done." -ForegroundColor Green
 if ($Harness -eq 'claude-code' -and -not $SkipMcpConfig) {
     Write-Host "Restart your assistant to pick up the MCP config, then confirm the pb_* tools are listed (/mcp)."
 }
+
+# The bundle is generated, not work product: a PB project should commit
+# nothing agentic, and the way to update it is to re-run this script. Say so
+# when the target's git does not already ignore what we just wrote — easy to
+# miss on a harness whose directory nobody has added a rule for yet.
+if (-not $selfInstall -and -not $DryRun) {
+    $bundleRoot = ($skillsRel -split '[\\/]')[0]
+    $isRepo = $false
+    $ignored = $false
+    $prev = Get-Location
+    try {
+        Set-Location -LiteralPath $target
+        & git rev-parse --is-inside-work-tree 2>$null | Out-Null
+        $isRepo = ($LASTEXITCODE -eq 0)
+        if ($isRepo) {
+            # No trailing slash. `git check-ignore -- '.agent/'` can match a
+            # BLANK line in .gitignore and report the path as ignored when it
+            # is not - verified against a real .gitignore, where it claimed
+            # line 45 while line 45 was empty and `git status` disagreed.
+            # Without the slash it answers correctly.
+            & git check-ignore -q -- $bundleRoot 2>$null
+            $ignored = ($LASTEXITCODE -eq 0)
+        }
+    }
+    catch { $isRepo = $false }
+    finally { Set-Location -LiteralPath $prev }
+
+    if ($isRepo -and -not $ignored) {
+        Write-Host ""
+        Write-Host "Note: '$bundleRoot' is not ignored by git in this project." -ForegroundColor Yellow
+        Write-Host "      The bundle is generated - update it by re-running this script, not by"
+        Write-Host "      editing it - so it does not want committing. Suggested .gitignore lines:"
+        Write-Host "        $bundleRoot/"
+        if ($Harness -eq 'claude-code' -and -not $SkipMcpConfig) {
+            Write-Host "        .mcp.json"
+        }
+    }
+}
