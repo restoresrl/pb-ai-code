@@ -175,6 +175,14 @@ function Write-McpConfig {
                 @{}
             }
             else {
+                # Validate strictly BEFORE ConvertFrom-Json, which is lenient
+                # enough to defeat the guarantee this branch exists to make.
+                # Given `{ "mcpServers": { "broken": , } }` it does not fail:
+                # it yields "broken" = $null, the merge proceeds, and the
+                # user's malformed file gets silently rewritten with their
+                # half-typed value coerced away. JsonDocument.Parse rejects it,
+                # which is what "cannot be parsed is never touched" has to mean.
+                [void][System.Text.Json.JsonDocument]::Parse($raw)
                 $raw | ConvertFrom-Json -AsHashtable
             }
         }
@@ -223,10 +231,17 @@ function Write-McpConfig {
     $ourPackages = @($Servers.Keys | ForEach-Object {
             ($Servers[$_] | ConvertTo-Json -Depth 10 -Compress)
         }) -join ' '
+    # Match on the server KEY as well as its definition, and treat '-' and '_'
+    # as the same character. Both matter: a Python entry point is invoked as
+    # `-m pb_orca_mcp`, with underscores, because that is the module name, and
+    # the stale configurations this warning exists for are the ones keyed
+    # 'pb-orca-mcp' from before the key settled. Looking only for the hyphenated
+    # spelling inside the value misses both of the shapes that actually occur.
+    $normalize = { param($s) ($s -replace '_', '-') }
     foreach ($name in $kept) {
-        $blob = $merged[$name] | ConvertTo-Json -Depth 10 -Compress
+        $blob = & $normalize (($merged[$name] | ConvertTo-Json -Depth 10 -Compress) + ' ' + $name)
         foreach ($pkg in @('pb-orca-mcp')) {
-            if ($blob -match [regex]::Escape($pkg) -and $ourPackages -match [regex]::Escape($pkg)) {
+            if ($blob -match [regex]::Escape($pkg) -and (& $normalize $ourPackages) -match [regex]::Escape($pkg)) {
                 Write-Host ""
                 Write-Host "WARN: the target already has a server '$name' that runs $pkg, which is what" -ForegroundColor Yellow
                 Write-Host "      this kit installs as '$($Servers.Keys -join "', '")'. Two of them means two processes" -ForegroundColor Yellow
