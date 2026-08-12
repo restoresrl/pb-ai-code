@@ -94,6 +94,36 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    overwritten at the next update of that dependency. Either keep it
    out of scope or say plainly that the finding belongs upstream.
 
+   **When the *target itself* is vendored, the whole review is an
+   upstream review, and that changes where its output goes.** This is a
+   legitimate thing to ask for — reviewing a shared framework from the
+   project that consumes it is often the only place anybody reads it —
+   but the flow's two artefacts assume the findings can land here, and
+   they cannot: every one of them carries `outside_source_tree: true`,
+   `pb-apply-plan` refuses all of them, and the next dependency update
+   would overwrite anything applied anyway. So:
+
+   - **Write the plan file as usual.** It is the deliverable, and it is
+     what somebody carries to the other repository. Name the scope for
+     what it is (`upstream-<libname>` rather than `review-<libname>`)
+     and put the owning project in the header's `target` line.
+   - **Do not write a `CHANGELOG.md` entry in the consuming project.**
+     That file is the record of *this* project's changes; an
+     `[Unreleased]` section listing fixes that will never be made here
+     is a lie that outlives the review. Say in the summary that the
+     entry was deliberately not written, and why.
+   - **Do not offer the apply-loop handoff.** There is nothing here it
+     is allowed to touch.
+   - **Say that Pre-flight 0 could not run properly.** The prior
+     reviews, backlog and changelog that would tell you what is already
+     known belong to the upstream repository, and they are not in this
+     checkout. Record that as a limitation rather than reporting "no
+     prior review exists", which is a claim you have no way to make.
+
+   A mixed scope — some entries local, some vendored — is the normal
+   case and needs none of this: keep the CHANGELOG entry, and list only
+   the local findings in it.
+
    **Also read `source_protection`.** `unprotected` means git rewrites
    the `.sr*` line endings, so the index and the working tree differ by
    exactly the bytes ORCA writes — an applied fix can leave

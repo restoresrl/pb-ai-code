@@ -207,6 +207,22 @@ Two things to keep in mind:
   removed.
 - Sessions are not cheap to churn. Open one per unit of work, not one
   per object.
+- **The library list can be set once and only once.** A second
+  `pb_set_library_list` on the same session fails with
+  `PBORCA_DUPOPERATION (-2)`, "Library list has already been set". To
+  point at a different target — or at a different workspace, which is
+  what a second review in one session usually means — you must
+  `pb_session_close` and open again. There is no way to amend it.
+
+  **Do not shrug this error off**, because its wording invites exactly
+  that: "already been set" reads like *your call was redundant*, and
+  the tempting recovery is to carry on. Carry on and every subsequent
+  `pb_library_directory`, `pb_object_query_hierarchy` and
+  `pb_object_query_reference` answers against the **previous** library
+  list, silently and plausibly — entries resolve, hierarchies come
+  back, references come back, and all of it describes a workspace you
+  are no longer looking at. Treat `-2` as "close the session and start
+  over", and re-run `pb_set_current_application` after you do.
 
 When bring-up fails, `pb-orca-mcp check <.pbw|.pbt|.pbl>` is a CLI
 that validates the whole stack against the real project with no MCP
