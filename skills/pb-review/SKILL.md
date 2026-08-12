@@ -419,6 +419,67 @@ page`. That is a candidate for a new catalog entry, and the note is how
 it gets back to the repository that holds the catalog; see
 [`docs/wiki-notes.md`](../../docs/wiki-notes.md).
 
+### DataWindows are not PowerScript, and the list above does not apply
+
+Everything above assumes the entry is PowerScript. A `.srd` is not: it
+is the DataWindow DSL, the same syntax `Describe()` and `Modify()`
+speak. None of the generic patterns match it, and a review that walks
+that list over a DataWindow will correctly find nothing and incorrectly
+conclude there was nothing to find.
+
+This is not an edge case. Measured on one real 10-entry library:
+**four DataWindows carried 77% of the source bytes** while the six
+PowerScript entries carried 23%. Any `.pbl`-scope review runs into
+this immediately, and a `.pbt`-scope one runs into it at scale.
+
+What is worth reading in a `.srd`, in rough order of payoff:
+
+- **`update=yes` on a key column.** In `table(column=(… name=id
+  dbname="spedizione.id" update=yes updatewhereclause=yes ))` the
+  primary key is marked updatable. That is almost never intended, and
+  it silently widens what an `Update()` can rewrite.
+- **The `updatewhereclause` strategy**, and whether the application
+  agrees with it. `0` = key only, `1` = key and updatable columns,
+  `2` = key and modified columns; they are three different concurrency
+  contracts. Check it against what the framework does at runtime — one
+  codebase's persistence base class issued
+  `Modify("DataWindow.Table.UpdateWhere='1'")` on every store, which
+  means the value saved in the `.srd` is decoration for those objects
+  and load-bearing for every other DataWindow in the library.
+- **Raw SQL versus `PBSELECT(...)`.** `retrieve="PBSELECT( VERSION(400)
+  TABLE(NAME=…" is the graphical form, round-trippable in the painter.
+  `retrieve="  SELECT spedizione.id, …"` is hand-written SQL that the
+  painter can no longer edit graphically. Both are legitimate; a
+  library containing both is worth a note, because the two are
+  maintained by different people in different tools.
+- **Retrieval arguments**: declared in `arguments=((name, type), …)`
+  and referenced as `:name`. Look for arguments declared and never
+  used, used and never declared, and — the one that matters —
+  string arguments concatenated into the `retrieve=` text rather than
+  passed as `:name`, which is the DataWindow spelling of SQL
+  injection.
+- **`release N;`** against the PB version the target actually builds
+  with (`pb_target_info`). A DataWindow saved by a newer painter than
+  the runtime loading it is a deployment failure that looks like a
+  data problem.
+- **Column count versus the select list**, and columns present in the
+  table definition but on no band — leftovers that still get fetched.
+
+Two practical notes. `.srd` sources are **large and repetitive**:
+per-column font, colour and position attributes dominate, and none of
+it is reviewable. Grep for the structural bits — `table(`, `retrieve=`,
+`arguments=`, `update=`, `key=` — rather than reading top to bottom,
+and say in `## Scope` that you did. And the size trap in
+[`pb-context-build`](../pb-context-build/SKILL.md) bites hardest here:
+a DataWindow's `object_size` is *smaller* than its source, so a budget
+built from a directory listing under-counts exactly the entries that
+cost the most.
+
+Menus (`.srm`) are PowerScript and the generic list does apply, with
+one addition: check that a menu item's `visible`/`enabled` state is
+driven from one place. Structures (`.srs`) and queries (`.srq`) carry
+no behaviour; note them in `## Scope` and move on.
+
 ### Refactoring opportunities (medium priority)
 
 - Duplication: identical or near-identical blocks across events or

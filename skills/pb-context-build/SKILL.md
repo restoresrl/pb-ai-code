@@ -385,17 +385,46 @@ points on monolithic codebases:
   the outgoing-refs expansion, stop and report what you have. The
   target entry and its inheritance chain take precedence.
 
-  **`source_size` is not the size of the export.**
-  `pb_library_entry_information` reports it in UTF-16 code units, so on
-  a UTF-8 workspace — which is what `ws_objects/` projections and ORCA's
-  own `UTF-8` export encoding produce — it is very close to **twice**
-  the bytes the entry actually contributes. Measured on a real library:
+  **Neither size field ORCA reports is the size of the export.** There
+  are two, they are different numbers, and both mislead:
+
+  | field | where | relation to the exported bytes |
+  |---|---|---|
+  | `source_size` | `pb_library_entry_information` | ≈ **2×**, always — it counts UTF-16 code units |
+  | `object_size` | `pb_library_entry_information`, and the `size` in every `pb_library_directory` row | **unrelated**, and wrong in *both* directions depending on entry type |
+
+  `source_size` is the safe one: halve it. Measured on a real library,
   `source_size: 41076` for an entry `pb_object_export_file` wrote as
-  20 577 bytes. Halve it before adding it to the budget, or the pack
-  looks 2× more expensive than it is and scope gets pruned that did not
-  need pruning. The error is at least conservative — it never lets you
-  blow the cap by surprise — but it is a real distortion at the moment
-  you are deciding what to leave out.
+  20 577 bytes, and `source_size: 122652` for one it wrote as 61 375.
+  The factor held on every entry checked. Not halving it makes the pack
+  look 2× more expensive than it is, which prunes scope that did not
+  need pruning — conservative, but a real distortion at the moment you
+  decide what to leave out.
+
+  `object_size` is the compiled object, and it is the trap, because it
+  is **the only size in a `pb_library_directory` listing** — which is
+  exactly what Flavor C has to budget from, before anything is
+  exported. Measured across one 10-entry library:
+
+  | entry type | `object_size` ÷ exported bytes |
+  |---|---|
+  | userobject | 2.7× – 7.9× (over) |
+  | menu | 3.7× – 4.0× (over) |
+  | window | 3.5× – 4.6× (over) |
+  | **datawindow** | **0.58× – 0.67× (under)** |
+
+  Compiled PowerScript is bulkier than its source; a DataWindow's
+  source is bulkier than its compiled form. So on a library of mixed
+  types the errors do not even cancel — they point opposite ways, and
+  the type that under-reports is the one whose sources are largest. In
+  that library the directory listing totalled 216 KB against 158 KB of
+  actual source, while the four DataWindows alone — 77% of the real
+  bytes — looked like a third of the total.
+
+  **So do not budget a library scope from the directory listing.** Use
+  it to enumerate and filter, then get `source_size` for the shortlist
+  and halve it. One extra call per candidate entry, and it is the
+  difference between a budget and a guess.
 - **Default expansion depth**: ancestors = 3, outgoing refs = 1. Both
   configurable per invocation.
 - **Caller discovery (opt-in) caps**: max 500 ORCA queries on the
