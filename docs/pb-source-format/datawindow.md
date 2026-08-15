@@ -74,10 +74,56 @@ for what is not yet documented.
 
 > Stub.
 
+## Answered questions
+
+- **Does a `.srd` embed its bitmaps, or reference them?** It references
+  them, and the file stays text end to end. A `bitmap` block carries a
+  `filename=` pointing into the filesystem; the image is never inlined:
+
+  ```
+  bitmap(band=header filename="image.png" x="0" y="4" height="1856"
+   width="3182" border="0" name=p_1 visible="1" transparency="0" )
+  ```
+
+  Measured on a five-entry PB 22 library: `pb_object_export_file`
+  produced a file byte-identical to the `ws_objects/` projection —
+  5309 bytes, UTF-8 BOM, 23 CR, **zero NUL bytes**, no binary tail.
+  `observed only`, against `pb-ai-code @ 0.6.1`: a review does not
+  import, so no compiler confirmed it.
+
+  This is the DataWindow half of the corpus-level answer already on
+  [`encoding`](encoding.md) — binary tails come from OLE / ActiveX
+  controls, not from pictures. The consequence that belongs *here* is a
+  deployment one: the image is a **separate file the target has to
+  ship**. Losing it does not corrupt the `.srd` and does not fail the
+  compile; the picture just renders empty at runtime.
+
 ## Open questions
 
-- Does the `.srd` ever contain non-UTF-16 binary segments (embedded
-  bitmaps, custom drawing data), or is it purely text?
+- Do resource-bearing elements other than `bitmap` — RichText, an OLE
+  control hosted inside a `.srd` — also keep their payload external, or
+  do they serialize it inline the way an OLE control does in a `.srw`?
+  Only `bitmap` has been seen. (The bitmap half is answered above.)
+- **What is the `data(...)` block?** A top-level block the canonical
+  form above does not mention, seen between `table(...)` and the visual
+  elements of an external-source DataWindow:
+
+  ```
+  table(column=(type=char(10) updatewhereclause=yes name=code dbname="code" )
+   )
+  data("b","a",)
+  bitmap(band=header filename="image.png" ... )
+  ```
+
+  Positional comma-separated values, a trailing comma before the closing
+  paren, one value per column per row (here one column and two rows,
+  `"b"` and `"a"`), and a trailing space after the `)`. It reads as
+  design-time data serialized into the object. What it does at runtime —
+  whether those rows are present before any `Retrieve`, and whether an
+  external-source DataWindow depends on them — was not established.
+  Worth resolving rather than leaving: the canonical form on this page
+  *is* an external single-column grid, so anyone following it is likely
+  to meet this block. `observed only`, against `pb-ai-code @ 0.6.1`.
 - DataWindow style sheets / external descriptor references —
   inline or by URL/path?
 - Computed fields, retrieval arguments, and report-style band
