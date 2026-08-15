@@ -80,7 +80,7 @@ packages = [
 # has something to install. force-include is the only mechanism that reaches
 # such a build - the sdist `include` above does not affect the wheel.
 #
-# Map these six paths and NEVER the docs/ root. force-include ignores
+# Map these seven paths and NEVER the docs/ root. force-include ignores
 # .gitignore AND ignores `exclude` (both verified): mapping "docs" pulls
 # docs/appeon-index/index.db into the wheel from any developer machine that has
 # built it, and that database is never redistributed. Whole directories rather
@@ -93,6 +93,7 @@ packages = [
 "docs/pb-antipatterns"  = "pb_ai_code/_kit/docs/pb-antipatterns"
 "docs/pb-source-format" = "pb_ai_code/_kit/docs/pb-source-format"
 "docs/wiki-notes.md"    = "pb_ai_code/_kit/docs/wiki-notes.md"
+"docs/plan-file-contract.md" = "pb_ai_code/_kit/docs/plan-file-contract.md"
 # Not kit payload: pb-appeon-index needs its own config.toml at runtime, and
 # without it `uvx --from git+... pb-appeon-index update` dies on a path that
 # only exists in a checkout - which is why building an index used to require

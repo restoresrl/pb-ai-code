@@ -38,6 +38,7 @@ import pytest
 
 import pb_ai_code
 from pb_ai_code import marker
+from pb_ai_code import plan as plan_mod
 
 # --- support -----------------------------------------------------------------
 # Duplicated in the sibling test modules on purpose: three test packages in
@@ -54,7 +55,10 @@ PACKAGE_DIR = Path(pb_ai_code.__file__).resolve().parent
 
 #: Everything the wheel's force-include table maps into the payload.
 PAYLOAD_TREES = ("skills", "commands", "harness", "docs/pb-antipatterns", "docs/pb-source-format")
-PAYLOAD_FILES = ("docs/wiki-notes.md",)
+# Derived, not listed: a new entry in ``DOC_FILES`` is a new file the
+# installer looks for, and a hand-kept copy here would fail every test in
+# this module the day one is added - which is how it went the first time.
+PAYLOAD_FILES = tuple(f"docs/{name}" for name in plan_mod.DOC_FILES)
 
 MARKER_NAME = "_installed-from-pb-ai-code.txt"
 
@@ -350,7 +354,7 @@ def test_ledger21_the_copy_set_is_closed(tmp_path: Path) -> None:
             for p in root.rglob("*")
             if p.is_file()
         }
-    expected.add(".claude/pb-ai-code-docs/wiki-notes.md")
+    expected |= {f".claude/pb-ai-code-docs/{name}" for name in plan_mod.DOC_FILES}
     assert installed == expected
 
     forbidden = ("install.md", "README.md", "CHANGELOG.md", "install-skills.ps1")

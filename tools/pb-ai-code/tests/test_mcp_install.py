@@ -27,6 +27,7 @@ import pytest
 
 import pb_ai_code
 from pb_ai_code import harness, kit, marker, plan, report
+from pb_ai_code import plan as plan_mod
 
 CLAUDE_MARKER = (".claude", "_installed-from-pb-ai-code.txt")
 
@@ -68,7 +69,8 @@ def _stage_wheel_payload(root: Path) -> tuple[Path, dict[str, str]]:
     payload = src / "pb_ai_code" / "_kit"
     for rel in ("skills", "commands", "harness", "docs/pb-antipatterns", "docs/pb-source-format"):
         shutil.copytree(source.joinpath(*rel.split("/")), payload.joinpath(*rel.split("/")))
-    shutil.copy2(source / "docs" / "wiki-notes.md", payload / "docs" / "wiki-notes.md")
+    for name in plan_mod.DOC_FILES:
+        shutil.copy2(source / "docs" / name, payload / "docs" / name)
 
     home = root / "home"
     home.mkdir()

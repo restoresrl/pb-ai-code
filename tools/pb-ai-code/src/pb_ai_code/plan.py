@@ -33,7 +33,13 @@ DOC_TREES: tuple[str, ...] = ("pb-antipatterns", "pb-source-format")
 #: into a tree. ``wiki-notes.md`` is the one a consumer needs most: it
 #: explains how a discovery made *there* travels back here, and omitting
 #: it produced exactly five dead links once.
-DOC_FILES: tuple[str, ...] = ("wiki-notes.md",)
+#:
+#: ``plan-file-contract.md`` is normative rather than explanatory: it is the
+#: schema ``pb-review`` writes and ``pb-apply-plan`` reads, and both skills
+#: cite it. Leaving it out of the bundle would install two skills pointing at
+#: a page that is not there — the same dead-link failure, on the one document
+#: that settles disagreements between them.
+DOC_FILES: tuple[str, ...] = ("wiki-notes.md", "plan-file-contract.md")
 
 #: Plan operations, in the order they are emitted.
 OPS: tuple[str, ...] = ("skill", "command", "docs", "docfile", "settings")

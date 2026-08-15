@@ -50,7 +50,11 @@ PAYLOAD_PATHS = (
     "harness",
     "docs/pb-antipatterns",
     "docs/pb-source-format",
+    # Spelled out rather than derived: this module is the one that checks the
+    # built wheel against what the source tree declares, so importing the
+    # declaration to build the expectation would test nothing.
     "docs/wiki-notes.md",
+    "docs/plan-file-contract.md",
 )
 
 PAYLOAD_PREFIX = "pb_ai_code/_kit/"

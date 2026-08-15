@@ -28,6 +28,7 @@ import pytest
 
 import pb_ai_code
 from pb_ai_code import agentsmd, pbversion
+from pb_ai_code import plan as plan_mod
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = Path(pb_ai_code.__file__).resolve().parent
@@ -36,7 +37,10 @@ MARKER_NAME = "_installed-from-pb-ai-code.txt"
 # Duplicated from the sibling modules on purpose; test_install_marker.py
 # carries the reason.
 PAYLOAD_TREES = ("skills", "commands", "harness", "docs/pb-antipatterns", "docs/pb-source-format")
-PAYLOAD_FILES = ("docs/wiki-notes.md",)
+# Derived, not listed: a new entry in ``DOC_FILES`` is a new file the
+# installer looks for, and a hand-kept copy here would fail every test in
+# this module the day one is added - which is how it went the first time.
+PAYLOAD_FILES = tuple(f"docs/{name}" for name in plan_mod.DOC_FILES)
 
 
 def kit_env(home: Path) -> dict[str, str]:

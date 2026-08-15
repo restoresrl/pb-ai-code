@@ -26,6 +26,7 @@
         docs/pb-antipatterns/       the knowledge the skills consult
         docs/pb-source-format/
         docs/wiki-notes.md          how a discovery travels back here
+        docs/plan-file-contract.md  the plan-file schema both skills cite
         harness/mcp-servers.json    the pb-orca MCP server, pinned
         harness/<harness>/          harness-specific config (permissions, ...)
 
@@ -141,7 +142,7 @@ $docTrees = @('pb-antipatterns', 'pb-source-format')
 # made *there* travels back here, and the skills point at it from the exact
 # moment that matters. Leaving it behind would be a dead link at the only
 # place the reader is ready to act on it.
-$docFiles = @('wiki-notes.md')
+$docFiles = @('wiki-notes.md', 'plan-file-contract.md')
 $docsFolderName = 'pb-ai-code-docs'
 
 # The MCP servers this kit owns live in one harness-neutral file: the JSON block

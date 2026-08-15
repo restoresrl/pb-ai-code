@@ -35,6 +35,7 @@ import pytest
 
 import pb_ai_code
 from pb_ai_code import harness, marker
+from pb_ai_code import plan as plan_mod
 
 # --- support -----------------------------------------------------------------
 # Duplicated in the sibling test modules on purpose: three test packages in
@@ -46,7 +47,10 @@ from pb_ai_code import harness, marker
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = Path(pb_ai_code.__file__).resolve().parent
 PAYLOAD_TREES = ("skills", "commands", "harness", "docs/pb-antipatterns", "docs/pb-source-format")
-PAYLOAD_FILES = ("docs/wiki-notes.md",)
+# Derived, not listed: a new entry in ``DOC_FILES`` is a new file the
+# installer looks for, and a hand-kept copy here would fail every test in
+# this module the day one is added - which is how it went the first time.
+PAYLOAD_FILES = tuple(f"docs/{name}" for name in plan_mod.DOC_FILES)
 
 MARKER_NAME = "_installed-from-pb-ai-code.txt"
 
@@ -497,7 +501,7 @@ def test_ledger59_contents_are_the_plan_destinations_in_plan_order(tmp_path: Pat
         + [
             os.path.join(".claude", "pb-ai-code-docs", "pb-antipatterns"),
             os.path.join(".claude", "pb-ai-code-docs", "pb-source-format"),
-            os.path.join(".claude", "pb-ai-code-docs", "wiki-notes.md"),
+            *(os.path.join(".claude", "pb-ai-code-docs", name) for name in plan_mod.DOC_FILES),
             os.path.join(".claude", "settings.json"),
         ]
     )

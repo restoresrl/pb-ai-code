@@ -285,7 +285,20 @@ Required YAML fields (per the `pb-review` contract):
   missing `evidence` as `code-read` and say that you assumed it.
 
 Optional: `function`, `lines`, `effort_estimate`, `tag`, `also_in`,
-`requires_discussion`, `decision_options`.
+`requires_discussion`, `decision_options`, `outside_source_tree`,
+`experiment`, and — the one with teeth —
+
+- `library_path` — the absolute path of the `.pbl`. **Prefer it over
+  anything derived from `entry`.** The `lib` in an entry triple is a bare
+  basename, and two libraries in one workspace can share one, so on a
+  multi-library queue the basename does not identify a file. This field
+  was emitted by `pb-review` and read by nobody here until a run on a
+  real workspace went looking for it.
+
+The full schema — every field, the status vocabulary, and which skill
+writes what — is [`plan-file-contract`](../../docs/plan-file-contract.md),
+and it is normative: where this page disagrees with it, it is this page
+that has drifted.
 
 Also extract the **body markdown** of each finding (Where, Why,
 Suggested fix, Notes). The code block inside a ```pb fence is the
@@ -553,7 +566,7 @@ Then export the entry **into the scratch directory**:
 
 ```jsonc
 pb_object_export_file {
-  "lib_path":   "<lib_path from fix.entry>",
+  "lib_path":   "<fix.library_path, or the lib from fix.entry>",
   "entry_name": "<entry_name from fix.entry>",
   "entry_type": "<entry_type from fix.entry>",
   "dest_dir":   "<tmp>"
@@ -638,7 +651,7 @@ unfamiliar.
 ```jsonc
 pb_object_import_file {
   "file_path": "<tmp>/<entry>",
-  "lib_path":  "<lib_path from fix.entry>"
+  "lib_path":  "<fix.library_path, or the lib from fix.entry>"
 }
 ```
 
@@ -772,7 +785,22 @@ write differs, show it again and re-confirm.
    `status:`.
 2. Regenerate the **summary table** at the top of the plan file from
    the up-to-date YAML blocks.
-3. Tick (or untick) the `- [ ]` / `- [x]` boxes in `CHANGELOG.md`
+3. **Write the `**Applied**` section into the finding body**, whenever the
+   fix reached `applied` or `partial`. `pb-review` leaves that field absent
+   and says it is *written by `pb-apply-plan`* — you are the one it means.
+   Record what actually landed; leave **Suggested fix** as written, because
+   the difference between what was proposed and what was needed is the part
+   worth keeping. Name the option taken when the finding was a
+   `requires_discussion` one:
+
+   ```markdown
+   **Applied** *(2026-08-14, option `keep`)*: <what actually landed>
+   ```
+
+   This step is here because it was once missing: a real run applied four
+   fixes and wrote one of these, which is the expected outcome when the
+   producer declares a field and the consumer's checklist never mentions it.
+4. Tick (or untick) the `- [ ]` / `- [x]` boxes in `CHANGELOG.md`
    under `[Unreleased]` — **when there are any.** A plan written by hand,
    or one whose CHANGELOG entry was never created, has no bullets to
    tick: note it once in the run summary and carry on. Do not invent the
@@ -786,6 +814,22 @@ write differs, show it again and re-confirm.
    `- [~] skipped: <reason>` throws away the only thing connecting the
    entry to its finding. (The tilde is a convention; renderers ignore
    it, but it is visible in the source.)
+
+   The same shape covers the other outcomes, so that a box is never left
+   saying something the `status:` contradicts:
+
+   | marker | status | appended |
+   |---|---|---|
+   | `- [ ]` | `pending` | — |
+   | `- [x]` | `applied` | — |
+   | `- [~]` | `skipped`, `failed` | `— skipped: <reason>` |
+   | `- [>]` | `deferred` | `— deferred: <reason>` |
+   | `- [/]` | `partial` | the entries that took it |
+
+   The full table lives in
+   [`plan-file-contract`](../../docs/plan-file-contract.md). A run that
+   met `deferred` before this table existed invented its own marker,
+   which is what an unspecified case gets you.
 
 Persist to disk **immediately**, so a crash mid-loop leaves the plan
 file recoverable.

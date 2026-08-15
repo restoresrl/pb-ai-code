@@ -41,6 +41,7 @@ from pathlib import Path
 import pytest
 
 import pb_ai_code
+from pb_ai_code import plan as plan_mod
 
 # --- support -----------------------------------------------------------------
 # Duplicated in the sibling test modules on purpose: three test packages in
@@ -52,7 +53,10 @@ import pb_ai_code
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = Path(pb_ai_code.__file__).resolve().parent
 PAYLOAD_TREES = ("skills", "commands", "harness", "docs/pb-antipatterns", "docs/pb-source-format")
-PAYLOAD_FILES = ("docs/wiki-notes.md",)
+# Derived, not listed: a new entry in ``DOC_FILES`` is a new file the
+# installer looks for, and a hand-kept copy here would fail every test in
+# this module the day one is added - which is how it went the first time.
+PAYLOAD_FILES = tuple(f"docs/{name}" for name in plan_mod.DOC_FILES)
 
 MARKER_NAME = "_installed-from-pb-ai-code.txt"
 
@@ -203,9 +207,10 @@ def plan_rows(bundle: str, *, commands: bool) -> list[str]:
         f"docs      <src>\\docs\\{tree} -> <dst>\\{bundle}\\pb-ai-code-docs\\{tree}"
         for tree in ("pb-antipatterns", "pb-source-format")
     ]
-    rows.append(
-        f"docfile   <src>\\docs\\wiki-notes.md -> <dst>\\{bundle}\\pb-ai-code-docs\\wiki-notes.md"
-    )
+    rows += [
+        f"docfile   <src>\\docs\\{name} -> <dst>\\{bundle}\\pb-ai-code-docs\\{name}"
+        for name in plan_mod.DOC_FILES
+    ]
     return rows
 
 
@@ -221,7 +226,7 @@ def installed_rows(*, commands: bool, settings: bool) -> list[str]:
     rows += [
         "Installed docs      pb-antipatterns",
         "Installed docs      pb-source-format",
-        "Installed docfile   wiki-notes.md",
+        *(f"Installed docfile   {name}" for name in plan_mod.DOC_FILES),
     ]
     if settings:
         rows.append("Installed settings  settings.json")
@@ -452,6 +457,8 @@ def test_ledger75_stdout_golden_dry_run_and_it_writes_nothing(
         "Dry run. No changes written.",
         "Note: pb-appeon-index NOT configured - missing the index database",
         "MCP: would add pb-orca",
+        "Would create AGENTS.md  (the project's own file, never rewritten)",
+        "Would say nothing about .gitignore: the target is not a git repository",
     ]
 
 

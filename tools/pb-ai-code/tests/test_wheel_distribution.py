@@ -46,6 +46,7 @@ from pathlib import Path
 import pytest
 
 import pb_ai_code
+from pb_ai_code import plan as plan_mod
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = Path(pb_ai_code.__file__).resolve().parent
@@ -54,7 +55,10 @@ PACKAGE_DIR = Path(pb_ai_code.__file__).resolve().parent
 # out in test_install_marker.py — three test packages in this repository are
 # called `tests`, so a relative import binds to whichever pytest saw first.
 PAYLOAD_TREES = ("skills", "commands", "harness", "docs/pb-antipatterns", "docs/pb-source-format")
-PAYLOAD_FILES = ("docs/wiki-notes.md",)
+# Derived, not listed: a new entry in ``DOC_FILES`` is a new file the
+# installer looks for, and a hand-kept copy here would fail every test in
+# this module the day one is added - which is how it went the first time.
+PAYLOAD_FILES = tuple(f"docs/{name}" for name in plan_mod.DOC_FILES)
 MARKER_NAME = "_installed-from-pb-ai-code.txt"
 
 VCS_URL = "https://github.com/restoresrl/pb-ai-code"

@@ -30,6 +30,7 @@ import pytest
 
 import pb_ai_code
 from pb_ai_code import REPO_URL, VCS_URL, appeon, kit, marker, mcpconfig, report
+from pb_ai_code import plan as plan_mod
 
 CLAUDE_MARKER = (".claude", "_installed-from-pb-ai-code.txt")
 
@@ -45,7 +46,10 @@ PACKAGE_DIR = Path(pb_ai_code.__file__).resolve().parent
 #: whichever one pytest imported first, and a conftest.py here is shared
 #: ground. A short copy is the cheaper of the two evils.
 PAYLOAD_TREES = ("skills", "commands", "harness", "docs/pb-antipatterns", "docs/pb-source-format")
-PAYLOAD_FILES = ("docs/wiki-notes.md",)
+# Derived, not listed: a new entry in ``DOC_FILES`` is a new file the
+# installer looks for, and a hand-kept copy here would fail every test in
+# this module the day one is added - which is how it went the first time.
+PAYLOAD_FILES = tuple(f"docs/{name}" for name in plan_mod.DOC_FILES)
 
 
 def _stage_kit(root: Path) -> Path:

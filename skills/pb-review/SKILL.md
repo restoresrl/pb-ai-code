@@ -923,8 +923,16 @@ finding must land on the same value, which they cannot do while the axis
 is left to taste), `depends_on` (list of
 `id`), `depends_on_confidence` (parsed | user-augmented | manual),
 `evidence` (code-read | verified-in-docs | unverified-semantics),
-`status` (pending | applied | skipped | partial — a review always writes
-`pending`; the rest are written by `pb-apply-plan` as it runs).
+`status` (pending | applied | skipped | failed | deferred | partial — a
+review always writes `pending`; the rest are written by `pb-apply-plan`
+as it runs).
+
+The full schema — every field, what each `status` means on a resume, and
+which skill writes what — is
+[`plan-file-contract`](../../docs/plan-file-contract.md), and it is
+normative. Read it before adding a field to a plan file: a field this
+page invents and that page does not list is a field `pb-apply-plan` will
+not read.
 
 **`depends_on_confidence` is about the dependency graph, not about the
 finding.** It says where `depends_on` came from, and in a review that
