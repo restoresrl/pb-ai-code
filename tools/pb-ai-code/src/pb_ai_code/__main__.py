@@ -210,17 +210,29 @@ def _dry_run(
     what the merge would do to the servers already in the target.
     """
     reporter.line(report_mod.dry_run())
-    if skip_mcp_config:
-        return EXIT_OK
-    inputs = _collect_mcp_inputs(kit, adapter, plan.target, identity)
-    if inputs.db is not None:
-        reporter.line(report_mod.dry_run_appeon_configured(str(inputs.db)))
-    else:
-        reporter.line(report_mod.dry_run_appeon_note(inputs.note))
-    if inputs.path is not None:
-        actions = mcp_mod.preview(inputs.existing, inputs.servers)
-        if actions:
-            reporter.line(report_mod.dry_run_mcp(actions))
+    if not skip_mcp_config:
+        inputs = _collect_mcp_inputs(kit, adapter, plan.target, identity)
+        if inputs.db is not None:
+            reporter.line(report_mod.dry_run_appeon_configured(str(inputs.db)))
+        else:
+            reporter.line(report_mod.dry_run_appeon_note(inputs.note))
+        if inputs.path is not None:
+            actions = mcp_mod.preview(inputs.existing, inputs.servers)
+            if actions:
+                reporter.line(report_mod.dry_run_mcp(actions))
+    # Both of these happen after the copy in a real install, which is why the
+    # preview used to end above and stay silent about them. They are the two
+    # effects that touch files the project owns rather than the generated
+    # bundle, so they are exactly the ones somebody reads a dry run to catch.
+    reporter.line(
+        report_mod.dry_run_agents_md(
+            agentsmd_mod.FILE_NAME,
+            exists=(plan.target / agentsmd_mod.FILE_NAME).exists(),
+        )
+    )
+    reporter.line(
+        report_mod.dry_run_gitignore(is_repo=gitignore_mod.check(plan.target, ".").is_repo)
+    )
     return EXIT_OK
 
 
@@ -466,7 +478,12 @@ def _write_agents_md(reporter: Reporter, target: Path, pb_version: str | None) -
     time.
     """
     is_git = gitignore_mod.check(target, ".").is_repo
-    facts = agentsmd_mod.survey(target, pb_version=pb_version, is_git=is_git)
+    facts = agentsmd_mod.survey(
+        target,
+        pb_version=pb_version,
+        is_git=is_git,
+        sources_protected=gitignore_mod.sources_protected(target),
+    )
     rel = agentsmd_mod.FILE_NAME
     try:
         created = agentsmd_mod.create(target, facts)

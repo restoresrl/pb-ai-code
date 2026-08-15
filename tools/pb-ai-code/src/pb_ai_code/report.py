@@ -351,6 +351,32 @@ def dry_run_mcp(actions: Sequence[str]) -> Line:
     return Line(f"MCP: {'; '.join(actions)}")
 
 
+def dry_run_agents_md(rel: str, *, exists: bool) -> Line:
+    """Say whether the install would create the project's own instruction file.
+
+    The preview used to stop before this, so the one file the installer
+    creates *outside* the generated bundle went unannounced — and it is the
+    file a reviewer is most likely to object to, being the project's own.
+    """
+    if exists:
+        return Line(f"Would leave {rel} alone (exists), and print what it should say")
+    return Line(f"Would create {rel}  (the project's own file, never rewritten)")
+
+
+def dry_run_gitignore(*, is_repo: bool) -> Line:
+    """Flag the closing git check without pretending to know its answer.
+
+    The real check runs after the copy, because the query it uses needs the
+    bundle directory to exist. Predicting the outcome here would mean
+    answering a question about files that are not there yet.
+    """
+    if not is_repo:
+        return Line("Would say nothing about .gitignore: the target is not a git repository")
+    return Line(
+        "Would check whether the bundle is ignored by git, and suggest .gitignore lines if not"
+    )
+
+
 # --- Applying the plan (ledger 66, 22, 28) -----------------------------------
 
 
