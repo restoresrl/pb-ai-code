@@ -13,6 +13,67 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-08-15
+
+The first end-to-end run of the write path on a git-managed workspace, and
+what it found. The review and the apply loop both did their job; what broke
+was the seam between them.
+
+### Added
+
+- **`docs/plan-file-contract.md`** — the schema of a `.pb-review` plan file,
+  in one place, cited as normative by both `pb-review` (which writes the file)
+  and `pb-apply-plan` (which rewrites it). It exists because the two skills
+  had been written against each other's prose, and prose drifts in a way that
+  fails quietly: a field the consumer ignores raises no error, it just gives
+  the wrong answer on the one workspace where it mattered.
+
+### Fixed
+
+- **`library_path` was emitted and never read.** `pb-review` documents it as
+  *required whenever the queue spans more than one library*, because `entry:`
+  carries a bare basename and two libraries in one workspace can share one.
+  `pb-apply-plan` never mentioned the field and derived the path from
+  `entry` — a basename, not a path. Harmless on the single-library workspace
+  it was found on; on a thirteen-target one it is the ambiguity the field was
+  invented to prevent.
+- **The `**Applied**` section had no writer.** `pb-review` leaves the field
+  absent and says it is *written by `pb-apply-plan`*; `pb-apply-plan`'s
+  after-every-status-change checklist named three rewrites and not that one.
+  A real run applied four fixes and wrote one section. It is now step 3 of
+  that checklist.
+- **No CHANGELOG marker was specified for `deferred` or `partial`.** Only
+  `[ ]`, `[x]` and `[~]` were. A run that met `deferred` invented `[>]`,
+  which is what an unspecified case gets you; that marker is now the
+  documented one, with `[/]` for `partial`.
+- **`pb-review`'s status vocabulary was short two values** (`failed`,
+  `deferred`) against the set `pb-apply-plan` actually writes.
+- **`--dry-run` was silent about the two effects that touch the project's own
+  files.** It returned before reaching them, so it announced neither the
+  creation of `AGENTS.md` nor the closing `.gitignore` check — the two a
+  reviewer is most likely to object to, being the only things written outside
+  the generated bundle.
+
+### Changed
+
+- **The generated `AGENTS.md` now says when git is rewriting the sources.** It
+  reported a `ws_objects/` projection as *"readable and diffable"* and stopped
+  there, which is true and reassuring on a workspace where no `.gitattributes`
+  rule exempts the `.sr*` files and every diff is being translated underneath.
+  Read through `git check-attr` rather than by parsing `.gitattributes`,
+  because git's own rule engine is what decides.
+
+### Notes
+
+- The install and review halves were exercised on a git-managed fixture with a
+  text projection — the shape the previous release's end-to-end run
+  (`pbl_only`, no git) could not reach. The projection sync, the readable
+  diff, and the `source_protection` gate all behaved as written; the gate
+  reports and hands off rather than halting, which is the intended behaviour
+  and is now recorded as such.
+- **Still unproven**: the CHANGELOG promotion step, which needs a queue run to
+  empty and this one stopped with six findings pending.
+
 ## [0.6.1] - 2026-08-13
 
 One correction, and the finding came from a text this release wrote.

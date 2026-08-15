@@ -128,3 +128,35 @@ def check(target: Path, bundle_root: str) -> IgnoreStatus:
     # is not a reason to claim the bundle is ignored.
     ignored = ignore is not None and ignore[0] == 0
     return IgnoreStatus(is_repo=True, repo_root=repo_root, ignored=ignored, target=target)
+
+
+def sources_protected(target: Path) -> bool | None:
+    """Is there a ``.gitattributes`` rule keeping git off the ``.sr*`` sources?
+
+    ``None`` when nothing true can be said: no git, or not a repository.
+
+    Asked through ``git check-attr`` rather than by reading
+    ``.gitattributes``, because git's own rule engine is the thing that
+    decides — precedence between files, negation, the last matching pattern
+    winning. A reimplementation would answer differently on exactly the
+    repositories that need the answer most.
+
+    The probe path does not have to exist: ``check-attr`` applies the
+    patterns to a name, not to a file. So this can be asked before the
+    install writes anything, and on a workspace whose projection lives
+    somewhere this function never looks.
+
+    ``unset`` is the protected answer — it is what ``*.sr* -text`` produces.
+    ``unspecified`` means no rule matched, which is the hazard: git holds LF,
+    hands back CRLF, and a change that lands in both the ``.pbl`` and its
+    projection leaves ``git status`` clean.
+    """
+    probe = "ws_objects/probe.srw"
+    answer = _git(target, "check-attr", "text", "--", probe)
+    if answer is None or answer[0] != 0:
+        return None
+    # `<path>: text: <value>` — take the last field, the value.
+    line = answer[1].strip()
+    if not line:
+        return None
+    return line.rsplit(":", 1)[-1].strip() == "unset"

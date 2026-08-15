@@ -51,9 +51,17 @@ class WorkspaceFacts:
     targets: tuple[str, ...]
     has_projection: bool
     is_git: bool
+    #: ``None`` when nothing true can be said — no git, or not a repository.
+    sources_protected: bool | None = None
 
 
-def survey(target: Path, *, pb_version: str | None, is_git: bool) -> WorkspaceFacts:
+def survey(
+    target: Path,
+    *,
+    pb_version: str | None,
+    is_git: bool,
+    sources_protected: bool | None = None,
+) -> WorkspaceFacts:
     """Look at the project, shallowly and cheaply.
 
     Two levels deep: PowerBuilder workspaces sit at the root or one
@@ -75,6 +83,7 @@ def survey(target: Path, *, pb_version: str | None, is_git: bool) -> WorkspaceFa
         targets=tuple(targets),
         has_projection=projection,
         is_git=is_git,
+        sources_protected=sources_protected,
     )
 
 
@@ -116,6 +125,21 @@ def _lines(facts: WorkspaceFacts) -> list[str]:
             "- There is a `ws_objects/` text projection, so the sources are readable "
             "and diffable outside PowerBuilder."
         )
+        if facts.sources_protected is False:
+            # Said here because the line above, alone, reads as reassurance:
+            # the projection is diffable, and the diffs are being rewritten
+            # under it. An agent that trusts a clean `git status` on this
+            # workspace is trusting a comparison git makes against its own
+            # normalized copy, not against the bytes ORCA wrote.
+            out += [
+                "  **But git is translating their line endings.** No",
+                "  `.gitattributes` rule exempts the `.sr*` files, so the index holds LF",
+                "  while the working tree holds CRLF, and a change that lands in both the",
+                "  `.pbl` and its projection can leave `git status` clean — surfacing as",
+                "  drift on somebody else's checkout. The fix is `*.sr* -text` (plus",
+                "  `*.pbl`, `*.pbd` as `binary`) and `git add --renormalize`, in its own",
+                "  commit, before any write loop.",
+            ]
     else:
         out.append(
             "- **No text projection.** The `.pbl` is the only artefact, so a change "
