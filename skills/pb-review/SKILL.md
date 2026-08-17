@@ -1044,6 +1044,18 @@ extend `## [Unreleased]` with one sub-section per category (`### Fixed`,
   ([plan](.pb-review/refactoring-n_logger_chain-2026-07-29-1130.md#fix-02))
 ```
 
+A short lead-in above the sub-sections is welcome — what was reviewed,
+and a link to the plan file. **It must not state how much has been
+applied.** Write the mechanism, not the tally: *"`pb-apply-plan` ticks
+these as fixes land"* stays true forever, while *"nothing below has been
+applied yet"* is false the moment the first one does, and nothing
+rewrites it — the apply loop changes boxes, not prose. A real run left
+a `CHANGELOG.md` claiming every box was unticked directly above three
+ticked ones.
+
+The boxes are the record of progress. Prose that restates it is prose
+that will contradict it.
+
 **Append-only**: never edit or remove pre-existing sections (older
 `[X.Y.Z]` releases, or items a previous run wrote). Add to
 `[Unreleased]` only.

@@ -109,6 +109,14 @@ The markers past `[ ]` and `[x]` are a convention: renderers ignore them,
 but they are visible in the source, which is where anyone auditing a run
 reads them.
 
+**The boxes are the only authoritative record of progress.** A lead-in
+paragraph above the sub-sections may say what was reviewed and link the
+plan; it must not say how many findings have been applied. `pb-apply-plan`
+changes boxes, not prose, so a tally written by `pb-review` is a claim
+nothing keeps current — and it is wrong from the first fix that lands
+until the section is promoted, which for a project that never promotes is
+forever.
+
 ## Cross-references
 
 - [`pb-review`](../skills/pb-review/SKILL.md) — writes the file.

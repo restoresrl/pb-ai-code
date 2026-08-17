@@ -13,6 +13,49 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-08-17
+
+Found by finally running the apply loop to the end. With the queue empty the
+CHANGELOG promotion ran for the first time, and on the way there it left a
+sentence behind.
+
+### Fixed
+
+- **The `[Unreleased]` lead-in went stale as fixes landed.** `pb-review`'s
+  template says nothing about a lead-in, so a run wrote a helpful one — *"nothing
+  below has been applied yet, every box is unticked"* — and `pb-apply-plan` then
+  ticked three boxes directly underneath it. The apply loop changes boxes, not
+  prose, so nothing repaired the claim.
+
+  Promotion does rewrite it, which is why this looked cosmetic at first. It is
+  not: promotion is optional, and a project that never promotes keeps a
+  `CHANGELOG.md` arguing with itself indefinitely.
+
+  `pb-review` is now told to write the mechanism rather than the tally — *"`pb-apply-plan`
+  ticks these as fixes land"* stays true forever. `pb-apply-plan` corrects a
+  stale claim it meets in a plan already in the wild, and says so in its run
+  summary. The contract page states the rule both follow: the boxes are the only
+  authoritative record of progress, and prose that restates it is prose that will
+  contradict it.
+
+### Notes
+
+- **Every surface of the kit has now been executed at least once.** The queue on
+  the git fixture emptied — 3 applied, 12 skipped, zero pending — which is the
+  condition the promotion step is gated on and the reason it had never run in
+  four attempts. The skip cascade fired for the first time in the same run, and
+  the `unverified-semantics` gate held.
+- The promotion also overrode the review's proposed bump, writing `0.1.0` rather
+  than `0.1.1` because there was no prior tagged release for a patch bump to
+  apply to, and rewrote the section lead-in with the real tally. Both were the
+  right call and neither was asked for.
+- **Still unexercised: `also_in`**, the multi-entry path. Not for want of trying —
+  the fixture cannot reach it. The only patterns repeated across entries in a
+  wizard-generated application are property-block values, which have no
+  mechanically applicable fix, so the one `also_in` finding was inapplicable by
+  construction and the plan said so itself. It needs a real workspace, or a case
+  planted on purpose.
+
 ## [0.6.2] - 2026-08-15
 
 The first end-to-end run of the write path on a git-managed workspace, and

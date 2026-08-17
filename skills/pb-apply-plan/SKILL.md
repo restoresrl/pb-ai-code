@@ -831,6 +831,15 @@ write differs, show it again and re-confirm.
    met `deferred` before this table existed invented its own marker,
    which is what an unspecified case gets you.
 
+   **If the section's lead-in states a tally, correct it or drop the
+   claim.** `pb-review` is now told not to write one, but plans already in
+   the wild open with sentences like *"nothing below has been applied
+   yet — every box is unticked"*, and you are about to tick one. Leaving
+   it is worse than it looks: the contradiction is only repaired when
+   `[Unreleased]` is promoted, so a project that never promotes keeps a
+   `CHANGELOG.md` that argues with itself indefinitely. Say what you
+   changed, in the run summary, so the edit is not silent.
+
 Persist to disk **immediately**, so a crash mid-loop leaves the plan
 file recoverable.
 
