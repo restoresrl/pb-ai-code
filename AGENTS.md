@@ -156,6 +156,10 @@ skips without one, which is why CI runs on Windows.
 
 - **English** for code, comments, docs, commit messages and skill
   content. The audience is international.
+- **Humanize user-facing prose before writing it.** Draft every new or
+  modified README section, guide, skill, command, changelog entry and CLI
+  message first, apply the `humanizer` skill, then write the final text to
+  disk. Do not rewrite unchanged prose merely because its file was touched.
 - **Markdown**: hard-wrap prose at ~72 characters (the files are read as
   much in a terminal as in a browser), fenced code blocks get a
   language, tables get one space of padding per pipe.

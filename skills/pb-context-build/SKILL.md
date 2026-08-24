@@ -2,7 +2,7 @@
 name: pb-context-build
 description: Use this when you are about to read, review, or refactor PowerBuilder code in a monolithic legacy workspace and need to assemble a scoped context pack — a budgeted slice of entries (sources + dependency map) instead of dumping whole PBLs into the conversation. Orchestrates pb-orca-mcp primitives (pb_workspace_info, pb_target_info, pb_library_directory, pb_object_query_hierarchy, pb_object_query_reference, pb_library_entry_export, pb_library_export_sources). Required pre-step for the pb-review flow. Covers outgoing references (callees, ancestors used, types declared) natively via ORCA. Incoming references (callers) are not native to ORCA — they require an opt-in brute-force inversion of the library index and are off by default.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Building a scoped context pack for review / refactoring
@@ -27,9 +27,10 @@ work downstream.
   context-building step.
 - You are about to export more than one entry and the choice of which
   entries to export is not obvious.
-- You want to understand the blast-radius of a potential change
-  (although for *that* specific question prefer `pb-impact-analysis`
-  — a more focused report — once it exists).
+- You need broad source context before making a change. If the question is
+  specifically what can break, use
+  [`pb-impact-analysis`](../pb-impact-analysis/SKILL.md) instead. It runs a
+  focused caller, hierarchy and dynamic-use analysis.
 
 If the workspace is a brand-new `.pbl` you just created and you only
 need to scaffold a fresh entry, this skill is overkill — go straight
@@ -769,10 +770,10 @@ defensively — index by key, do not assume a fixed field set.
 
 ## Boundaries with sibling skills
 
-- `pb-impact-analysis` (planned): when the question is specifically
-  "what breaks if I touch X", that skill will produce a tighter,
-  blast-radius-focused report. This one is broader: it loads context
-  for *any* downstream task.
+- [`pb-impact-analysis`](../pb-impact-analysis/SKILL.md): use it when the
+  question is specifically "what breaks if I touch X". It reuses the caller
+  discovery rules here but produces a tighter blast-radius report. This skill
+  loads context for any downstream task.
 - [`pb-scaffold`](../pb-scaffold/SKILL.md): unrelated — that one
   *creates* new entries; this one helps *understand* existing ones.
 - [`appeon-query`](../appeon-query/SKILL.md): for questions about

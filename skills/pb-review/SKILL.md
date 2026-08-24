@@ -2,7 +2,7 @@
 name: pb-review
 description: Use this to run a structured code review on a PowerBuilder target — an entry, a .pbl, a .pbt, or a free-form description of a block of code. Frames the work with the user, builds a scoped context pack, validates understanding before reviewing, then produces two persistent artefacts (a plan file with one YAML-tagged finding per fix, and a CHANGELOG entry) and hands off to pb-apply-plan for the edit loop. Never edits PowerBuilder sources; it does write three files — the plan, the CHANGELOG entry, and a one-line pointer into the project's own backlog if it has one.
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Structured code review on a PowerBuilder target
@@ -669,6 +669,27 @@ that basis alone** — the priority would be a guess dressed as a
 judgement. Say what would settle it: usually one question to a human
 who knows who links this library.
 
+### Contract-changing findings need an impact pass
+
+Before writing the plan, invoke
+[`pb-impact-analysis`](../pb-impact-analysis/SKILL.md) for every finding
+whose proposed fix changes a name, signature, visibility, inherited
+contract, string-addressed symbol or observable public behaviour. Reuse the
+current target, session and context pack rather than bringing ORCA up again.
+
+Use the fast mode for a behavioural change unless the first caller layer
+shows that the effect escapes through shared wrappers. Recommend exhaustive
+caller and hierarchy inversion for a rename, deletion, signature change or
+ancestor contract change. In an unattended review, run the fast mode and mark
+its coverage as partial unless the invoker explicitly requested the full
+pass.
+
+Put a short result in the finding's **Notes**: confirmed consumers,
+inheritance impact, dynamic candidates and `scanned N/M`. These belong in the
+finding body, not in new YAML fields. If the user declines the scan or a cap
+stops it, record that limit. Do not call the change isolated, and do not raise
+or lower its priority from caller count alone.
+
 ## Step 3 — Emit the plan file and the CHANGELOG entry
 
 Two artefacts on disk, one user-facing summary.
@@ -1126,6 +1147,8 @@ the CHANGELOG entry persist; the work can resume later by invoking
 
 - [`pb-context-build`](../pb-context-build/SKILL.md) — the
   context-building step Step 1 depends on.
+- [`pb-impact-analysis`](../pb-impact-analysis/SKILL.md) — the focused
+  caller and hierarchy pass for contract-changing findings.
 - [`pb-apply-plan`](../pb-apply-plan/SKILL.md) — Phase B: topo-sort,
   impact check, and the edit loop.
 - [`appeon-query`](../appeon-query/SKILL.md) — language and runtime API

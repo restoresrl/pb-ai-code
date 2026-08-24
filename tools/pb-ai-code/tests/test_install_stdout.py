@@ -355,7 +355,7 @@ def test_ledger12_47_stdout_golden_generic(
         "Target:  <target>",
         "Harness: generic",
         "",
-        "Note: no commands directory for this harness; skipping 2 command file(s).",
+        "Note: no commands directory for this harness; skipping 3 command file(s).",
         "      Every flow is also reachable as a skill of the same name.",
         "",
         *plan_rows(".agent", commands=False),

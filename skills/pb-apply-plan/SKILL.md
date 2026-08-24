@@ -961,6 +961,10 @@ that is their decision, made by hand.
   `outgoing_refs` populate the call-graph the topo-sort relies on. If
   a fix has `confidence: low` (a dynamic call), surface a warning
   instead of treating it as a hard edge.
+- [`pb-impact-analysis`](../pb-impact-analysis/SKILL.md) checks source-level
+  consumers before a contract-changing finding enters the plan. The skip
+  impact check in this skill is narrower: it follows dependencies between
+  plan findings after the user declines one.
 - [`pb-src-format`](../pb-src-format/SKILL.md) — consult it when a
   fix touches an entry type whose on-disk format has variants.
 - [`pb-format`](../pb-format/SKILL.md) — optional style

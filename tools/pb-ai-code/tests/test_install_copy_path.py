@@ -204,6 +204,7 @@ def test_ledger16_skill_set_is_globbed_at_run_time_and_sorted_case_insensitively
         "pb-apply-plan",
         "pb-context-build",
         "pb-format",
+        "pb-impact-analysis",
         "pb-review",
         "pb-scaffold",
         "pb-src-format",
@@ -237,6 +238,7 @@ def test_ledger17_commands_are_flat_md_files_and_do_not_prune(tmp_path: Path) ->
     assert {p.name for p in commands.iterdir()} == {
         "my-command.md",
         "pb-format.md",
+        "pb-impact-analysis.md",
         "pb-review.md",
     }
     assert (commands / "my-command.md").read_bytes() == b"# mine\n"

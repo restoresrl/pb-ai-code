@@ -113,10 +113,11 @@ directory layout differed from ours. Now:
   because the knowledge base was not being copied with the skills.
 - `pb-format` got its remote: `restoresrl/pb-format`, private.
 
-**Still open**: `/pb-review` against a real *legacy* target — the small
-workspace exercised the machinery, not the scale, so
-`outside_source_tree`, the budget cap under pressure and caller discovery
-at size remain untested. And `pb-impact-analysis`, never started.
+**Still open**: `/pb-review` and `pb-impact-analysis` still need a real
+legacy target. The small workspace exercised the review machinery, not the
+scale. `outside_source_tree`, the budget cap under pressure, large caller
+sets and the cost difference between fast and exhaustive impact analysis
+remain untested.
 
 ## Re-prioritization 2026-05-19 — refactoring-first
 
@@ -147,10 +148,11 @@ Implications for the four pillars:
 
 **Three-tier priority for the new direction**:
 
-- **Tier 1**: `pb-context-build` + the `pb-review` flow + `pb-apply-plan`
-  are **written**, and exercised end to end once on a small workspace.
-  `pb-impact-analysis` is **not started**. These orchestrate existing ORCA
-  primitives into the refactoring loop; none of them reimplements one.
+- **Tier 1**: `pb-context-build`, `pb-review`, `pb-impact-analysis` and
+  `pb-apply-plan` are **written**. The review and apply flow has run end to
+  end on a small workspace; impact analysis still needs a run at legacy
+  scale. These skills orchestrate existing ORCA primitives rather than
+  reimplementing them.
 - **Tier 2** (grows alongside Tier 1): Layer 2 wiki expansion on
   real findings; the **`pb-format` skill**, driving the standalone
   [`pb-format`](https://github.com/restoresrl/pb-format) tool, with
@@ -257,11 +259,11 @@ Active components driving the next slices of work:
   and a confirmation. The flow lives in `skills/pb-review/SKILL.md`;
   `commands/pb-review.md` is a thin wrapper, so an assistant with no
   slash commands can still be pointed at the skill.
-- **`pb-impact-analysis` skill** (Tier 1, **not started**) — pre-flight
-  blast-radius report for any non-trivial refactor. It rests on caller
-  discovery, which is the expensive direction, so it waits for a real
-  legacy target to show whether the index inversion or the
-  `pb_library_export_sources` + grep shortcut is the right default.
+- **`pb-impact-analysis` skill** (Tier 1, shipped) provides a read-only
+  blast-radius report for a proposed refactor. Fast mode uses scoped source
+  search followed by ORCA confirmation. Exhaustive mode inverts the ORCA
+  reference and hierarchy indexes across the target library list. The
+  report keeps partial scans, dynamic uses and external consumers visible.
 - **`pb-scaffold` skill + Layer 2 wiki** (existing, kept) — invariant
   for now. The wiki grows on-encounter during real review sessions
   (Tier 2). The 3 residual scaffold entry types are Tier 3, on-demand.
@@ -364,7 +366,7 @@ The repo contains a mix of artifacts:
    - `/pb-new-userobject <name>` (scaffolding)
    - `/pb-run-tests` (test orchestration)
    - `/pb-trace <log-file>` (post-mortem)
-   - `/pb-impact <object>` (cross-reference audit)
+   - `/pb-impact-analysis <object and change>` (cross-reference audit)
 
 6. **Tooling code** (only if necessary) — small Python helpers for
    parsing trace logs, computing test-result diffs, etc. Whether
@@ -456,8 +458,9 @@ discover the gaps before any public release pressure.
    cost, signal/noise of findings, scoping efficacy.
 4. Iterate on `pb-context-build` heuristics based on real findings,
    *not* upfront on hypotheses.
-5. Add `pb-impact-analysis` skill once `/pb-review` has shaped the
-   surface area expectations.
+5. Add `pb-impact-analysis` once `/pb-review` has shaped the expected
+   surface area. Completed with fast and exhaustive discovery modes; legacy
+   scale validation remains open.
 6. Phase B of `/pb-review` (edit-loop) after v1 is stable on real
    targets.
 

@@ -163,11 +163,16 @@ Two properties it is built around: **it stops before spending your
 budget**, and **its output persists**. A plan file can be edited by
 hand, committed, and resumed by a different assistant days later.
 
+For a narrower pre-flight, `pb-impact-analysis` reports callers,
+descendants, dynamic uses and coverage gaps for one proposed change. It
+keeps fast source-led discovery separate from exhaustive ORCA inversion, so
+a capped scan cannot quietly turn into a claim that an object is unused.
+
 ## Contents
 
 | | |
 | --- | --- |
-| [`skills/`](skills/) | The flows. `pb-review` (structured review), `pb-apply-plan` (the edit loop), `pb-context-build` (scoped context from a monolith), `pb-scaffold` (new objects), `pb-src-format` (the `.sr*` format), `pb-format` (style), `appeon-query` (language lookups). |
+| [`skills/`](skills/) | The flows. `pb-review` (structured review), `pb-impact-analysis` (refactor blast radius), `pb-apply-plan` (the edit loop), `pb-context-build` (scoped context from a monolith), `pb-scaffold` (new objects), `pb-src-format` (the `.sr*` format), `pb-format` (style), `appeon-query` (language lookups). |
 | [`commands/`](commands/) | Slash-command wrappers — thin; each delegates to the skill of the same name. |
 | [`docs/pb-source-format/`](docs/pb-source-format/) | A wiki on the textual layout of each `.sr*` entry type. No upstream spec exists, so it is reverse-engineered and grows as cases are met. |
 | [`docs/pb-antipatterns/`](docs/pb-antipatterns/) | PB-specific hazards with reproductions and idiomatic fixes — the bugs that compile fine and bite in production. |

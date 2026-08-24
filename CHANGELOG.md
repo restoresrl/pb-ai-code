@@ -13,6 +13,24 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-25
+
+### Added
+
+- **`pb-impact-analysis`** provides a read-only blast-radius report before a
+  refactor. Its fast mode searches only the resolved target and asks ORCA to
+  confirm candidate callers. Its exhaustive mode inverts the ORCA reference
+  and hierarchy indexes across the full library list. Both modes report
+  dynamic uses, unreadable dependencies and `scanned N/M`, so a partial pass
+  cannot be mistaken for proof that an entry is unused. `/pb-review` now runs
+  this check for findings that change a public or inherited contract.
+
+### Changed
+
+- Contributor instructions now require the `humanizer` pass for new or
+  modified user-facing prose before it is written to disk. Unchanged prose is
+  left alone when a nearby section changes.
+
 ## [0.6.3] - 2026-08-17
 
 Found by finally running the apply loop to the end. With the queue empty the
