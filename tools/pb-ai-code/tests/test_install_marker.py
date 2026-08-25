@@ -459,7 +459,7 @@ def test_ledger58_marker_mcp_line_generic(tmp_path: Path) -> None:
     )
 
     lines = marker_lines(target / ".agents" / MARKER_NAME)
-    assert value_of(lines, "MCP").startswith(".agents\\mcp.json  [")
+    assert value_of(lines, "MCP").startswith(".mcp.json  [")
 
 
 def test_ledger58_marker_mcp_line_not_written(tmp_path: Path) -> None:
@@ -621,7 +621,7 @@ def test_ledger60_the_recipe_reproduces_this_layout_and_not_another(tmp_path: Pa
     assert sorted(path.name for path in target.iterdir()) == before, (
         "following the update recipe installed a second, different layout"
     )
-    assert before == [".agents", "AGENTS.md"]
+    assert before == [".agents", ".mcp.json", "AGENTS.md"]
 
 
 def test_ledger60_a_directory_with_a_space_stays_pasteable() -> None:

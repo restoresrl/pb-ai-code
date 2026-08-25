@@ -383,16 +383,16 @@ def test_ledger47_the_generic_harness_writes_the_neutral_mcp_file(tmp_path: Path
     """Generic installs always write the neutral project MCP configuration."""
     result = _install(tmp_path, "--harness", "generic", "--skills-dir", ".agents/skills")
 
-    config = tmp_path / ".agents" / "mcp.json"
+    config = tmp_path / ".mcp.json"
     assert config.is_file()
     assert '"pb-orca"' in config.read_text(encoding="utf-8")
     assert report.MCP_PRINT_INTRO_1 not in result.stdout
     assert report.MCP_PRINT_INTRO_2 not in result.stdout
-    assert "Installed mcp       .agents\\mcp.json" in result.stdout
+    assert "Installed mcp       .mcp.json" in result.stdout
     assert report.RESTART_HINT not in result.stdout
 
     fields = _marker(tmp_path, ".agents", "_installed-from-pb-ai-code.txt")
-    assert fields.mcp.startswith(".agents\\mcp.json  [")
+    assert fields.mcp.startswith(".mcp.json  [")
     assert fields.harness == "generic"
 
 

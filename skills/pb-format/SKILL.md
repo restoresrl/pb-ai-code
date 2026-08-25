@@ -1,6 +1,13 @@
 ---
 name: pb-format
-description: Use this when you need to apply, generate, or verify PowerScript style conventions (indent, keyword case, operator spacing, line endings) on a .sr* source — either as a step in the edit loop before importing, or after the fact over a whole library. Owns the .pb-format.toml config contract and the boundary between style normalization (this skill) and structural format (pb-src-format). The engine is pb-format, a separate, optional CLI: everything here degrades to a no-op when it is not installed.
+description: >-
+  Use this when you need to apply, generate, or verify PowerScript style
+  conventions (indent, keyword case, operator spacing, line endings) on a
+  .sr* source — either as a step in the edit loop before importing, or after
+  the fact over a whole library. Owns the .pb-format.toml config contract and
+  the boundary between style normalization (this skill) and structural format
+  (pb-src-format). The engine is pb-format, a separate, optional CLI:
+  everything here degrades to a no-op when it is not installed.
 metadata:
   version: "2.1.0"
 ---

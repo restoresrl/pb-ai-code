@@ -352,23 +352,23 @@ def test_ledger12_47_stdout_golden_generic(
         "Harness: generic",
         "",
         *plan_rows(".agents", commands=True),
-        "mcp       <src>\\harness\\mcp-servers.json -> <dst>\\.agents\\mcp.json"
+        "mcp       <src>\\harness\\mcp-servers.json -> <dst>\\.mcp.json"
         "  (merged; other servers preserved)",
         f"marker    <dst>\\.agents\\{MARKER_NAME}",
         "rewrite   ../../docs/ -> ../../pb-ai-code-docs/  in the installed skills",
         "",
         *installed_rows(commands=True, settings=False),
         "Rewrote knowledge-base links in 5 skill file(s).",
-        "Installed mcp       .agents\\mcp.json  [pb-orca (added)]",
+        "Installed mcp       .mcp.json  [pb-orca (added)]",
         *APPEON_MISSING,
         "agents    AGENTS.md  (created; the project's own file, never rewritten)",
         "          PowerBuilder version not stated - fill it in there, or",
         "          re-run with --pb-version 22.0",
         "",
         "Done.",
-        *not_a_repo_note(".agents", mcp_path=".agents/mcp.json"),
+        *not_a_repo_note(".agents", mcp_path=".mcp.json"),
     ]
-    assert "pb-orca" in json.loads((target / ".agents" / "mcp.json").read_text())["mcpServers"]
+    assert "pb-orca" in json.loads((target / ".mcp.json").read_text())["mcpServers"]
     assert block == ""
 
 
@@ -496,7 +496,7 @@ def test_ledger50_51_appeon_index_is_referenced_not_copied(
         "                  referenced, not copied - rebuilding it once updates every project"
     )
     assert not [p for p in target.rglob("*") if p.suffix == ".db"]
-    written = json.loads((target / ".agents" / "mcp.json").read_text(encoding="utf-8"))
+    written = json.loads((target / ".mcp.json").read_text(encoding="utf-8"))
     assert written["mcpServers"]["pb-appeon-index"]["env"]["PB_APPEON_INDEX_DB"] == str(db)
 
 

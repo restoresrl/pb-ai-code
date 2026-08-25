@@ -42,7 +42,7 @@ sources is a valid target whether or not a `.pbw` is where you expect it.
 Be straight with the user about what that second row means today: only Claude
 Code's native on-disk contract is verified here. The generic adapter writes
 skills under the path you choose and always writes the neutral MCP block to
-`.agents/mcp.json`. Codex and other clients may need that block translated into
+`.mcp.json`. Codex and other clients may need that block translated into
 their own MCP format; the installer does not guess their native format.
 
 The two directories must be siblings and the skills one must be named

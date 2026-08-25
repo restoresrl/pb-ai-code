@@ -13,6 +13,19 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-08-25
+
+### Changed
+
+- Generic installs now write the neutral MCP configuration to the project
+  root at `.mcp.json`, where clients can discover it without a client-specific
+  adapter.
+
+### Fixed
+
+- Quoted skill descriptions that contain colons so Agent Skills frontmatter
+  parses correctly.
+
 ## [0.9.1] - 2026-08-25
 
 ### Changed

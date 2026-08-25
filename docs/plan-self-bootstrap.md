@@ -104,7 +104,7 @@ A declarative manifest per harness saying where things go:
 | claude-code | `.claude/skills/` | `.claude/commands/` | `.mcp.json` | `.claude/settings.json` |
 | codex | via AGENTS.md | - | `~/.codex/config.toml` | `AGENTS.md` |
 | opencode | `.opencode/` | - | `opencode.json` | `AGENTS.md` |
-| generic | `.agents/skills/` | - | `.agents/mcp.json` | `AGENTS.md` |
+| generic | `.agents/skills/` | - | `.mcp.json` | `AGENTS.md` |
 
 Only `claude-code` and `generic` exist today. The abstraction is shaped so the
 others slot in without rework.

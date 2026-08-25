@@ -326,10 +326,10 @@ def build_generic(skills_dir: str, commands_dir: str | None) -> Adapter:
     return Adapter(
         id="generic",
         roots=(SkillRoot(skills_rel, commands_rel),),
-        # Generic clients do not share a verified native MCP location, but
-        # the neutral project contract is always this file. Clients can
-        # translate its mcpServers object into their own format.
-        mcp=McpTarget(".agents/mcp.json", "mcp_json", "project", "merge", note=None),
+        # Generic clients discover project MCP configuration at the root.
+        # The neutral mcpServers object can be translated when a client uses
+        # a different native format.
+        mcp=McpTarget(".mcp.json", "mcp_json", "project", "merge", note=None),
         extra_files=(),
         restart_hint=None,
         gaps=(),

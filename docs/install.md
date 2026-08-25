@@ -45,8 +45,7 @@ there**: nothing downstream can work around a PowerBuilder that is not
 reachable, and both commands tell you what is wrong.
 
 There is no fifth step. Claude Code installs the `pb-orca` server entry into
-your project's `.mcp.json`; generic installs put the neutral JSON block in
-`.agents/mcp.json`. Any other MCP servers already in the selected file are
+your project's root `.mcp.json`. Any other MCP servers already in that file are
 left alone. Step 4 is optional and reads only the marker the install left
 behind.
 
@@ -149,9 +148,9 @@ Where the installer puts it:
 | Client | Location |
 | --- | --- |
 | Claude Code | `.mcp.json` at the project root: written by `-Harness claude-code`. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you; then use `-SkipMcpConfig`. |
-| Generic harnesses | `.agents/mcp.json`, written by `-Harness generic`; translate it if the client requires TOML or YAML |
+| Generic harnesses | `.mcp.json`, written by `-Harness generic`; translate it if the client requires TOML or YAML |
 | Cursor | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user) |
-| Codex CLI, Gemini CLI, Copilot, others | use the generic `.agents/mcp.json` as the source block and translate it into that client's own shape |
+| Codex CLI, Gemini CLI, Copilot, others | use the generic `.mcp.json` as the source block and translate it into that client's own shape |
 
 Claude Code and the generic neutral location are written automatically.
 The generic file is deliberately not claimed to be a native Codex, Gemini or
@@ -235,7 +234,7 @@ every tool:
 `<target>/.claude/commands/`, `<target>/.claude/settings.json` and
 `<target>/.mcp.json`. `-Harness generic` writes the skills wherever you point
 it, skips assistant-specific settings, and writes the neutral MCP file to
-`<target>/.agents/mcp.json`.
+`<target>/.mcp.json`.
 
 **The install also vendors the knowledge base**, as `pb-ai-code-docs/` beside
 the skills, and rewrites the links inside the installed skills to point at it.
@@ -264,7 +263,7 @@ Markdown files.
 | Option | Effect |
 | --- | --- |
 | `--target PATH` | Project directory to modify. Defaults to the current directory. |
-| `--harness generic` | Client-neutral layout; default. Uses `.agents/skills`, `.agents/commands` and `.agents/mcp.json`. |
+| `--harness generic` | Client-neutral layout; default. Uses `.agents/skills`, `.agents/commands` and root `.mcp.json`. |
 | `--harness claude-code` | Fixed Claude Code layout; explicitly creates `.claude/`. |
 | `--skills-dir REL` | Optional with `generic`; defaults to `.agents/skills`. The final path segment must be `skills`. |
 | `--commands-dir REL` | Optional with `generic`; defaults to `.agents/commands` and must be a sibling of the skills directory. |

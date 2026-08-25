@@ -202,7 +202,7 @@ def test_the_wheel_installs_with_no_checkout_in_reach(wheel: Path, tmp_path: Pat
     assert (bundle / "commands" / "pb-review.md").is_file()
     assert (bundle / "pb-ai-code-docs" / "pb-antipatterns" / "index.md").is_file()
     assert (bundle / "pb-ai-code-docs" / "wiki-notes.md").is_file()
-    assert (target / ".agents" / "mcp.json").is_file()
+    assert (target / ".mcp.json").is_file()
 
     marker_text = (bundle / "_installed-from-pb-ai-code.txt").read_text(encoding="utf-8")
     assert "local checkout" not in marker_text, (

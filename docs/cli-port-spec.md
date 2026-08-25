@@ -130,7 +130,7 @@ UTF-8 without BOM with one trailing newline. **Risk: medium.** **Assert:**
 byte-check new and existing `.mcp.json` files; plant a 12-level-deep unrelated
 server and assert it survives semantically.
 
-**47. `generic-harness-writes-neutral-mcp`**: generic installs write the neutral JSON block to `<target>/.agents/mcp.json`; existing keys are preserved and the marker records the merged path. **Port: CHANGE.** Native Codex, OpenCode and other client dialects remain outside this adapter; translate the neutral block when needed. **Risk: medium.** **Assert:** `--harness generic --skills-dir .agents/skills` writes `.agents/mcp.json` and records it in the marker.
+**47. `generic-harness-writes-neutral-mcp`**: generic installs write the neutral JSON block to `<target>/.mcp.json`; existing keys are preserved and the marker records the merged path. **Port: CHANGE.** Native Codex, OpenCode and other client dialects remain outside this adapter; translate the neutral block when needed. **Risk: medium.** **Assert:** `--harness generic --skills-dir .agents/skills` writes `.mcp.json` and records it in the marker.
 
 **48. `skip-mcp-config`**: five gates: preflight, plan line (`mcp       skipped (-SkipMcpConfig)`), the merge (prints `Skipped MCP config (-SkipMcpConfig). The skills expect the pb_* tools to be reachable.`, outcome `skipped (-SkipMcpConfig)`), the whole Appeon report, the `/mcp` restart hint, and the MCP line in the gitignore hint (ps1:398, 408-410, 511-514, 538, 594, 630). **Port: KEEP**, with the flag renamed `--skip-mcp-config` and the plan/outcome strings updated to that spelling. **Risk: high.** **Assert:** an existing selected MCP file is byte-identical afterwards; the four suppressions hold.
 

@@ -75,11 +75,11 @@
         claude-code   <target>/.claude/{skills,commands,settings.json}
                       <target>/.mcp.json
         generic       paths you pass explicitly via -SkillsDir / -CommandsDir;
-                      writes the neutral MCP file to .agents\mcp.json
+                      writes the neutral MCP file to .mcp.json
 
     Only harnesses whose on-disk contract is known are named here. For anything
     else use -Harness generic; it writes skills to the chosen directory and
-    the neutral MCP file to .agents\mcp.json. See docs/install.md.
+    the neutral MCP file to .mcp.json. See docs/install.md.
 
 .PARAMETER SkillsDir
     -Harness generic only: destination directory for skills, relative to
@@ -318,7 +318,7 @@ switch ($Harness) {
     'generic' {
         $skillsRel = if ([string]::IsNullOrWhiteSpace($SkillsDir)) { '.agents\skills' } else { $SkillsDir }
         $commandsRel = if ([string]::IsNullOrWhiteSpace($CommandsDir)) { '.agents\commands' } else { $CommandsDir }
-        $mcpRel = '.agents\mcp.json'
+        $mcpRel = '.mcp.json'
         $markerRel = Join-Path $SkillsDir '_installed-from-pb-ai-code.txt'
     }
 }
