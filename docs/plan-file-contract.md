@@ -1,7 +1,7 @@
 ---
 name: plan-file-contract
 status: populated
-description: The normative schema of a .pb-review plan file: fields, status vocabulary, CHANGELOG markers, and which skill writes what.
+description: The normative schema of a .pb-review plan file: fields, status vocabulary, CHANGELOG recording, and which skill writes what.
 ---
 
 # The plan file contract
@@ -33,7 +33,7 @@ Every finding carries these. A plan file missing one is malformed.
 
 | field | values | notes |
 |---|---|---|
-| `id` | `fix-01`, `fix-02`, … | unique within the file; never renumbered, because `CHANGELOG.md` links to these anchors |
+| `id` | `fix-01`, `fix-02`, … | unique within the file; never renumbered, because plan and release-note links use these anchors |
 | `entry` | `lib::name:type` | the entry triple. `lib` is a **bare basename**: see `library_path` |
 | `kind` | `bug-risk` \| `refactor` \| `style` \| … | others sort after the three named ones |
 | `priority` | `high` \| `medium` \| `low` | |
@@ -90,36 +90,31 @@ name the option taken.
 **Applied** *(2026-08-14, option `keep`)*: <what actually landed>
 ```
 
-## CHANGELOG markers
+## CHANGELOG recording
 
-`pb-review` owns the structure of `CHANGELOG.md`; `pb-apply-plan` only
-changes the box. **Change the box, keep the bullet**: the id, the text
-and the anchor all stay, because the entry's only link to its finding is
-that anchor.
+`pb-review` does not write `CHANGELOG.md`. A review can produce findings
+that are declined or deferred, so recording them as release work before an
+import succeeds is misleading.
 
-| marker | status |
-|---|---|
-| `- [ ]` | `pending` |
-| `- [x]` | `applied` |
-| `- [~]` | `skipped` or `failed`, with `— skipped: <reason>` appended |
-| `- [>]` | `deferred`, with `— deferred: <reason>` appended |
-| `- [/]` | `partial`, with the entries that took it |
+`pb-apply-plan` appends a normal Keep a Changelog bullet only when a finding
+reaches `applied` or `partial`. The bullet includes the finding id and a link
+to the plan anchor. It does not add checkbox markers, rewrite existing
+released sections, or record `pending`, `deferred`, `skipped`, or `failed`
+findings. The YAML `status` field is the authoritative progress record; the
+changelog is release history.
 
-The markers past `[ ]` and `[x]` are a convention: renderers ignore them,
-but they are visible in the source, which is where anyone auditing a run
-reads them.
+Before appending, the skill checks the plan id or anchor so a resumed run does
+not duplicate an entry. Release promotion is separate and reviews all project
+changes under `[Unreleased]`, not only the current plan.
 
-**The boxes are the only authoritative record of progress.** A lead-in
-paragraph above the sub-sections may say what was reviewed and link the
-plan; it must not say how many findings have been applied. `pb-apply-plan`
-changes boxes, not prose, so a tally written by `pb-review` is a claim
-nothing keeps current, and it is wrong from the first fix that lands
-until the section is promoted, which for a project that never promotes is
-forever.
+The plan's YAML `status` is the only authoritative record of progress. A
+changelog entry means that the corresponding change actually landed; it does
+not mean that every finding in the plan was accepted.
 
 ## Cross-references
 
-- [`pb-review`](../skills/pb-review/SKILL.md): writes the file.
-- [`pb-apply-plan`](../skills/pb-apply-plan/SKILL.md): consumes and rewrites it.
+- [`pb-review`](../skills/pb-review/SKILL.md): writes the plan file.
+- [`pb-apply-plan`](../skills/pb-apply-plan/SKILL.md): consumes and rewrites it,
+  and records successful fixes in `CHANGELOG.md`.
 - [`wiki-notes`](wiki-notes.md): the `## Notes for the wiki` section of the
   same file, and the trip back into this repository.

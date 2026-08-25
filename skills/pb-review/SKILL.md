@@ -1,17 +1,18 @@
 ---
 name: pb-review
-description: Use this to run a structured code review on a PowerBuilder target — an entry, a .pbl, a .pbt, or a free-form description of a block of code. Frames the work with the user, builds a scoped context pack, validates understanding before reviewing, then produces two persistent artefacts (a plan file with one YAML-tagged finding per fix, and a CHANGELOG entry) and hands off to pb-apply-plan for the edit loop. Never edits PowerBuilder sources; it does write three files — the plan, the CHANGELOG entry, and a one-line pointer into the project's own backlog if it has one.
+description: Use this to run a structured code review on a PowerBuilder target — an entry, a .pbl, a .pbt, or a free-form description of a block of code. Frames the work with the user, builds a scoped context pack, validates understanding before reviewing, then produces a persistent plan with one YAML-tagged finding per fix and hands off to pb-apply-plan for the edit loop. Never edits PowerBuilder sources or CHANGELOG.md during review; it writes the plan and a one-line pointer into the project's own backlog if it has one.
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # Structured code review on a PowerBuilder target
 
 This is the entry point of the refactoring loop. It does **not** apply
-edits: it produces two artefacts on disk — a plan file and a CHANGELOG
-entry — and then hands off to
-[`pb-apply-plan`](../pb-apply-plan/SKILL.md), which walks the queue
-one fix at a time with confirmation on each.
+edits: it produces a plan file and then hands off to
+[`pb-apply-plan`](../pb-apply-plan/SKILL.md), which walks the queue one fix
+at a time with confirmation on each. The apply loop records only successful
+changes in `CHANGELOG.md`; a review that is never applied does not alter the
+project's release notes.
 
 The split exists because a review is worth persisting. The plan file
 survives the session, can be edited by hand, and can be resumed by a
@@ -144,8 +145,9 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
      prior review exists", which is a claim you have no way to make.
 
    A mixed scope — some entries local, some vendored — is the normal
-   case and needs none of this: keep the CHANGELOG entry, and list only
-   the local findings in it.
+   case and needs none of this: keep the plan, and list only the local
+   findings in the apply queue. Successful local fixes get release notes
+   later; vendored findings do not.
 
    **A `.pbd` in the library list is a third case, and it looks like a
    bug when you meet it.** Compiled libraries enumerate but carry no
@@ -417,7 +419,7 @@ everything downstream:
 - Plan filename:
   `.pb-review/<scope_category>-<context_slug>-<YYYY-MM-DD-HHMM>.md`
 - The plan header block
-- The CHANGELOG entry section
+- The plan file and, when applicable, the backlog pointer
 - The candidate entry set passed to `pb-context-build`
 
 ## Step 1 — Build the context pack
@@ -482,10 +484,10 @@ assumptions you are making about its role. Present it as a gate:
 
 **Say what the confirmation authorizes.** "Have I got it right?" on its
 own invites the reasonable reply "proceed to do what?". Name the three
-things that follow, concretely: the findings get written (Step 2b), two
-files are created in the reviewed project — the plan file and a
-CHANGELOG entry (Step 3) — and then you offer the apply loop, which is
-the only part that modifies a `.pbl` (Step 4). If the review is likely to
+things that follow, concretely: the findings get written (Step 2b), the
+plan file is created in the reviewed project (Step 3), and then you offer
+the apply loop, which is the only part that modifies a `.pbl` (Step 4). A
+successful apply may also add a release note. If the review is likely to
 yield one or two findings, say that too: it changes whether the user
 wants the full flow or a shortcut.
 
@@ -653,9 +655,9 @@ Unattended, do not ask — run the sweeps (see *Running unattended*).
 
 If the user accepts, list the existing findings as known, review again,
 and **append** the new ones to the same plan file with fresh ids —
-never renumber, the CHANGELOG already links to the old anchors. Repeat
-until a sweep adds nothing, and record in `## Scope` how many sweeps ran
-and what each added. A sweep that finds nothing is the only evidence of
+never renumber, because the plan and any later release note link to the
+finding id. Repeat until a sweep adds nothing, and record in `## Scope` how
+many sweeps ran and what each added. A sweep that finds nothing is the only evidence of
 coverage this flow can honestly produce.
 
 ### Consumers you cannot see
@@ -695,9 +697,11 @@ finding body, not in new YAML fields. If the user declines the scan or a cap
 stops it, record that limit. Do not call the change isolated, and do not raise
 or lower its priority from caller count alone.
 
-## Step 3 — Emit the plan file and the CHANGELOG entry
+## Step 3 — Emit the plan file
 
-Two artefacts on disk, one user-facing summary.
+One artefact on disk, plus a user-facing summary. The plan is the review
+record; `CHANGELOG.md` is written later, by `pb-apply-plan`, only for fixes
+that actually land.
 
 ### Plan file
 
@@ -760,10 +764,11 @@ rewrites them. Inside the plan file, they are not: write the slug so a
 human can find it, and the URL so a machine can.
 
 Which document, and where: the backlog or plan document found in
-Pre-flight 0 — not `CHANGELOG.md`, which already gets its own entry.
+Pre-flight 0. `CHANGELOG.md` is not a backlog pointer; it is updated only
+when `pb-apply-plan` applies a fix.
 Put it under a references or index heading if one exists, otherwise at
 the end. If Pre-flight 0 found no such document, there is nothing to
-link and you write only the two artefacts.
+link and you write only the plan file.
 
 The format is YAML front-matter per finding, **plus** a generated
 summary table at the top.
@@ -1022,89 +1027,39 @@ Confidence semantics:
 - `manual` — entirely from the user's edits (ORCA found none, or the
   user overrode it).
 
-### CHANGELOG entry
+### CHANGELOG handoff
 
-Three conventions, because these bullets join a file somebody else
-writes in:
+`pb-review` does not write `CHANGELOG.md`. A finding may be declined,
+deferred, or never applied, so recording it as an unreleased change during a
+read-only review would make the release notes misleading. The plan file is
+the durable queue; `pb-apply-plan` appends a changelog entry only after an
+import succeeds and the finding reaches `applied` or `partial`.
 
-- **Language.** An artefact appended to an existing document follows
-  *that document's* language, not the conversation's. The plan file is
-  new, so it follows the conversation. A project whose `CHANGELOG.md`
-  is in Italian gets Italian bullets even when the review was conducted
-  in English.
-- **Bullet style.** The `- [ ]` checkbox is **structural, not
-  cosmetic**: `pb-apply-plan` ticks those boxes as fixes land, so a
-  bullet without one is a bullet nothing can update. Keep it even when
-  the section's existing entries are prose. Match the house style in
-  *wording, length and reference markers* — that is what "match the
-  file you are writing into" means here.
-- **Placeholders.** An empty subsection often holds a placeholder
-  ("*(no entries yet)*"). Remove it from the section you write into.
-  The append-only rule protects released versions and entries a
-  previous run wrote; a placeholder is neither.
+For an upstream review, keep the existing rule: do not write the consumer's
+changelog because none of the proposed changes can land there.
 
-Look for the project's own scheme **before** falling back to semver, in
-this order: a project-local versioning skill; a version file
-(`*.version`, `.version`, `package.json`, `*.pbg`); a statement in
-`AGENTS.md` / `CLAUDE.md` about how versions are decided. A real PB
-project kept `src/<app>.version` with `major`/`minor`/`patch`/`build`
-and a `major` that tracks the **PowerBuilder release**, not API
-compatibility — under which "major bump" has no semver meaning and
-proposing one is simply wrong. If the scheme is not semver, say which
-component you are proposing to move and why, and do not translate it
-into semver words.
+The apply skill matches the existing changelog's language and style, follows
+Keep a Changelog categories, and creates `[Unreleased]` only when a successful
+fix needs a place to be recorded. It does not add checkbox markers. The plan's
+YAML `status` is the progress record; the changelog is release history.
 
-
-
-Append to (or create) `CHANGELOG.md` in the reviewed project's root,
-following [Keep a Changelog](https://keepachangelog.com/). Add or
-extend `## [Unreleased]` with one sub-section per category (`### Fixed`,
-`### Changed`, `### Added`, `### Removed`, `### Deprecated`,
-`### Security`) and one `- [ ]` bullet per finding:
-
-```markdown
-## [Unreleased]
-
-### Fixed
-
-- [ ] **fix-01** — Null deref in `n_logger::flush()` on empty buffer
-  ([plan](.pb-review/refactoring-n_logger_chain-2026-07-29-1130.md#fix-01))
-
-### Changed
-
-- [ ] **fix-02** — Extract `n_log_target` base class from `n_logger`
-  ([plan](.pb-review/refactoring-n_logger_chain-2026-07-29-1130.md#fix-02))
-```
-
-A short lead-in above the sub-sections is welcome — what was reviewed,
-and a link to the plan file. **It must not state how much has been
-applied.** Write the mechanism, not the tally: *"`pb-apply-plan` ticks
-these as fixes land"* stays true forever, while *"nothing below has been
-applied yet"* is false the moment the first one does, and nothing
-rewrites it — the apply loop changes boxes, not prose. A real run left
-a `CHANGELOG.md` claiming every box was unticked directly above three
-ticked ones.
-
-The boxes are the record of progress. Prose that restates it is prose
-that will contradict it.
-
-**Append-only**: never edit or remove pre-existing sections (older
-`[X.Y.Z]` releases, or items a previous run wrote). Add to
-`[Unreleased]` only.
-
-If `CHANGELOG.md` does not exist, create one with the Keep a Changelog
-header and the `[Unreleased]` section.
+Look for the project's own versioning scheme when proposing a bump, in this
+order: a project-local versioning skill; a version file (`*.version`,
+`.version`, `package.json`, `*.pbg`); a statement in `AGENTS.md` or
+`CLAUDE.md`; then SemVer as a fallback. If the scheme is not SemVer, name the
+component to move and explain why.
 
 ### User-facing summary
 
-After writing both artefacts, summarize in the conversation:
+After writing the plan, summarize in the conversation:
 
 - The plan file path.
 - N findings, grouped by kind and priority.
 - Semver bump proposed: `patch|minor|major` → `X.Y.Z`.
-- `CHANGELOG.md`: updated, or created from scratch.
-- "I can load `pb-apply-plan` to apply the N queued fixes in
-  topological order (ancestors first, callees first). Shall I?"
+- `CHANGELOG.md`: not changed by the review; it will be updated only for
+  fixes that `pb-apply-plan` applies successfully.
+- "I can load `pb-apply-plan` to apply the N queued fixes in topological
+  order (ancestors first, callees first). Shall I?"
 
 ## Step 4 — Handoff to `pb-apply-plan`
 
@@ -1119,13 +1074,13 @@ That skill knows how to:
   show the diff, ask for confirmation, edit the file, import it, and
   read the compile result. On refusal: skip with an impact check.
 - Update `status:` in the YAML and regenerate the summary table.
-- Tick the `- [ ]` boxes in `CHANGELOG.md`.
-- When every finding reaches a terminal state, propose promoting
-  `[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`.
+- Append a release-note entry only after a fix imports successfully and
+  reaches `applied` or `partial`.
+- Keep release promotion as a separate, explicit release-management step.
 
-If the user declines the handoff, stop gracefully. The plan file and
-the CHANGELOG entry persist; the work can resume later by invoking
-`pb-apply-plan` with the plan-file path.
+If the user declines the handoff, stop gracefully. The plan file persists;
+no changelog entry is created until a fix is applied. The work can resume
+later by invoking `pb-apply-plan` with the plan-file path.
 
 ## Hard limits
 
@@ -1133,12 +1088,11 @@ the CHANGELOG entry persist; the work can resume later by invoking
   refactors are out of scope.
 - **No edits during the review itself.** This flow produces artefacts;
   edits to PB sources happen only in the `pb-apply-plan` handoff, with
-  per-fix confirmation. Three writes are review output rather than
-  source modification, and they are the only ones: the plan file, the
-  `CHANGELOG.md` entry, and — when the project keeps its own plan or
-  backlog — the single pointer line into it described in Step 3. Say
-  in the summary that you touched that third file; it is the one the
-  user did not ask for.
+  per-fix confirmation. Two writes are review output rather than source modification, and they
+  are the only ones: the plan file and — when the project keeps its own plan
+  or backlog — the single pointer line into it described in Step 3. Say in
+  the summary that you touched that pointer file; it is the one the user did
+  not ask for.
 - **No automated test execution.** If a fix conceptually needs a test,
   suggest it as a follow-up note in the finding; do not generate a test
   runner.

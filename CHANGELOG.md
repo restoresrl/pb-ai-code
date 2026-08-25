@@ -13,6 +13,25 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-25
+
+### Changed
+
+- `pb-review` now writes only the review plan. It does not add proposed
+  findings to `CHANGELOG.md` before the user accepts them.
+- `pb-apply-plan` records a normal changelog bullet only after an import
+  succeeds and the finding reaches `applied` or `partial`.
+- Changelog entries no longer use non-standard checkbox markers to mirror
+  plan progress. The plan YAML remains the authoritative status record.
+- Release promotion is separate from applying a plan. The apply loop leaves
+  `[Unreleased]` in place for project-wide release review.
+
+### Fixed
+
+- `pb-apply-plan` no longer contradicts its 0.8.0 preflight rule by claiming
+  that maintenance repairs are committed automatically. It stages or commits
+  nothing without an explicit request.
+
 ## [0.8.0] - 2026-08-25
 
 ### Changed
