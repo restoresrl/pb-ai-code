@@ -9,7 +9,7 @@ description: Layout of .sra files (PB Application entry).
 The application object. One per target. Catch-22 noted in
 `pb-orca-mcp`: creating a brand-new application via
 `pb_compile_entry_import` has unusual requirements compared to other
-entry types — see [[create-application-catch-22]] (TBD) once observed.
+entry types: see [[create-application-catch-22]] (TBD) once observed.
 
 ## Canonical form
 
@@ -74,7 +74,7 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
-- [[patterns/forward]] — TBD.
-- [[patterns/type-variables]] — TBD.
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[patterns/forward]]: TBD.
+- [[patterns/type-variables]]: TBD.

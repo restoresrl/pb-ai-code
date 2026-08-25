@@ -26,7 +26,7 @@ value is null, Pos returns null."*
 (<https://docs.appeon.com/pb2022r3/powerscript_reference/pos_func.html>)
 
 So `if left < 0` is dead code, and the not-found case does not return
-early — it falls straight through with `left = 0` into arithmetic that
+early: it falls straight through with `left = 0` into arithmetic that
 assumes a real position. The function then reads from an offset it
 invented and returns a plausible-looking string.
 
@@ -42,7 +42,7 @@ Two properties make this worse than an ordinary off-by-one:
   an identifier.
 
 The null case compounds it. If either argument is null, `Pos` returns
-null, and a comparison against null yields null rather than true — so
+null, and a comparison against null yields null rather than true, so
 the `then` branch is not taken there either.
 
 The habit is imported. `indexOf` in Java, C# and JavaScript, `strpos`
@@ -64,7 +64,7 @@ if left <= 0 then return ""
 
 `<= 0` rather than `= 0` costs nothing and also absorbs the null case
 in the direction you want. Prefer `long` over `int` for the result
-while you are there — `Pos` and `Len` return `long`, and a PB `integer`
+while you are there: `Pos` and `Len` return `long`, and a PB `integer`
 truncates silently above 32 767.
 
 ## How to find it
@@ -90,14 +90,14 @@ nothing and the variable-tracking scan found the bug.
   fed the error codes shown to operators, so an unexpected message
   shape produced a wrong table name in a user-facing error rather than
   an empty one. Scanning all **2426** `.sr*` sources in that workspace
-  found this as the **only** occurrence — the codebase otherwise writes
+  found this as the **only** occurrence: the codebase otherwise writes
   `if Pos(...) = 0 then` consistently. The entry is here for the way it
   fails, not for how often it appears.
 
 ## Related
 
-- [`isnull-on-numeric`](isnull-on-numeric.md) — the same root cause in a
+- [`isnull-on-numeric`](isnull-on-numeric.md): the same root cause in a
   different costume: a sentinel convention carried over from another
   language, producing a guard that never fires.
-- [`fileopen-unchecked`](fileopen-unchecked.md) — sentinel returns that
+- [`fileopen-unchecked`](fileopen-unchecked.md): sentinel returns that
   are not checked at all, rather than checked against the wrong value.

@@ -12,7 +12,7 @@ events, functions, and instance state all coexist in the same file.
 
 ## Canonical form
 
-Minimal valid `.srw` — a control-less, event-less window, validated
+Minimal valid `.srw`: a control-less, event-less window, validated
 end-to-end against ORCA on PB 22 (compile + import + round-trip
 export):
 
@@ -40,20 +40,20 @@ end on
 
 Anatomy:
 
-- **`$PBExportHeader$<name>.srw`** — first text line. Required on
+- **`$PBExportHeader$<name>.srw`**: first text line. Required on
   disk; ignored by `pb_compile_entry_import`.
-- **`forward … end forward`** — declares the window type up front so
+- **`forward … end forward`**: declares the window type up front so
   the body can reference its own symbol.
-- **`global type <name> from <parent>`** — the body. `<parent>` is
+- **`global type <name> from <parent>`**: the body. `<parent>` is
   `window` for a top-level window, or a custom ancestor (`w_base`,
-  `w_modal_base`, …) in typical apps — see the corpus parent-class
+  `w_modal_base`, …) in typical apps, see the corpus parent-class
   list below.
-- **Property assignments** inside the body — `integer width`,
+- **Property assignments** inside the body, `integer width`,
   `integer height`, `boolean titlebar`, `string title`, etc. PB IDE
   writes these on save; values are in PBUnits (~1/256 of an inch) for
   geometry, native types for booleans/strings.
-- **`global <name> <name>`** — global instance declaration.
-- **`on <name>.create` / `on <name>.destroy`** — constructor /
+- **`global <name> <name>`**: global instance declaration.
+- **`on <name>.create` / `on <name>.destroy`**: constructor /
   destructor. May be left empty (the `call super::…` form is also
   valid and is what userobjects/menus use, but windows do not need
   it).
@@ -73,11 +73,10 @@ below give the typical block ordering.
 - Section ordering when the window descends from a custom base
   class (does the inheritance chain appear in the header, in
   `forward`, or only in `global type … from …`?).
-- How are nested controls (controls inside DataWindows inside the
-  window) serialized — flat list with parent reference, or nested
-  blocks?
-- DataWindow controls embedded in a window — does the `.srw` contain
-  the DataWindow source inline, or only a reference?
+- Are nested controls serialized as a flat list with parent references or as
+  nested blocks?
+- Does a window's `.srw` contain embedded DataWindow source or only a
+  reference?
 
 <!-- BEGIN auto-generated: pb-source-analyzer -->
 
@@ -137,11 +136,11 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
-- [[userobject]] — windows often inherit from custom userobjects;
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[userobject]]: windows often inherit from custom userobjects;
   shared structural blocks.
-- [[datawindow]] — embedded DataWindow controls.
-- [[patterns/forward]] — TBD.
-- [[patterns/type-variables]] — TBD.
-- [[patterns/event-syntax]] — TBD.
+- [[datawindow]]: embedded DataWindow controls.
+- [[patterns/forward]]: TBD.
+- [[patterns/type-variables]]: TBD.
+- [[patterns/event-syntax]]: TBD.

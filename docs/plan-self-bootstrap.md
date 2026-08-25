@@ -27,7 +27,7 @@ The constraints, stated explicitly because each one rules something out:
 
 ## The three things that made the flow impossible
 
-### 1. All three repositories were private — CLOSED 2026-08-12
+### 1. All three repositories were private: CLOSED 2026-08-12
 
 `pb-ai-code`, `pb-orca-mcp` and `pb-format` were made **public**. Step 3 of
 the goal became possible with that: an agent can read the instructions over
@@ -37,11 +37,11 @@ a configured credential helper.
 This was phase 0 and it blocked everything else, because public and private
 produce two different bootstraps.
 
-What made the choice safe is still true: pb-ai-code holds no customer code —
+What made the choice safe is still true: pb-ai-code holds no customer code:
 skills, format documentation, two Python tools. Customers' PowerBuilder
 sources stay in their own repositories.
 
-### 2. The installer was PowerShell and lived in the checkout — CLOSED in v0.5.0
+### 2. The installer was PowerShell and lived in the checkout: CLOSED in v0.5.0
 
 `scripts/install-skills.ps1` resolved its source from `$PSScriptRoot/..`: it
 assumed it was running *inside* pb-ai-code and pointing at a target. Exactly
@@ -51,7 +51,7 @@ Replaced by a Python CLI shipped in the wheel and run from the consumer
 project. The script stays in the tree for one release with a deprecation
 banner and is deleted after.
 
-### 3. One adapter only — STILL OPEN
+### 3. One adapter only: STILL OPEN
 
 `harness/` holds `claude-code` and nothing else (`generic` is not a directory,
 it is a branch of the installer). Codex, OpenCode and the rest have different
@@ -79,7 +79,7 @@ The blocker, found by building a wheel rather than by reasoning about one:
 `[tool.hatch.build.targets.wheel]` packaged only the two tool packages, so a
 wheel built from a clean checkout carried 18 files and **not one** the
 installer needs. Fixed with six `force-include` mappings, and never a mapping
-of the `docs` root — `force-include` ignores `.gitignore` *and* `exclude`, so
+of the `docs` root: `force-include` ignores `.gitignore` *and* `exclude`, so
 that one line would drag a 4.5 MB index database in from any machine that had
 built one.
 
@@ -116,18 +116,18 @@ OpenCode fuses the command into one array and calls the env key
 MCP at all. Only Cursor shares Claude Code's shape. That sentence was exactly
 what would make someone build a one-shape emitter.
 
-### The Appeon index as a release asset — NOT DONE
+### The Appeon index as a release asset: NOT DONE
 
 `docs/appeon-index/index.db` is 4.5 MB and every user builds it by scraping
 docs.appeon.com: slow, fragile, and on the critical path of an install. As a
 **release asset** attached to each tag, the CLI would download it into a
-machine cache — derived data, not configuration.
+machine cache: derived data, not configuration.
 
 v0.5.0 only re-rooted the *discovery* (env var → `~/.pb-appeon-index/index.db`
 → a checkout) and rewrote the server entry to use `uvx` instead of a
 checkout's `.venv`.
 
-### pb-format first class — NOT DONE
+### pb-format first class: NOT DONE
 
 It should become a pinned dependency like `pb-orca-mcp`, installed by the CLI,
 with its skill no longer saying "optional, probably not installed".
@@ -135,7 +135,7 @@ with its skill no longer saying "optional, probably not installed".
 Open: whether `install` should also generate a starter `.pb-format.toml`, or
 whether the per-workspace opt-in stays.
 
-### The way back: contributing from inside the consumer — NOT DONE
+### The way back: contributing from inside the consumer: NOT DONE
 
 Four pieces: a `CONTRIBUTING.md` written for agents as well as people; issue
 templates for the four shapes of report (kit defect, wiki note, proposed
@@ -150,24 +150,24 @@ example, and the command has to show what it is about to send.
 
 ## Phases
 
-- **Phase 0 — decide repository visibility. DONE 2026-08-12**: all three
+- **Phase 0, decide repository visibility. DONE 2026-08-12**: all three
   public.
-- **Phase 1 — the CLI, `install` and `status`. DONE in v0.5.0.** Behavioural
+- **Phase 1, the CLI, `install` and `status`. DONE in v0.5.0.** Behavioural
   parity with the PowerShell script, verified by running both against
   identically seeded targets and diffing.
-- **Phase 2 — the agent-first bootstrap. DONE in v0.5.0.** README and
+- **Phase 2, the agent-first bootstrap. DONE in v0.5.0.** README and
   AGENTS.md written for a machine. The honest test of it is a fresh session in
   a clean repository holding nothing but the URL, which is a thing to run
   rather than a thing to write.
-- **Phase 3 — adapters.** codex, opencode, then the rest. Testable only by
+- **Phase 3, adapters.** codex, opencode, then the rest. Testable only by
   opening a repository with that editor.
-- **Phase 4 — `check-update` and `update`.** Query the tags, compare with the
+- **Phase 4, `check-update` and `update`.** Query the tags, compare with the
   marker, re-install. The marker already records the version and a recipe that
   names the harness.
-- **Phase 5 — the index as a release asset.**
-- **Phase 6 — pb-format first class.**
-- **Phase 7 — the way back.**
-- **Phase 8 — end-to-end on the two test repositories, from zero.**
+- **Phase 5, the index as a release asset.**
+- **Phase 6, pb-format first class.**
+- **Phase 7, the way back.**
+- **Phase 8: end-to-end on the two test repositories, from zero.**
 
 ## What can be tested here, and what cannot
 
@@ -184,4 +184,4 @@ from opening a repository with that editor.
 **Cannot either**: genuinely simulate an agent that has never seen
 pb-ai-code. A session that helped build the thing knows all the answers. The
 honest test of phase 2 is a new session in a clean repository with nothing but
-the URL — someone else runs that one.
+the URL: someone else runs that one.

@@ -20,7 +20,7 @@ legal expression statement, so `f_make_ex(...)` on its own compiles
 without a warning. There is nothing for the compiler to object to.
 
 **The factory reads like a verb.** Exception factories tend to get short
-names — `ex(...)`, `err(...)`, `fail(...)` — precisely because they are
+names, `ex(...)`, `err(...)`, `fail(...)`, precisely because they are
 called constantly, and a short name in statement position reads as an
 imperative. `if ls_err <> "" then ex("n_ex", ls_err)` looks like *"if
 there was an error, raise it"*. It is not; the only difference between
@@ -30,7 +30,7 @@ that line and the correct one is the word `throw`.
 carries on with whatever half-initialized state the error was reporting,
 and typically returns success, so the caller has no signal either. What
 eventually fails is something downstream that depended on the state
-being valid — in a different object, with a different message, long
+being valid: in a different object, with a different message, long
 after the real cause is unrecoverable.
 
 It is the same family as
@@ -47,8 +47,8 @@ if ls_err <> "" then throw f_make_ex("n_ex", ls_err)
 ```
 
 If the factory is used often enough that the omission keeps happening,
-consider a second global that raises rather than returns — `f_throw_ex`
-— so the call site says what it does and the returning form is reserved
+consider a second global that raises rather than returns, `f_throw_ex`,
+so the call site says what it does and the returning form is reserved
 for the cases that genuinely need the object first (chaining a cause,
 attaching fields before raising).
 
@@ -73,13 +73,13 @@ that should be assigning to a variable anyway.
 
 - The `init()` of a persistence base class in a warehouse-management
   framework (review run 2026-08-12). The class builds its DataWindow at
-  runtime when no hand-made one exists — the path every newer object
-  takes — and on failure did `if err <> "" then ex("n_ex", err)`. The
+  runtime when no hand-made one exists, the path every newer object
+  takes, and on failure did `if err <> "" then ex("n_ex", err)`. The
   syntax error was discarded, the datastore was initialized anyway, and
   `init()` returned TRUE. The class had **149 descendants**.
 
   The same file gets it right twice, a few hundred lines away, in the
-  form `if res <> "" then throw ex("runtimeerror", res)` — so the
+  form `if res <> "" then throw ex("runtimeerror", res)`, so the
   convention was established and this was a dropped keyword, not a
   misunderstanding.
 
@@ -91,6 +91,6 @@ that should be assigning to a variable anyway.
 
 ## Related
 
-- [`throw-factory-loses-subtype`](throw-factory-loses-subtype.md) — the
+- [`throw-factory-loses-subtype`](throw-factory-loses-subtype.md): the
   sibling: an exception that *is* raised, but demoted to its base type on
   the way.

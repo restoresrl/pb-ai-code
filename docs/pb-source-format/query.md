@@ -1,7 +1,7 @@
 ---
 name: query
 status: stub
-description: Layout of .srq files (PB Query entry — saved SQL).
+description: Layout of .srq files (PB Query entry: saved SQL).
 ---
 
 # Query (`.srq`)
@@ -19,13 +19,12 @@ type; often a thin wrapper around a `SELECT` statement.
 
 ## Open questions
 
-- Parameter binding syntax inside the `.srq` — placeholders vs
-  named markers.
-- DBMS-flavor dependencies (e.g. SQL Server T-SQL specifics vs
-  Oracle PL/SQL) — are these stored verbatim?
+- Does parameter binding inside an `.srq` use placeholders or named markers?
+- Are DBMS-specific constructs, such as SQL Server T-SQL or Oracle PL/SQL,
+  stored verbatim?
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
-- [[datawindow]] — DataWindows can reference a stored query.
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[datawindow]]: DataWindows can reference a stored query.

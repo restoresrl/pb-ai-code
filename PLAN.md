@@ -1,4 +1,4 @@
-# `pb-ai-code` — Agentic dev kit for PowerBuilder
+# `pb-ai-code`: Agentic dev kit for PowerBuilder
 
 ## Context
 
@@ -9,24 +9,24 @@ or debug PowerBuilder code without external help.
 
 The sibling project [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) closes the
 infrastructure gap: it exposes PowerBuilder's ORCA API (`pborc.dll`) as
-MCP tools so an agent can act on `.pbl` libraries — create, modify,
+MCP tools so an agent can act on `.pbl` libraries: create, modify,
 compile, build EXE/PBD, navigate inheritance hierarchies and
 cross-references.
 
 **`pb-ai-code` is the layer above it**: the knowledge, skills, and
-orchestration needed to actually *do* agentic PB development — design,
-write, test, and debug — using `pb-orca-mcp` as the foundation tool.
+orchestration needed to actually *do* agentic PB development, design,
+write, test, and debug, using `pb-orca-mcp` as the foundation tool.
 
-## Realignment 2026-07-29 — decoupling, and agent-agnostic for real
+## Realignment 2026-07-29: decoupling, and agent-agnostic for real
 
 The sections below are dated design records; read them as history. This
-section describes the last change of shape — three things, none of them a
-change of direction — and closes with what happened in the days after.
+section describes the last change of shape, three things, none of them a
+change of direction, and closes with what happened in the days after.
 Where an older section contradicts it, this one wins.
 
 **1. The `pb-orca-mcp` surface moved, and the skills followed.** The
-server was reworked in June-July 2026: `pb_edit_and_import` — the
-single-call write helper this kit was built around — no longer exists,
+server was reworked in June-July 2026: `pb_edit_and_import`, the
+single-call write helper this kit was built around, no longer exists,
 and the edit loop is now two calls on a file:
 
 ```text
@@ -38,11 +38,11 @@ pb_object_import_file(path, lib)          -> compile + sync in one call
 The consequences went beyond a rename. **The text projection is updated
 in the same call that writes the `.pbl`**, so every "remember to
 propagate to `ws_objects/`" step and every "commit both files" checklist
-was deleted rather than rewritten — the skills got shorter. The caller
+was deleted rather than rewritten, the skills got shorter. The caller
 no longer chooses an encoding either: ORCA writes the file, byte
 identical to the IDE's. Three new tools are now load-bearing:
 `pb_workspace_info` (project shape, encoding, git, and
-`outside_source_tree` — with no ORCA session and no PB install), which
+`outside_source_tree`, with no ORCA session and no PB install), which
 is the first call of every flow; `pb_library_export_sources` (a whole
 library to disk in one call), which turns "who calls this" from 1000
 ORCA queries into a grep; and the `pb-orca-mcp check <target>` CLI as
@@ -60,8 +60,8 @@ the PowerScript normalizer inside `pb-orca-mcp`, reached through a
 `format="auto"` parameter on the write tool, on a choke-point argument.
 That lost to a stronger one: the ORCA bridge should contain no
 PowerScript knowledge at all. The engine now lives in
-[`pb-format`](https://github.com/restoresrl/pb-format) — a standalone
-CLI and library, ORCA-independent, working on files on disk on any OS —
+[`pb-format`](https://github.com/restoresrl/pb-format), a standalone
+CLI and library, ORCA-independent, working on files on disk on any OS,
 and it plugs into the edit loop as one optional step between the edit
 and the import. It is genuinely optional: with no `.pb-format.toml` in
 the tree, or no tool installed, the kit does not format and nothing else
@@ -79,8 +79,8 @@ directory layout differed from ours. Now:
   same name), `harness/<harness>/` (per-assistant config).
 - Generated and gitignored: `.claude/` and anything else an install
   produces. `scripts/install-skills.ps1` materializes the canonical
-  files into whatever directory an assistant reads — including into this
-  repository itself — with a marker file recording the source commit. It
+  files into whatever directory an assistant reads, including into this
+  repository itself, with a marker file recording the source commit. It
   also vendors `docs/pb-antipatterns/` and `docs/pb-source-format/`
   beside the skills and rewrites their links, because a review skill
   whose antipattern catalog is missing cannot do its job.
@@ -99,7 +99,7 @@ directory layout differed from ours. Now:
 **What happened after this pass** (2026-08-03/04, same direction):
 
 - `/pb-review` was run end to end on a small real workspace. It completed,
-  and it found four defects in its own instructions — among them that
+  and it found four defects in its own instructions: among them that
   `pb_library_directory` needs an ORCA session, and that ORCA reports
   "nothing to report" as an error envelope (`-14` / `-15`) which a caller
   must read as *empty*, not *broken*.
@@ -119,7 +119,7 @@ scale. `outside_source_tree`, the budget cap under pressure, large caller
 sets and the cost difference between fast and exhaustive impact analysis
 remain untested.
 
-## Re-prioritization 2026-05-19 — refactoring-first
+## Re-prioritization 2026-05-19: refactoring-first
 
 The original 2026-05-14 design framed `pb-ai-code` as a balanced
 four-pillar dev kit: design, coding, testing, debugging. After a week
@@ -129,8 +129,8 @@ brainstorming) the primary use case has been sharpened:
 > **`pb-ai-code` is, first and foremost, a code-review assistant for
 > refactoring legacy PowerBuilder codebases.** Greenfield PB development
 > is rare; the realistic audience is people maintaining decades-old
-> monolithic PB applications — hundreds to thousands of objects across
-> dozens of PBLs, ported forward since the 1990s — who
+> monolithic PB applications, hundreds to thousands of objects across
+> dozens of PBLs, ported forward since the 1990s, who
 > need to read, understand, refactor, bug-fix, and extend existing
 > code.
 
@@ -138,13 +138,13 @@ Implications for the four pillars:
 
 | Pillar | Status under refactoring-first lens |
 |---|---|
-| 1. Design — *understand existing architecture* | **Primary**. Was secondary in the 2026-05-14 framing. Now the entry point of every workflow. |
-| 1. Design — *scaffold new entries* | **Demoted to on-demand**. Refactoring rarely creates new top-level objects. The 6-entry-type MVP done 2026-05-19 is enough; the 3 residual types (`application`, `query`, `project`) are not blocking. |
-| 1. Design — *idiomatic patterns* | **Promoted, but bottom-up**. The Layer 2 wiki grows from real review sessions, not as an upfront cookbook. |
+| 1. Design: *understand existing architecture* | **Primary**. Was secondary in the 2026-05-14 framing. Now the entry point of every workflow. |
+| 1. Design: *scaffold new entries* | **Demoted to on-demand**. Refactoring rarely creates new top-level objects. The 6-entry-type MVP done 2026-05-19 is enough; the 3 residual types (`application`, `query`, `project`) are not blocking. |
+| 1. Design: *idiomatic patterns* | **Promoted, but bottom-up**. The Layer 2 wiki grows from real review sessions, not as an upfront cookbook. |
 | 2. Coding | **Foundation, unchanged**. Edit + propagate + compile-error loop is already covered by `pb-orca-mcp` (`pb-workflow` skill + ORCA primitives). |
 | 3. Testing | **Deferred**. PB testing (both unit and UAT) is structurally hard. The architectural work done on a private xUnit-style PB test framework (2026-05-19) remains valid as a future direction but is not driving immediate development. |
-| 4. Debugging — *impact analysis* | **Promoted**. Refactoring without blast-radius analysis is unsafe; `pb_object_query_reference` orchestration becomes a Tier-1 skill. |
-| 4. Debugging — *runtime trace logging* | **Deferred**. Useful for live debugging but not for the static-review primary loop. |
+| 4. Debugging: *impact analysis* | **Promoted**. Refactoring without blast-radius analysis is unsafe; `pb_object_query_reference` orchestration becomes a Tier-1 skill. |
+| 4. Debugging: *runtime trace logging* | **Deferred**. Useful for live debugging but not for the static-review primary loop. |
 
 **Three-tier priority for the new direction**:
 
@@ -173,27 +173,27 @@ out inline.
 
 > **Note**: this section describes the *conceptual framework* of
 > four pillars. The current sequencing and weight of each pillar is
-> set by the [Re-prioritization 2026-05-19](#re-prioritization-2026-05-19--refactoring-first)
+> set by the [Re-prioritization 2026-05-19](#re-prioritization-2026-05-19-refactoring-first)
 > section above. Read both together.
 
-The goal is to let a coding agent — any client, any model; see the
-[2026-07-29 realignment](#realignment-2026-07-29--decoupling-and-agent-agnostic-for-real)
-for what that took — handle the full development loop on a PowerBuilder
+The goal is to let a coding agent, any client, any model; see the
+[2026-07-29 realignment](#realignment-2026-07-29-decoupling-and-agent-agnostic-for-real)
+for what that took, handle the full development loop on a PowerBuilder
 project:
 
-1. **Design** — read existing architecture, follow PB-idiomatic
+1. **Design**, read existing architecture, follow PB-idiomatic
    patterns, scaffold new objects (windows, userobjects, datawindows,
    functions, menus) from minimal templates.
-2. **Coding** — write valid PowerScript that respects PB semantics, get
+2. **Coding**, write valid PowerScript that respects PB semantics, get
    it into the `.pbl`, and iterate on compile errors. The encoding, the
    CRLF and the `$PBExport*` header block are **not** the caller's
    problem: ORCA writes the file and reads it back, byte-identical to the
    IDE. (The 2026-05 drafts of this document had the agent doing that work
    by hand.)
-3. **Testing** — write tests, compile a test runner, execute it,
+3. **Testing**, write tests, compile a test runner, execute it,
    capture and parse structured results, correlate failures back to
    source entries.
-4. **Debugging** — read compile errors (already covered by the MCP),
+4. **Debugging**, read compile errors (already covered by the MCP),
    read failing tests (testing layer), parse runtime traces/logs (PB
    has no DAP, so debugging is post-mortem), do impact analysis before
    changing code (`pb_object_query_reference`).
@@ -202,19 +202,19 @@ project:
 
 | Pillar | Covered by `pb-orca-mcp` | Must be built in `pb-ai-code` |
 |---|---|---|
-| **Design** — read existing architecture | `pb_object_query_hierarchy`, `pb_object_query_reference` | — |
-| **Design** — know which PB patterns to use | — | Style/architecture-guide skill + Appeon docs context |
-| **Design** — scaffold new entries (PBL, app, window, userobject, …) | `pb_library_create`, `pb_compile_entry_import` with minimal syntax (Application has a known catch-22) | Skill carrying the correct minimal template per `entry_type` |
-| **Coding** — know PowerScript syntax + PB runtime API | — | **Appeon documentation ingested** (priority) |
-| **Coding** — edit `.sr*` respecting encoding | Entirely covered: ORCA writes the file (`pb_object_export_file`) and reads it back (`pb_object_import_file`), keeping the text projection in step in the same call | Nothing: the caller never picks an encoding |
-| **Coding** — propagate to `.pbl` and read errors | `pb_compile_entry_import{,_list}`, `pb_scc_refresh_target`, `pb_get_last_compile_errors` | — |
-| **Testing** — decide/write tests | — | Skill that knows the chosen test framework(s) — agnostic with adapters |
-| **Testing** — compile the test runner | `pb_executable_create` | — |
-| **Testing** — execute runner + parse output | — | **New tool/skill**: launch compiled EXE, collect structured output, correlate test → entry |
-| **Debugging** — compile-time errors | `pb_get_last_compile_errors` | — |
-| **Debugging** — failing tests | — | Falls inside Testing |
-| **Debugging** — runtime errors / crashes | — | **New**: structured logging pattern (PB has no DAP) + parser the agent can read |
-| **Debugging** — impact analysis | `pb_object_query_reference` | Skill that orchestrates the pattern |
+| **Design**: read existing architecture | `pb_object_query_hierarchy`, `pb_object_query_reference` | none |
+| **Design**: know which PB patterns to use | none | Style/architecture-guide skill + Appeon docs context |
+| **Design**: scaffold new entries (PBL, app, window, userobject, …) | `pb_library_create`, `pb_compile_entry_import` with minimal syntax (Application has a known catch-22) | Skill carrying the correct minimal template per `entry_type` |
+| **Coding**: know PowerScript syntax + PB runtime API | none | **Appeon documentation ingested** (priority) |
+| **Coding**: edit `.sr*` respecting encoding | Entirely covered: ORCA writes the file (`pb_object_export_file`) and reads it back (`pb_object_import_file`), keeping the text projection in step in the same call | Nothing: the caller never picks an encoding |
+| **Coding**: propagate to `.pbl` and read errors | `pb_compile_entry_import{,_list}`, `pb_scc_refresh_target`, `pb_get_last_compile_errors` | none |
+| **Testing**: decide/write tests | none | Skill that knows the chosen test framework(s): agnostic with adapters |
+| **Testing**: compile the test runner | `pb_executable_create` | none |
+| **Testing**: execute runner + parse output | none | **New tool/skill**: launch compiled EXE, collect structured output, correlate test → entry |
+| **Debugging**: compile-time errors | `pb_get_last_compile_errors` | none |
+| **Debugging**: failing tests | none | Falls inside Testing |
+| **Debugging**: runtime errors / crashes | none | **New**: structured logging pattern (PB has no DAP) + parser the agent can read |
+| **Debugging**: impact analysis | `pb_object_query_reference` | Skill that orchestrates the pattern |
 
 ## Relationship with `pb-orca-mcp`
 
@@ -224,13 +224,13 @@ project:
   server, from its GitHub repository** (`uvx --from
   git+https://github.com/restoresrl/pb-orca-mcp`), exactly as any other
   user would. It is not a Python dependency of this project, and no
-  longer an editable install of a local checkout — that coupling was
+  longer an editable install of a local checkout. That coupling was
   removed 2026-07-29 because it made `pb-ai-code` unusable by anyone
   whose directory layout differed from ours.
 - **Audience overlap, but distinct scope**: both repos target anyone
   who develops PB. `pb-orca-mcp` is the engine; `pb-ai-code` is the
   workflow + knowledge + orchestration. Either can be adopted
-  independently — you can use the MCP alone with your own prompts, or
+  independently. You can use the MCP alone with your own prompts, or
   use the dev kit if you want the ready-made experience.
 
 ## Composition
@@ -239,18 +239,18 @@ project:
 
 Active components driving the next slices of work:
 
-- **`pb-context-build` skill** (Tier 1, shipped) — orchestrates ORCA
+- **`pb-context-build` skill** (Tier 1, shipped), orchestrates ORCA
   primitives (`pb_workspace_info`, `pb_target_info`,
   `pb_library_directory`, `pb_object_query_hierarchy`,
   `pb_object_query_reference`, `pb_library_entry_export`,
   `pb_library_export_sources`) to assemble a scoped context pack from a
   monolithic PB workspace, respecting a token / depth budget.
   **Note the direction**: `pb_object_query_reference` returns **outgoing**
-  refs — what the entry calls, opens and declares. Incoming refs
+  refs, what the entry calls, opens and declares. Incoming refs
   ("who calls this") are not native to ORCA and need an opt-in inversion
   of the index, so they are off by default. An earlier draft of this line
   had it backwards, which is the mistake to keep watching for.
-- **`pb-review` flow** (Tier 1, shipped) — two phases, both written.
+- **`pb-review` flow** (Tier 1, shipped), two phases, both written.
   Phase A frames the scope with the user, invokes `pb-context-build`,
   gates on a stated understanding, then emits a persistent plan file
   (one YAML-tagged finding per fix) plus a CHANGELOG entry. Phase B is
@@ -264,7 +264,7 @@ Active components driving the next slices of work:
   search followed by ORCA confirmation. Exhaustive mode inverts the ORCA
   reference and hierarchy indexes across the target library list. The
   report keeps partial scans, dynamic uses and external consumers visible.
-- **`pb-scaffold` skill + Layer 2 wiki** (existing, kept) — invariant
+- **`pb-scaffold` skill + Layer 2 wiki** (existing, kept), invariant
   for now. The wiki grows on-encounter during real review sessions
   (Tier 2). The 3 residual scaffold entry types are Tier 3, on-demand.
 - **`pb-format` skill + `/pb-format` slash command + Layer 2 wiki
@@ -276,7 +276,7 @@ Active components driving the next slices of work:
   engine is the standalone
   [`pb-format`](https://github.com/restoresrl/pb-format) tool: a
   separate repository, optional, ORCA-independent.
-- **`appeon-query` skill + `pb-appeon-index` MCP** (existing, kept) —
+- **`appeon-query` skill + `pb-appeon-index` MCP** (existing, kept):
   the `/pb-review` flow calls into it for syntax / runtime API
   cross-reference.
 
@@ -284,12 +284,12 @@ Active components driving the next slices of work:
 
 The list below is the original full-scope composition. Items not in
 the Current focus block above are either covered by what is now in
-Tier 2/3 of the [re-prioritization](#re-prioritization-2026-05-19--refactoring-first)
+Tier 2/3 of the [re-prioritization](#re-prioritization-2026-05-19-refactoring-first)
 section, or are deferred. Kept here as reference.
 
 The repo contains a mix of artifacts:
 
-1. **Skills** (`skills/<name>/SKILL.md`, Agent Skills format) — one
+1. **Skills** (`skills/<name>/SKILL.md`, Agent Skills format): one
    skill per workflow that needs the agent to follow a specific
    pattern:
    - Scaffolding skills (new application / window / userobject / …)
@@ -302,26 +302,26 @@ The repo contains a mix of artifacts:
    2026-05-15; supersedes the earlier "hybrid mirror + WebFetch"
    plan):
 
-   - **Layer 1 — PowerScript language and runtime API (Appeon docs)**:
+   - **Layer 1, PowerScript language and runtime API (Appeon docs)**:
      a custom Python tool (`tools/pb-appeon-index/`) scrapes
      `docs.appeon.com` into a local SQLite FTS5 database and serves
      it via an MCP server exposing `appeon_search`, `appeon_get`,
      `appeon_list_topics`, `appeon_list_versions`. Multi-version
-     by design — schema has a `version` column, a TOML config
+     by design, schema has a `version` column, a TOML config
      enumerates the PB versions to index, and the `update` command
      is idempotent and incremental (conditional `If-None-Match` /
      `If-Modified-Since` skips unchanged pages). The earlier
      attempt with `cli-printing-press` was abandoned 2026-05-15
      after the POC confirmed it's tuned for REST API docs, not
-     language-reference doc-sites — see
+     language-reference doc-sites: see
      [the Appeon index README](docs/appeon-index/README.md)
      for the replacement design and the
      [`appeon-query`](skills/appeon-query/SKILL.md) skill
      for agent-side usage.
 
-   - **Layer 2 — `.sr*` source-file format (reverse-engineered)**:
+   - **Layer 2, `.sr*` source-file format (reverse-engineered)**:
      a Karpathy-style ["LLM Wiki"](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
-     under `docs/pb-source-format/` — Markdown pages, one per
+     under `docs/pb-source-format/`, Markdown pages, one per
      entry type (`.sra/.srw/.sru/.srf/.srd/.srm/.srs/.srq/.srj`)
      plus an `encoding.md` seed page and a `patterns/` folder for
      cross-cutting blocks. Pre-populated by a Python tool
@@ -333,14 +333,14 @@ The repo contains a mix of artifacts:
      it appends a new entry. Skill `pb-src-format` triggers this
      behavior.
 
-   - **Layer 3 — codebase-specific patterns and conventions
+   - **Layer 3: codebase-specific patterns and conventions
      (project-private)**: deferred. The vendor-neutral repo cannot
      mirror a specific codebase. When this layer is added, it
      will live outside the public repo (per-workspace
      `.knowledge/`, gitignored) and use semantic RAG or LLM Wiki
      depending on requirements seen during dogfooding.
 
-3. **Test orchestration — framework-agnostic with adapters**:
+3. **Test orchestration: framework-agnostic with adapters**:
    - A common interface "run test suite, return structured results"
      (suite name → list of tests → outcome + error per test).
    - Adapters per framework: probably **pbunit first** (the one we
@@ -361,14 +361,14 @@ The repo contains a mix of artifacts:
      **pattern** (the pattern, never the object: this repo is public
      and vendor-neutral).
 
-5. **Slash commands** (`commands/<name>.md`) — thin entry points that
+5. **Slash commands** (`commands/<name>.md`): thin entry points that
    delegate to the skill of the same name. Candidates:
    - `/pb-new-userobject <name>` (scaffolding)
    - `/pb-run-tests` (test orchestration)
    - `/pb-trace <log-file>` (post-mortem)
    - `/pb-impact-analysis <object and change>` (cross-reference audit)
 
-6. **Tooling code** (only if necessary) — small Python helpers for
+6. **Tooling code** (only if necessary): small Python helpers for
    parsing trace logs, computing test-result diffs, etc. Whether
    `pb-ai-code` becomes a Python package or stays as a "skills + docs"
    repo with no executable surface is a residual decision (see below).
@@ -379,10 +379,10 @@ The repo contains a mix of artifacts:
 |---|---|---|
 | Repo location | Public, separate from `pb-orca-mcp` | International audience; no vendor-internal references; clean LICENSE story for Appeon docs mirror |
 | Project name | **`pb-ai-code`** | Self-explanatory ("AI coding assistant for PB"); pairs naturally with `pb-orca-mcp` (engine + experience); agent-agnostic in name (no "claude" in the slug) |
-| Appeon docs | Hybrid: core pages mirrored, rest via WebFetch | Balances offline friendliness, context cost, and freshness — **superseded 2026-05-15, see below** |
+| Appeon docs | Hybrid: core pages mirrored, rest via WebFetch | Balances offline friendliness, context cost, and freshness: **superseded 2026-05-15, see below** |
 | Test framework | Agnostic via adapters; first adapter pbunit | The audience is broader than any one shop; the first adapter is the one we have ground truth on |
 | Debugging scope | Four levels: compile-time (already MCP) + failing-test + runtime trace/log parsing + impact analysis | All four are realistic for PB given no DAP exists |
-| Sequencing relative to `pb-orca-mcp` PyPI publish | **Internal dogfooding first** — both repos private; active dev on `pb-ai-code` can start whenever Carlo wants, using an editable install of the local sibling. PyPI versioning + public flip when dogfooding confirms stability - **the editable-install part superseded 2026-07-29, see the realignment section** | Decouples scope readiness from external release pressure |
+| Sequencing relative to `pb-orca-mcp` PyPI publish | **Internal dogfooding first**: both repos private; active dev on `pb-ai-code` can start whenever Carlo wants, using an editable install of the local sibling. PyPI versioning + public flip when dogfooding confirms stability - **the editable-install part superseded 2026-07-29, see the realignment section** | Decouples scope readiness from external release pressure |
 
 ### Knowledge architecture revision (2026-05-15)
 
@@ -394,7 +394,7 @@ conflated three distinct needs:
 |---|---|---|---|
 | 1 | PowerScript language + runtime API (docs Appeon) | custom Python: `tools/pb-appeon-index/` (scrape → SQLite FTS5 → MCP server) | yes (code + config + skill; DB rebuilt locally per dev) |
 | 2 | `.sr*` source-file format (reverse-engineered) | Karpathy-style LLM Wiki in `docs/pb-source-format/`, pre-populated by `tools/pb-source-analyzer/` | yes |
-| 3 | Codebase-specific patterns / style | LLM Wiki or semantic RAG (TBD) | no — per-workspace, gitignored |
+| 3 | Codebase-specific patterns / style | LLM Wiki or semantic RAG (TBD) | no: per-workspace, gitignored |
 
 Rationales: Layer 1 → FTS suffices for reference-style queries on
 already-curated docs, and the scrape-index-serve pipeline is small enough
@@ -409,42 +409,42 @@ it lives outside.
 Active development started long ago; what is left here is the subset
 still genuinely undecided.
 
-1. ~~Which Appeon pages go into the static mirror~~ — **closed
+1. ~~Which Appeon pages go into the static mirror~~, **closed
    2026-05-15**. There is no Markdown mirror, and no
    `cli-printing-press` either: that tool was tried and abandoned the
    same day, once the POC showed it is built for REST API docs rather
    than language-reference sites. What shipped instead is a purpose-built
    scraper and indexer, `tools/pb-appeon-index/`, configured by
-   `tools/pb-appeon-index/config.toml` — which lists the versions and the
-   URL subtrees to ingest — and serving the result as four MCP tools. The
+   `tools/pb-appeon-index/config.toml`, which lists the versions and the
+   URL subtrees to ingest, and serving the result as four MCP tools. The
    Appeon license / attribution check remains a blocker for
    *distributing* the generated database, not for the design.
-2. **Structured logging format for runtime trace** — JSON-lines is
+2. **Structured logging format for runtime trace**, JSON-lines is
    the leading candidate. The format must be (a) easy to emit from
    PowerScript (no JSON-stringify dependency), (b) easy to parse
    line-by-line in a Python tool, (c) self-describing enough for the
    agent to correlate events with source. A structured-logging NVO from
    a private framework is the candidate inspiration.
-3. **First testing adapter** — **pbunit-first** is concrete and
+3. **First testing adapter**, **pbunit-first** is concrete and
    leverages knowledge we already have, but ties the abstraction to
-   one framework. The alternative — design the abstraction agnostic
-   from day one — produces upfront work without proof it's the right
+   one framework. The alternative, design the abstraction agnostic
+   from day one, produces upfront work without proof it's the right
    shape. Default: pbunit-first, extract the abstraction *from* it
    once it works.
-4. **Distribution model for `pb-ai-code`** — **settled 2026-07-29**:
+4. **Distribution model for `pb-ai-code`**, **settled 2026-07-29**:
    git-clone plus `scripts/install-skills.ps1`, which materializes
    `skills/` + `commands/` + `harness/<harness>/` into whatever
    directory the assistant reads, in the target project or in this repo
    itself. PyPI would still make sense for the two Python tools
    (`pb-source-analyzer`, `pb-appeon-index`) but is not the delivery
    mechanism for the skills.
-5. ~~Name availability verification~~ — **closed**.
+5. ~~Name availability verification~~: **closed**.
    `github.com/restoresrl/pb-ai-code` exists. If the two Python tools
    ever go to PyPI, check the names then.
 
 ## Sequencing
 
-**Current phase — internal dogfooding, all three repositories private**
+**Current phase: internal dogfooding, all three repositories private**
 (`pb-ai-code`, `pb-orca-mcp`, `pb-format`): the `pb-orca-mcp` foundation
 installs straight from its GitHub repository via `uvx`, verified from an
 empty cache. The goal is to drive real work through this stack and
@@ -453,7 +453,7 @@ discover the gaps before any public release pressure.
 **Next slice (2026-05-19, refactoring-first re-prioritization)**:
 
 1. Write `pb-context-build` skill.
-2. Write the `pb-review` flow, Phase A only — report-only.
+2. Write the `pb-review` flow, Phase A only: report-only.
 3. Validate end-to-end on a small real target. Measure context-build
    cost, signal/noise of findings, scoping efficacy.
 4. Iterate on `pb-context-build` heuristics based on real findings,
@@ -477,7 +477,7 @@ completion) remains deferred.
 4. ✅ The engine, shipped as the standalone
    [`pb-format`](https://github.com/restoresrl/pb-format) project
    (token lexer + the four rules + `.pb-format.toml` + CLI
-   `detect` / `format` / `check` / `write`) — **not** inside
+   `detect` / `format` / `check` / `write`), **not** inside
    `pb-orca-mcp` as originally designed. The choke-point argument for
    putting it in the write tool lost to the argument for keeping
    PowerScript knowledge out of the ORCA bridge entirely.
@@ -486,11 +486,11 @@ completion) remains deferred.
    `import_file`), not a parameter of a write tool.
 6. ⏳ End-to-end validation on a real workspace (compile invariance
    and idempotency).
-7. ⏳ An AST-based layer stays deferred — trigger: a maintained
+7. ⏳ An AST-based layer stays deferred, trigger: a maintained
    PowerScript grammar cutting a real 1.0, or three concrete cases the
    token-based approach cannot resolve.
 
-**Public release path (deferred, no deadline)** — when dogfooding has
+**Public release path (deferred, no deadline)**: when dogfooding has
 confirmed stability:
 
 1. Update the status line in `pb-orca-mcp`'s own docs (currently
@@ -519,13 +519,13 @@ confirmed stability:
   `pb-appeon-index` for Appeon docs). New MCP servers are built only
   when they serve a clear PB-dev knowledge or workflow need, not as a
   general capability sprawl.
-- **PowerBuilder Classic (pre-2019)**: not supported — same boundary
-  as `pb-orca-mcp`.
+- **PowerBuilder Classic (pre-2019)**: not supported. This is the same
+  boundary as `pb-orca-mcp`.
 
 ## References
 
-- Sibling project: [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)
-  — private during internal dogfooding. Its `docs/integrating.md` is the
+- Sibling project: [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp),
+  private during internal dogfooding. Its `docs/integrating.md` is the
   contract this project is built against. (What happens to visibility and
   to PyPI is one plan, under "Public release path" in Sequencing; it does
   not need restating here.)

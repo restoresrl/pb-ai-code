@@ -13,65 +13,65 @@ deciding a code chunk is clean.
 
 The catalog grows **on encounter**: when a reviewer (human or
 agent) finds a new pattern that isn't here, it gets added. Do not
-seed speculative entries — every entry should reference at least
+seed speculative entries: every entry should reference at least
 one concrete case where it bit.
 
 ## Entries
 
 ### Memory management
 
-- [destroy on auto-instance shadowing](destroy-on-auto-instance.md) —
+- [destroy on auto-instance shadowing](destroy-on-auto-instance.md):
   `destroy <name>` distrugge il global auto-instance, non il field
   privato omonimo.
-- [exitprocess in destruction chain](exitprocess-in-destruction.md) —
+- [exitprocess in destruction chain](exitprocess-in-destruction.md):
   `exitprocess(...)` chiude il processo, non distrugge l'oggetto.
 
 ### Type system
 
-- [isnull on numeric types](isnull-on-numeric.md) — `IsNull()` su
+- [isnull on numeric types](isnull-on-numeric.md): `IsNull()` su
   `integer`/`long`/`ulong` ritorna sempre `false`, anche su
   sentinel `-1` wrappato.
-- [pos guarded as negative](pos-guarded-as-negative.md) — `Pos()`
+- [pos guarded as negative](pos-guarded-as-negative.md): `Pos()`
   torna **0** quando non trova, mai `-1`: la guardia `< 0` è morta e
   il caso "non trovato" prosegue con un offset inventato.
 
 ### Process and control flow
 
-- [halt in a shared library](halt-in-shared-library.md) —
+- [halt in a shared library](halt-in-shared-library.md):
   `MessageBox` / `HALT CLOSE` dentro una `.pbl` che anche un target
   headless carica: il servizio si pianta su un modale che nessuno vede,
   o si spegne in silenzio.
 
 ### IO
 
-- [space() with uninitialized buffer length](space-before-init.md) —
+- [space() with uninitialized buffer length](space-before-init.md):
   pattern Win32 W-suffix dove `space(buffer_len)` viene chiamato
   prima che la DLL abbia riempito `buffer_len`.
-- [unchecked fileopen() return](fileopen-unchecked.md) —
+- [unchecked fileopen() return](fileopen-unchecked.md):
   `filewrite` su handle `-1` fallisce silenziosamente.
 
 ### Exception handling
 
-- [throw factory loses subtype](throw-factory-loses-subtype.md) —
+- [throw factory loses subtype](throw-factory-loses-subtype.md):
   `catch (n_X ex) ... throw f_make_ex(...)` perde la sottoclasse
   specifica di `ex`; usare `throw ex` per ri-lanciare preservando
   il type concreto.
-- [exception factory not thrown](exception-factory-not-thrown.md) —
+- [exception factory not thrown](exception-factory-not-thrown.md):
   `if err <> "" then f_make_ex(...)`: l'eccezione viene costruita e
   scartata. Manca `throw`, il compilatore non ha nulla da dire, e la
   riga si legge come gestione dell'errore.
 
 ### SQL and data access
 
-- [DisableBind defeats bind variables](disablebind-defeats-bind-variables.md)
-  — `DisableBind=1` nel DBParm fa sì che PB inlinei i valori nel testo
+- [DisableBind defeats bind variables](disablebind-defeats-bind-variables.md):
+  `DisableBind=1` nel DBParm fa sì che PB inlinei i valori nel testo
   SQL: `:name` resta la sintassi che tutti riconoscono come sicura, ma
   non è più un bind. Il flag sta due classi più su, lontano da ogni
   statement.
 
 ## How a new entry gets here
 
-Two routes. Directly, when you are working in this repository — the
+Two routes. Directly, when you are working in this repository: the
 template below. Or as a **note**, when the hazard turned up while working
 on somebody's PowerBuilder library: the installed copy of this catalog is
 a snapshot, so an addition made there is discarded by the next install.
@@ -121,12 +121,12 @@ e.g. same misunderstanding of PB semantics>
 
 ## Cross-references
 
-- [`pb-review`](../../skills/pb-review/SKILL.md) — Step 2b
+- [`pb-review`](../../skills/pb-review/SKILL.md): Step 2b
   consults this catalog during the bug-risk pass. (Linked to the skill, not
   the `/pb-review` command: every install has the skills, while commands only
   exist for harnesses that have slash commands.)
-- [`pb-src-format`](../pb-source-format/) — sibling reference for
+- [`pb-src-format`](../pb-source-format/): sibling reference for
   the on-disk layout of `.sr*` files.
-- [`appeon-query`](../../skills/appeon-query/SKILL.md) —
+- [`appeon-query`](../../skills/appeon-query/SKILL.md):
   when the antipattern hinges on a specific PowerScript function
   or runtime behavior, link to the Appeon doc via this skill.

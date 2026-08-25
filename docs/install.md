@@ -5,8 +5,8 @@ small local tools. It has no runtime of its own: an assistant reads the
 skills, and the skills drive MCP tools. So installing it means three
 things, in this order:
 
-1. Check that [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) —
-   the only required dependency — can reach your PowerBuilder.
+1. Check that [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp),
+   the only required dependency, can reach your PowerBuilder.
 2. Run the installer, which puts the skills where your assistant reads them
    **and** writes the MCP server configuration.
 3. Optionally add the Appeon doc index and the `pb-format` formatter.
@@ -41,7 +41,7 @@ uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code status
 ```
 
 Steps 1 and 2 must print `Doctor OK` and `Check OK`. **If they do not, stop
-there** — nothing downstream can work around a PowerBuilder that is not
+there**: nothing downstream can work around a PowerBuilder that is not
 reachable, and both commands tell you what is wrong.
 
 There is no fifth step. The installer writes the `pb-orca` server entry into
@@ -50,7 +50,7 @@ servers already in that file are left alone. Step 4 is optional and reads only
 the marker the install left behind.
 
 Open your assistant **with your PowerBuilder project as the working
-directory** — not this repository — confirm the `pb_*` tools are listed (in
+directory**, not this repository, confirm the `pb_*` tools are listed (in
 Claude Code, `/mcp`), and ask for a review: `/pb-review`, or the same request
 in your own words, naming an object, a `.pbl` or a `.pbt`.
 
@@ -67,7 +67,7 @@ versions are installed, which `check` will tell you.
 Note what step 3 does *not* need: a clone of `pb-ai-code`, a path to one, or
 PowerShell. `uv` fetches the repository and runs the CLI, which writes into the
 directory you are standing in. That is also what lets you hand the whole job to
-your assistant — see the agent checklist at the top of the
+your assistant: see the agent checklist at the top of the
 [README](../README.md#agents-setting-this-up-in-a-powerbuilder-project).
 
 ## Requirements
@@ -75,11 +75,11 @@ your assistant — see the agent checklist at the top of the
 | | |
 | --- | --- |
 | OS | Windows, for anything that touches a `.pbl` (ORCA is a Windows DLL). The knowledge pages and `pb-format` work anywhere. |
-| PowerBuilder | An **IDE** install, 2019 or later. Runtime-only packages do not ship `pborc.dll`. Classic workspaces only — not the PB 2025 solution format. |
+| PowerBuilder | An **IDE** install, 2019 or later. Runtime-only packages do not ship `pborc.dll`. Supports classic workspaces, not the PB 2025 solution format. |
 | Assistant | Anything that speaks MCP and can follow a Markdown instruction file. Skill auto-discovery is a bonus, not a requirement. |
 | `uv` | Recommended, for `uvx`. [Install it](https://docs.astral.sh/uv/getting-started/installation/) or substitute your own Python environment management. |
 | Python | 3.10+, only for the two local tools in [`tools/`](../tools/). `uv` fetches its own for everything else. |
-| PowerShell | Only to run `scripts/install-skills.ps1`. `pwsh` runs on macOS and Linux too, and the script's job is copying two directories — doing it by hand is a fine substitute. |
+| PowerShell | Only to run `scripts/install-skills.ps1`. `pwsh` runs on macOS and Linux too, and the script's job is copying two directories: doing it by hand is a fine substitute. |
 
 ### These repositories are private
 
@@ -96,9 +96,8 @@ let the credential helper store the result, and retry.
 
 ## 1. Connect `pb-orca-mcp`
 
-One `mcpServers` entry, which **the installer writes for you** in step 2.
-This is what it writes — canonically
-[`harness/mcp-servers.json`](../harness/mcp-servers.json):
+The installer writes one `mcpServers` entry for you in step 2. Its canonical
+form is [`harness/mcp-servers.json`](../harness/mcp-servers.json):
 
 ```json
 {
@@ -127,8 +126,8 @@ reaches everyone the moment it lands. With it, a version is something a team
 decides to move to. Drop the `@tag` if you would rather track the latest, and
 `pb-orca-mcp --version` tells you which build you actually have.
 
-Bumping it is one edit in one file — that file — followed by re-running the
-installer wherever the kit is installed.
+Bumping it takes one edit to that file, followed by another installer run
+wherever the kit is installed.
 
 ### Why the installer writes it, instead of you
 
@@ -139,7 +138,7 @@ than configuration, which is the opposite of what it is for. Installed
 alongside the skills, the two are updated by the same command and cannot drift.
 
 The consequence is worth stating plainly: **a project using this kit commits
-nothing agentic** — no `.claude/`, no `.mcp.json`, no neutral stand-in file.
+nothing agentic**: no `.claude/`, no `.mcp.json`, no neutral stand-in file.
 Re-running the installer is the entire synchronization story. This repository
 follows its own rule, so its root `.mcp.json` is generated and gitignored, just
 like `.claude/`.
@@ -148,30 +147,28 @@ Where the installer puts it:
 
 | Client | Location |
 | --- | --- |
-| Claude Code | `.mcp.json` at the project root — written by `-Harness claude-code`. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you; then use `-SkipMcpConfig`. |
+| Claude Code | `.mcp.json` at the project root: written by `-Harness claude-code`. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you; then use `-SkipMcpConfig`. |
 | Cursor | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user) |
-| Codex CLI, Gemini CLI, Copilot, others | that client's MCP config file, in that client's own shape — **not** the same JSON; see below |
+| Codex CLI, Gemini CLI, Copilot, others | that client's MCP config file, in that client's own shape: **not** the same JSON; see below |
 
 Only Claude Code's location is written automatically, because it is the one
 whose on-disk contract this repository has actually verified. `--harness
 generic` prints the block and tells you it is yours to place: inventing a path
 for a client we have not tested would look like it worked.
 
-**And it is not only the location that differs.** This page used to say the
-JSON shape was the same everywhere; that is wrong, and the correction is worth
-stating because it is what would send you pasting a block into a file that
-cannot read it. Claude Code and Cursor take the `mcpServers` object as written.
-Codex CLI wants TOML, `[mcp_servers.<name>]`. OpenCode fuses command and
-arguments into a single array and spells the environment key `environment`
-rather than `env`. Continue is YAML and carries a `name` field inside the
-entry. Aider has no MCP support at all. So take the printed block as the
-*content* — which server, which command, which arguments — and translate it
-into your client's own form.
+**The location and file format both differ by client.** This page used to say
+the JSON shape was the same everywhere. That advice would send you to a file
+your client cannot read. Claude Code and Cursor take the `mcpServers` object
+as written. Codex CLI wants TOML, `[mcp_servers.<name>]`. OpenCode fuses
+command and arguments into a single array and calls the environment key
+`environment` rather than `env`. Continue is YAML and carries a `name` field
+inside the entry. Aider has no MCP support. Treat the printed block as the
+content: it identifies the server, command and arguments. Translate those
+values into your client's format.
 
-Servers already in the target file are preserved — only the `pb-orca` key is
-written. If one of them turns out to be another copy of `pb-orca-mcp` under a
-different key — which is what a project configured before the key settled looks
-like — the installer says so and leaves it alone. Two of them means two
+Servers already in the target file are preserved. The installer writes only
+the `pb-orca` key. If another key already points to `pb-orca-mcp`, as older
+project configurations often do, the installer says so and leaves it alone. Two of them means two
 processes competing for a single-session ORCA library, duplicate tools under
 different prefixes, and only one prefix matching the permission allowlist.
 Removing it is your call. A target `.mcp.json` that does not parse is left untouched and the
@@ -193,7 +190,7 @@ uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.8 --python 3.12-x8
 
 `doctor` reports every PB install it can see and exits non-zero when
 none is usable. `check` validates the whole stack against a real
-project. If either fails, fix that first — no skill can work around it.
+project. If either fails, fix that first: no skill can work around it.
 Then confirm your client lists the `pb_*` tools (in Claude Code:
 `/mcp`).
 
@@ -241,20 +238,20 @@ rather than placing it.
 **The install also vendors the knowledge base**, as `pb-ai-code-docs/` beside
 the skills, and rewrites the links inside the installed skills to point at it.
 Without that, `pb-review` would tell the assistant to work through an
-antipattern catalog that is not there, and `pb-src-format` — which is almost
-entirely pointers into the format wiki — would be inert.
+antipattern catalog that is not there, and `pb-src-format`, which is almost
+entirely pointers into the format wiki, would be inert.
 
 It lands beside the skills rather than in the project's own `docs/`, which
-belongs to the host project. And it happens on a self-install too, not only
-when vendoring: the installed tree is one level deeper than the canonical one
-either way, so `../../docs/` — correct from `skills/<name>/` — would resolve
+belongs to the host project. It also happens on a self-install: the installed
+tree is one level deeper than the canonical one
+either way, so `../../docs/`, correct from `skills/<name>/`, would resolve
 to a `docs/` inside the harness directory once installed.
 
 That copy is a **snapshot**. When a skill grows the wiki, the change belongs
 upstream in this repository; an edit inside an installed `pb-ai-code-docs/` is
-discarded by the next install. What a project does instead is write a note
-into its review's plan file, which is carried back by hand — see
-[`wiki-notes.md`](wiki-notes.md).
+discarded by the next install. A project records the discovery in its review
+plan instead. See [`wiki-notes.md`](wiki-notes.md) for how to carry that note
+back by hand.
 
 Every skill is installed, not a subset: a skill left out is a dangling
 cross-reference in the ones that ship, and the saving is a handful of
@@ -267,7 +264,7 @@ Two things the script does deliberately:
   repository is auditable. Make changes here and re-run; do not patch the
   installed copy.
 - **Everything it writes is build output, and belongs in the target's
-  `.gitignore`** — `.claude/`, `.mcp.json`, the vendored knowledge base.
+  `.gitignore`**: `.claude/`, `.mcp.json`, the vendored knowledge base.
   A project that uses this kit commits nothing agentic; re-running the
   installer is what keeps a team on one version. The marker file records
   the source commit, so "are we all on the same toolchain" is answered by
@@ -278,7 +275,7 @@ Two things the script does deliberately:
 Not a problem. Every flow exists as a skill of the same name:
 `/pb-review` is a three-line wrapper around the `pb-review` skill, and
 `/pb-format` around `pb-format`. Ask for the skill by name, or just
-describe the task — the skill descriptions are written to be matched.
+describe the task: the skill descriptions are written to be matched.
 
 ### If your assistant has no skill discovery
 
@@ -296,7 +293,7 @@ call. Everything that writes into a `.pbl`, creates a source projection,
 or builds an artefact stays interactive on purpose.
 
 If you rename the MCP server from `pb-orca` to something else, update
-the `mcp__pb-orca__*` prefixes to match — the permission strings embed
+the `mcp__pb-orca__*` prefixes to match: the permission strings embed
 the server key.
 
 ## 3. Optional: the Appeon doc index
@@ -321,7 +318,7 @@ uv pip install -e ".[dev]"
 Then re-run `scripts\install-skills.ps1` for your project. The installer
 runs *from this checkout*, so it knows the absolute path to that
 interpreter and to the database, and it writes them into the target's
-`.mcp.json` — which is generated per machine and gitignored, and is
+`.mcp.json`, which is generated per machine and gitignored, and is
 therefore the one place absolute paths belong. `harness/mcp-servers.json`
 is committed and shared, so it could never carry them; that is the whole
 reason this used to be a manual step.
@@ -339,8 +336,8 @@ words - `# Appeon:    pb-appeon-index configured -> <db>` - so a session that
 finds the tools absent can read why without re-running anything.
 
 **The database is referenced, never copied.** Every project points at the
-one file in this checkout, so `pb-appeon-index update` — a new PB release,
-say — reaches every configured project at once, with no re-install.
+one file in this checkout, so `pb-appeon-index update`, a new PB release,
+say, reaches every configured project at once, with no re-install.
 Re-run the installer for changed *skills*, not for a changed index.
 
 It is also never redistributed: each developer builds it locally from the
@@ -359,12 +356,12 @@ endings). It is a standalone CLI, independent of PowerBuilder and ORCA.
 uv tool install git+https://github.com/restoresrl/pb-format@v0.1.0
 ```
 
-It is not on PyPI yet, so it installs from its repository — the same
+It is not on PyPI yet, so it installs from its repository: the same
 arrangement as `pb-orca-mcp` above. Once it is published, `uv tool install
 pb-format` (or `pipx install pb-format`) will be the shorter form.
 
 It only does anything where a workspace has opted in with a
-`.pb-format.toml` — generate a starter with `pb-format detect
+`.pb-format.toml`: generate a starter with `pb-format detect
 <workspace>`. Without the tool, or without a config, the dev kit simply
 does not format, and nothing else changes. See
 [`pb-source-format/style-conventions.md`](pb-source-format/style-conventions.md)
@@ -374,8 +371,8 @@ for the rules.
 
 Two working arrangements, both fine:
 
-**From the PowerBuilder workspace.** Run the installer against it — which
-places the skills and the MCP config together — and work with the project as
+**From the PowerBuilder workspace.** Run the installer against it, which
+places the skills and the MCP config together, and work with the project as
 the working directory. This is the natural setup for day-to-day work, and it
 is what lets `.pb-review/` plan files and `CHANGELOG.md` land in the right
 repository.
@@ -386,7 +383,7 @@ skills, since edits take effect on the next install.
 
 ## Verifying end to end
 
-1. `pb-orca-mcp doctor` — a usable PB install is found.
+1. `pb-orca-mcp doctor`: a usable PB install is found.
 2. Your client lists the `pb_*` tools.
 3. Ask for `pb_workspace_info` on one `.pbl` of a real project: it needs
    no ORCA session and no PB install, so it is the cheapest possible
@@ -397,16 +394,16 @@ skills, since edits take effect on the next install.
 
 ## When something is wrong
 
-- **DLL load error, or "no PB install found"** — architecture mismatch
+- **DLL load error, or "no PB install found"**: architecture mismatch
   or a runtime-only install. `pb-orca-mcp doctor` says which.
-- **A tool call fails with a state guard** — the ORCA session was not
+- **A tool call fails with a state guard**: the ORCA session was not
   brought up in order: `pb_session_open`, then
   `pb_set_library_list`, then `pb_set_current_application`.
-- **The `.pbl` is locked** — the PB IDE has it open. Close the IDE.
-- **A one-line fix produced a whole-file diff** — line endings got
+- **The `.pbl` is locked**: the PB IDE has it open. Close the IDE.
+- **A one-line fix produced a whole-file diff**: line endings got
   translated somewhere. See
   [`pb-source-format/encoding.md`](pb-source-format/encoding.md).
-- **`.pbw` shows up modified after a session** —
+- **`.pbw` shows up modified after a session**:
   `pb_set_current_application` rewrites it. Revert it unless you really
   added or removed a target.
 

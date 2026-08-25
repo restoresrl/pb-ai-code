@@ -14,9 +14,9 @@ FileClose(ll_fh)
 ## Why it bites
 
 `FileOpen()` returns the file handle on success, or `-1` on
-failure. The most common failure modes — file locked by another
+failure. The most common failure modes, file locked by another
 process, directory permission denied, path that resolves to a
-non-existent drive — are routine production hazards, not corner
+non-existent drive, are routine production hazards, not corner
 cases.
 
 When `FileOpen` returns `-1` and the code doesn't check:
@@ -71,7 +71,7 @@ operator knows the primary log is disabled.
 
 ## Where it has been seen
 
-- **Appeon's own SDI application template** — the code the PowerBuilder
+- **Appeon's own SDI application template**: the code the PowerBuilder
   "Quick Application" wizard generates, so every application scaffolded
   from it carries this. The same hazard on a different API: the `clicked`
   event of the generated `m_print` menu item does
@@ -82,8 +82,8 @@ operator knows the primary log is disabled.
   PrintClose ( ll_job )
   ```
 
-  `PrintOpen()` returns `-1` when it cannot start a job — no printer, no
-  default printer, spooler unavailable — and both following calls then run
+  `PrintOpen()` returns `-1` when it cannot start a job, no printer, no
+  default printer, spooler unavailable, and both following calls then run
   against an invalid handle and do nothing. The user clicks Print and
   nothing happens, with no error anywhere.
 
@@ -99,8 +99,8 @@ operator knows the primary log is disabled.
 
 ## Related
 
-- [isnull on numeric types](isnull-on-numeric.md) — the wrong way
+- [isnull on numeric types](isnull-on-numeric.md): the wrong way
   to check the failure return; `IsNull(ll_fh)` will not work.
-- [space() with uninitialized buffer length](space-before-init.md)
-  — similar "API return not checked" hazard with a different IO
+- [space() with uninitialized buffer length](space-before-init.md):
+  similar "API return not checked" hazard with a different IO
   primitive.

@@ -34,8 +34,8 @@ is normally where the check ends.
 bind input parameters to a prepared statement, and to substitute the
 values into the statement text before sending it. The syntax at the call
 site does not change; the mechanism underneath it does. So the property
-the syntax is trusted for — *this value never becomes part of the SQL
-text* — is no longer being provided, and nothing at the call site says
+the syntax is trusted for, *this value never becomes part of the SQL
+text*, is no longer being provided, and nothing at the call site says
 so.
 
 What makes it a durable trap rather than a one-off:
@@ -49,7 +49,7 @@ What makes it a durable trap rather than a one-off:
   and the date-format parameters. So the answer is never "turn it off";
   it is "know that it is on".
 - **It is a property of the connection, not of the object.** Every
-  statement on that transaction is affected — including the ones in
+  statement on that transaction is affected, including the ones in
   classes written by people who never saw the constructor.
 
 **What this page does not claim.** Whether inlining is *exploitable*
@@ -68,7 +68,7 @@ There is no code change to prescribe. There are two things to do.
 **Settle it once, in the codebase that sets the flag.** The experiment
 is small and most PB codebases already have the instrumentation: pass a
 value containing a single quote, then read what actually reached the
-server — a datastore's `sqlpreview` event captures the statement, and
+server: a datastore's `sqlpreview` event captures the statement, and
 `DBParm`-level tracing writes it to a log.
 
 ```pb
@@ -79,13 +79,13 @@ end event
 ```
 
 If the literal arrives doubled (`'O''Brien'`), PowerBuilder escapes on
-inlining and the matter is closed — **record that in a comment next to
+inlining and the matter is closed: **record that in a comment next to
 the `DisableBind` line**, which is the fix, because the next reader will
 otherwise re-derive it or skip it.
 
 **If it does not escape**, validate at the boundary where the value
-enters the statement — an identifier against the identifier charset, a
-free-text value through the codebase's own escaping helper — rather than
+enters the statement, an identifier against the identifier charset, a
+free-text value through the codebase's own escaping helper, rather than
 trying to remove `DisableBind`, which other behaviour depends on.
 
 ## How to find it
@@ -107,7 +107,7 @@ assumption, and so the next reviewer does not have to find it again.
 - A warehouse-management framework (review run 2026-08-12). The
   transaction object's constructor set `DisableBind=1` with an adjacent
   comment block discussing `Identity=`, `NCharBind` and date formats at
-  length — and nowhere noting that the setting changes what a bind
+  length, and nowhere noting that the setting changes what a bind
   variable is. Five functions on the persistence base class, two classes
   away, read and wrote a side table of user-supplied attribute names
   through embedded SQL with `:name` parameters throughout.
@@ -118,6 +118,6 @@ assumption, and so the next reviewer does not have to find it again.
 ## Related
 
 - [`isnull-on-numeric`](isnull-on-numeric.md) and
-  [`pos-guarded-as-negative`](pos-guarded-as-negative.md) — the same
+  [`pos-guarded-as-negative`](pos-guarded-as-negative.md): the same
   shape of mistake at a smaller scale: a construct that reads as a
   guarantee while the mechanism underneath does not provide it.

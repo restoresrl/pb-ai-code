@@ -7,7 +7,7 @@ description: Layout of .srf files (PB global function entry).
 # Function (`.srf`)
 
 A global function. The file name equals the function name (no `f_`
-or other prefix is enforced by the format — that is a project-level
+or other prefix is enforced by the format: that is a project-level
 convention).
 
 ## Canonical form
@@ -30,22 +30,22 @@ end function
 
 Anatomy:
 
-- **`$PBExportHeader$<name>.srf`** — first text line. Required on disk
+- **`$PBExportHeader$<name>.srf`**: first text line. Required on disk
   so PB IDE can identify the entry on import; ignored when passing the
   body to `pb_compile_entry_import` (entry name/type are arguments).
-- **`global type <name> from function_object` … `end type`** —
+- **`global type <name> from function_object` … `end type`**:
   declares the global function object. The parent is always
   `function_object` for a free-standing global function.
-- **`forward prototypes` … `end prototypes`** — declares the function
+- **`forward prototypes` … `end prototypes`**: declares the function
   signature. Required even with zero arguments.
-- **`global function <return> <name> (<args>);<body>` … `end function`** —
+- **`global function <return> <name> (<args>);<body>` … `end function`**:
   the body. The opening `;` lives on the same line as the signature;
   `<body>` may continue on subsequent lines. `end function` is on
   its own line.
 
 Member functions of a userobject / window use the same body syntax but
 live inside a `type <name>.functions` block in the owning object's
-file — they are not `.srf` entries.
+file: they are not `.srf` entries.
 
 ## Variants observed
 
@@ -53,12 +53,12 @@ file — they are not `.srf` entries.
 
 ## Open questions
 
-- Parameter modifier syntax (`ref`, `readonly`) — exact placement in
-  the parameter list.
-- Return type for functions returning a userobject or structure —
-  declaration order vs the `forward` block.
-- Functions with default parameter values — how PB serializes the
-  defaults (or whether it does at all in older versions).
+- Where do parameter modifiers such as `ref` and `readonly` appear in the
+  parameter list?
+- In what order are return types for userobjects or structures declared
+  relative to the `forward` block?
+- How does PB serialize default parameter values, if older versions support
+  them at all?
 
 <!-- BEGIN auto-generated: pb-source-analyzer -->
 
@@ -100,7 +100,7 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
-- [[userobject]] — userobject member functions share the body syntax
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[userobject]]: userobject member functions share the body syntax
   but live in a different file structure.

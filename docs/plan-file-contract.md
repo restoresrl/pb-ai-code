@@ -1,7 +1,7 @@
 ---
 name: plan-file-contract
 status: populated
-description: The normative schema of a .pb-review plan file — fields, status vocabulary, CHANGELOG markers, and which skill writes what.
+description: The normative schema of a .pb-review plan file: fields, status vocabulary, CHANGELOG markers, and which skill writes what.
 ---
 
 # The plan file contract
@@ -25,7 +25,7 @@ first time the chain was run end to end, not by reading either skill.
 The failure is quiet in both directions. A field the consumer ignores
 does not raise an error; it produces the wrong answer on the one
 workspace where it mattered. So the fix is not a better sentence in
-either skill — it is one list, in one place, that both cite.
+either skill: it is one list, in one place, that both cite.
 
 ## Required fields
 
@@ -34,7 +34,7 @@ Every finding carries these. A plan file missing one is malformed.
 | field | values | notes |
 |---|---|---|
 | `id` | `fix-01`, `fix-02`, … | unique within the file; never renumbered, because `CHANGELOG.md` links to these anchors |
-| `entry` | `lib::name:type` | the entry triple. `lib` is a **bare basename** — see `library_path` |
+| `entry` | `lib::name:type` | the entry triple. `lib` is a **bare basename**: see `library_path` |
 | `kind` | `bug-risk` \| `refactor` \| `style` \| … | others sort after the three named ones |
 | `priority` | `high` \| `medium` \| `low` | |
 | `depends_on` | list of `id`s | must be applied first |
@@ -46,13 +46,13 @@ Every finding carries these. A plan file missing one is malformed.
 
 | field | written by | notes |
 |---|---|---|
-| `library_path` | `pb-review` | absolute path of the `.pbl`. **Required whenever the queue spans more than one library** — `entry:` carries a bare basename and two libraries in one workspace can share one. **`pb-apply-plan` must prefer this over anything derived from `entry`** |
+| `library_path` | `pb-review` | absolute path of the `.pbl`. **Required whenever the queue spans more than one library**: `entry:` carries a bare basename and two libraries in one workspace can share one. **`pb-apply-plan` must prefer this over anything derived from `entry`** |
 | `outside_source_tree` | `pb-review` | `true` when the finding lands in a vendored library. `pb-apply-plan` gates on it, per finding |
-| `experiment` | `pb-review` | **required when `evidence: unverified-semantics`** — the test that would settle the premise, concretely enough to run |
+| `experiment` | `pb-review` | **required when `evidence: unverified-semantics`**: the test that would settle the premise, concretely enough to run |
 | `function`, `lines` | `pb-review` | narrow the location |
 | `effort_estimate` | `pb-review` | `small` \| `medium` \| `large` |
 | `tag` | `pb-review` | free-form labels |
-| `also_in` | `pb-review` | `[entry_triple, …]` — the same fix concept on secondary entries. Primary `entry` first, then these in topological order |
+| `also_in` | `pb-review` | `[entry_triple, …]`: the same fix concept on secondary entries. Primary `entry` first, then these in topological order |
 | `requires_discussion` | `pb-review` | `true` when the fix is a **choice**, not a pre-decided patch. Use with `decision_options` |
 | `decision_options` | `pb-review` | `[{label, summary}, …]` |
 | `chosen_option` | `pb-apply-plan` | the `label` the user picked. Required once a `requires_discussion` finding is decided |
@@ -69,14 +69,14 @@ written by `pb-apply-plan`.
 | `pending` | not yet attempted | attempted |
 | `applied` | landed and compiled | skipped |
 | `skipped` | the user declined it | skipped |
-| `failed` | attempted, did not compile, **reverted** | skipped — so a repeat run does not re-apply a patch already known not to build. Pair with `skip_reason` |
-| `deferred` | set aside pending an answer — what an unattended run writes for `requires_discussion` and `unverified-semantics` | **treated as `pending`**, which is the whole point |
+| `failed` | attempted, did not compile, **reverted** | skipped: so a repeat run does not re-apply a patch already known not to build. Pair with `skip_reason` |
+| `deferred` | set aside pending an answer: what an unattended run writes for `requires_discussion` and `unverified-semantics` | **treated as `pending`**, which is the whole point |
 | `partial` | a multi-entry fix that landed on some entries and not others | attempted for the remainder. Pair with `applied_in` |
 
 ## The `**Applied**` section
 
 `pb-review` leaves the field absent and says it is *written by
-`pb-apply-plan`*. So `pb-apply-plan` must write it — this is the
+`pb-apply-plan`*. So `pb-apply-plan` must write it: this is the
 instruction, since the consumer's own step list once omitted it and
 three fixes out of four landed without one.
 
@@ -93,7 +93,7 @@ name the option taken.
 ## CHANGELOG markers
 
 `pb-review` owns the structure of `CHANGELOG.md`; `pb-apply-plan` only
-changes the box. **Change the box, keep the bullet** — the id, the text
+changes the box. **Change the box, keep the bullet**: the id, the text
 and the anchor all stay, because the entry's only link to its finding is
 that anchor.
 
@@ -113,13 +113,13 @@ reads them.
 paragraph above the sub-sections may say what was reviewed and link the
 plan; it must not say how many findings have been applied. `pb-apply-plan`
 changes boxes, not prose, so a tally written by `pb-review` is a claim
-nothing keeps current — and it is wrong from the first fix that lands
+nothing keeps current, and it is wrong from the first fix that lands
 until the section is promoted, which for a project that never promotes is
 forever.
 
 ## Cross-references
 
-- [`pb-review`](../skills/pb-review/SKILL.md) — writes the file.
-- [`pb-apply-plan`](../skills/pb-apply-plan/SKILL.md) — consumes and rewrites it.
-- [`wiki-notes`](wiki-notes.md) — the `## Notes for the wiki` section of the
+- [`pb-review`](../skills/pb-review/SKILL.md): writes the file.
+- [`pb-apply-plan`](../skills/pb-apply-plan/SKILL.md): consumes and rewrites it.
+- [`wiki-notes`](wiki-notes.md): the `## Notes for the wiki` section of the
   same file, and the trip back into this repository.

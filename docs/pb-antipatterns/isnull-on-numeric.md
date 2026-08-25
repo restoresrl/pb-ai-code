@@ -20,7 +20,7 @@ slot. For reference types and for variables that came from a SQL
 fetch into a nullable column, the null bit can be set and
 `IsNull()` returns `true`. For plain numeric locals (`int`,
 `long`, `ulong`, `real`, `double`, `decimal`), the null bit is
-not used at all — the slot always holds a numeric value, even if
+not used at all: the slot always holds a numeric value, even if
 that value happens to be `0` or `-1` or anything else.
 
 So:
@@ -29,10 +29,10 @@ So:
   is **not null**. `IsNull(lul_handle)` returns `false`.
 - A `long` that was never explicitly assigned still holds `0`
   (the default). `IsNull(ll_count)` returns `false`.
-- Only variables that carry a null bit from somewhere — a SQL
+- Only variables that carry a null bit from somewhere, a SQL
   `select ... into :var` of a nullable column, a `Dynamic Call`
   return of a method that returned null, or an explicit
-  `SetNull(lvar)` — make `IsNull()` meaningful.
+  `SetNull(lvar)`, make `IsNull()` meaningful.
 
 The bug pattern is treating `IsNull(numeric_local)` as a check for
 "sentinel error value". It isn't. The error-value check has to be
@@ -81,7 +81,7 @@ explicitly null'd via `SetNull()`. If neither, the check is dead.
 
 ## Where it has been seen
 
-- **Appeon's own SDI application template** — the code the PowerBuilder
+- **Appeon's own SDI application template**: the code the PowerBuilder
   "Quick Application" wizard generates. The `clicked` event of the
   generated `m_print_query` menu item does
 
@@ -94,7 +94,7 @@ explicitly null'd via `SetNull()`. If neither, the check is dead.
   `ll_job` is a `long`, so `not IsNull(ll_job)` is a constant `true` and
   the clause contributes nothing; the `<> -1` test does all the work.
   Harmless at runtime, but it reads as though `PrintOpen` might return
-  null, which it cannot — and it is exactly the kind of guard a maintainer
+  null, which it cannot, and it is exactly the kind of guard a maintainer
   copies into code where the sentinel check is then forgotten. Observed on
   the PB 2022 R3 wizard output, review run 2026-07-29.
 
@@ -105,5 +105,5 @@ explicitly null'd via `SetNull()`. If neither, the check is dead.
 
 ## Related
 
-- [unchecked fileopen() return](fileopen-unchecked.md) — companion
+- [unchecked fileopen() return](fileopen-unchecked.md): companion
   pattern: not checking the sentinel value of an IO handle.

@@ -1,13 +1,13 @@
-# Appeon doc index — Layer 1 of the pb-ai-code knowledge architecture
+# Appeon doc index: Layer 1 of the pb-ai-code knowledge architecture
 
 A searchable, token-efficient index of Appeon's PowerBuilder
 documentation, exposed to any MCP-capable coding assistant as four
 tools:
 
-- `appeon_search(query, version?, limit?)` — FTS5 keyword search.
-- `appeon_get(name, version?)` — full structured page record.
-- `appeon_list_topics(version?)` — category / kind buckets.
-- `appeon_list_versions()` — versions present in the DB.
+- `appeon_search(query, version?, limit?)`: FTS5 keyword search.
+- `appeon_get(name, version?)`: full structured page record.
+- `appeon_list_topics(version?)`: category / kind buckets.
+- `appeon_list_versions()`: versions present in the DB.
 
 The agent-side flow is driven by the
 [`appeon-query`](../../skills/appeon-query/SKILL.md) skill.
@@ -17,7 +17,7 @@ The agent-side flow is driven by the
 This is the Layer 1 substitute for the originally-planned
 `cli-printing-press` integration, which turned out to be the wrong
 tool for the job (it targets REST API docs, not language-reference
-sites — see `PLAN.md` for the full story). The replacement is
+sites: see `PLAN.md` for the full story). The replacement is
 written in Python, lives in `tools/pb-appeon-index/`, and reuses
 the same stack as `tools/pb-source-analyzer/`.
 
@@ -25,11 +25,11 @@ the same stack as `tools/pb-source-analyzer/`.
 
 A `WebFetch` against `docs.appeon.com/pb2022r3/.../left_func.html`
 pulls the entire page (sidebar + nav + body + footer) and converts
-it to Markdown — typically 3000-10000 tokens per call. Multiply by
+it to Markdown: typically 3000-10000 tokens per call. Multiply by
 "every PowerScript lookup in a coding session" and the cost dominates.
 
 The index, after a one-time scrape into a local SQLite FTS5 DB,
-answers a typical query in ~400 tokens — about 10x cheaper. It is
+answers a typical query in ~400 tokens: about 10x cheaper. It is
 also offline-resilient: once built, queries don't touch the network.
 
 ## What's in the index
@@ -93,18 +93,18 @@ pb-appeon-index update --all
 The first run scrapes from `docs.appeon.com` with a polite 200ms
 delay between requests (configurable in `[scraper]`). Subsequent
 runs use conditional `If-None-Match` / `If-Modified-Since` headers
-to skip pages whose content hasn't changed — so updating to pick up
+to skip pages whose content hasn't changed, so updating to pick up
 new doc edits is fast.
 
 Inputs and outputs:
 
 | Path | Contents | Gitignored? |
 |---|---|---|
-| `tools/pb-appeon-index/config.toml` | version list + scraper settings | no — committed |
+| `tools/pb-appeon-index/config.toml` | version list + scraper settings | no: committed |
 | `.appeon-cache/<slug>/...html` | raw HTML mirror, one file per page | **yes** |
 | `.appeon-cache/<slug>/.etag.json` | per-URL ETag/Last-Modified cache | **yes** |
 | `docs/appeon-index/index.db` | SQLite FTS5 database | **yes** |
-| `docs/appeon-index/README.md` | this file | no — committed |
+| `docs/appeon-index/README.md` | this file | no: committed |
 
 ## Wiring up the MCP server
 
@@ -112,13 +112,13 @@ Inputs and outputs:
 > database is never shipped. That is deliberate: the PowerBuilder manuals
 > reserve reproduction rights, so a built index attached to a release would
 > need Appeon's written permission. A drafted request for exactly that is in
-> [`redistribution-request.md`](redistribution-request.md) — unsent, and
+> [`redistribution-request.md`](redistribution-request.md): unsent, and
 > nothing changes until it is answered.
 
 **The installer configures this server for you** once the index exists.
 `scripts/install-skills.ps1` runs from this checkout, so it can resolve
 the interpreter and the database to absolute paths and write them into
-the target's `.mcp.json` — a generated, gitignored, per-machine file.
+the target's `.mcp.json`: a generated, gitignored, per-machine file.
 The committed `harness/mcp-servers.json` cannot carry those paths, which
 is why the entry is not in it and why this was once a manual step.
 
@@ -127,7 +127,7 @@ It prints `Appeon index      <db path>` and records the decision in the
 marker as `# Appeon:    pb-appeon-index configured -> <db path>`, or names
 what is missing if you have not built it yet.
 
-The block it writes looks like this — worth reading if you are wiring up
+The block it writes looks like this: worth reading if you are wiring up
 a client the installer does not know about:
 
 ```jsonc
@@ -147,8 +147,8 @@ a client the installer does not know about:
 On macOS or Linux the interpreter is `.venv/bin/python`.
 
 Relative paths do work when the client launches servers with the
-repository as their working directory — the server itself falls back to
-`./docs/appeon-index/index.db` on that assumption — but which clients do
+repository as their working directory, the server itself falls back to
+`./docs/appeon-index/index.db` on that assumption, but which clients do
 that is not something to rely on. Absolute paths cost nothing and remove
 the question, which is why the installer writes them.
 
@@ -164,7 +164,7 @@ ordinary MCP tools.
 Steps the day a new PB release lands on `docs.appeon.com`:
 
 1. Add a `[[versions]]` entry in `config.toml` with the new slug.
-2. `pb-appeon-index update --version <new-slug>` — fetches only the
+2. `pb-appeon-index update --version <new-slug>`: fetches only the
    new pages, leaves existing versions untouched.
 3. Commit the updated `config.toml`. The `index.db` is gitignored;
    each developer rebuilds locally.
@@ -175,11 +175,11 @@ fast, and `INSERT OR REPLACE` handles the changed rows.
 
 ## What the index does *not* cover
 
-- The textual format of `.sr*` source files. That's Layer 2 — see
+- The textual format of `.sr*` source files. That's Layer 2, see
   the [`pb-source-format` wiki](../pb-source-format/index.md) and
   the [`pb-src-format`](../../skills/pb-src-format/SKILL.md) skill.
 - Project-specific codebase patterns (naming conventions, internal
-  libraries, idiomatic flow for a given product). That's Layer 3 — deferred.
+  libraries, idiomatic flow for a given product). That's Layer 3, deferred.
 - License-restricted content. Each developer rebuilds the index
   locally from the live `docs.appeon.com` site; the DB is not
   redistributed.

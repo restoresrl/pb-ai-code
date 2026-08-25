@@ -34,9 +34,9 @@ This selectivity is the whole point of exception subtyping: a
 caller can react to a DB failure differently from a generic
 runtime failure.
 
-When intermediate code does the pattern shown in the smell —
+When intermediate code does the pattern shown in the smell,
 catches a subtype, then re-throws via a factory that constructs
-the **base** type — the type information is destroyed. The
+the **base** type, the type information is destroyed. The
 ultimate caller cannot tell whether the failure was a DB error
 or anything else, because the exception that arrives is plain
 `n_ex`. All the subtype-specific fields (`sqlcode`, `sqlstate`,
@@ -48,7 +48,7 @@ The bug is doubly painful because:
    "adding context" to the exception by wrapping the message.
    They were, in fact, destroying typing information that callers
    need.
-2. The damage is invisible at the catch site — the code compiles
+2. The damage is invisible at the catch site: the code compiles
    and runs. It surfaces only when a caller tries to `catch
    (n_ex_db ...)` and the catch never fires because the
    exception was demoted upstream.
@@ -103,7 +103,7 @@ subtype as `<subtype>`. If it returns the base type, flag it.
 
 ## Related
 
-- [`exception-factory-not-thrown`](exception-factory-not-thrown.md) —
+- [`exception-factory-not-thrown`](exception-factory-not-thrown.md):
   the sibling: the same factory, called in statement position, so the
   exception is built and discarded and nothing is raised at all. This
   page is about losing the type; that one is about losing the raise.

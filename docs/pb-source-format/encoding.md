@@ -11,7 +11,7 @@ Every PB source file (`.sra`, `.srw`, `.sru`, `.srf`, `.srd`, `.srm`,
 produces a file that PB silently rejects, imports as garbage, or
 re-exports on the next Refresh (a "phantom" diff).
 
-## Rule 1 — Encoding follows the workspace `DefaultExportEncode`
+## Rule 1: Encoding follows the workspace `DefaultExportEncode`
 
 PB IDE picks the encoding of `ws_objects/<lib>.pbl.src/<name>.<ext>`
 files from the `DefaultExportEncode` directive in the workspace
@@ -43,16 +43,16 @@ $b = [System.IO.File]::ReadAllBytes('path\to\file.sru')
 
 A file whose encoding does **not** match the `.pbw` setting will be
 read OK by PB on Refresh, but the IDE then re-exports it in the
-configured encoding — producing a phantom diff against whatever the
+configured encoding: producing a phantom diff against whatever the
 agent wrote, and triggering an import + compile + regenerate cascade
 on other entries in the same library.
 
-## Rule 2 — CRLF line endings
+## Rule 2: CRLF line endings
 
 Every line is terminated with `0D 0A` (CRLF), regardless of which of
 the three encodings is in use. LF-only files are not accepted.
 
-## Rule 3 — `$PBExportHeader$` as the first line
+## Rule 3: `$PBExportHeader$` as the first line
 
 The first text line of the file is:
 
@@ -68,7 +68,7 @@ $PBExportHeader$w_main.srw
 $PBExportHeader$f_helper.srf
 ```
 
-The header is **not** a comment — it is a magic marker the IDE and
+The header is **not** a comment: it is a magic marker the IDE and
 ORCA use to locate the entry. The name + extension in the header must
 match the file basename and entry type.
 
@@ -83,7 +83,7 @@ $PBExportComments$<comment text with PowerScript escapes>
 The comment uses PowerScript escape sequences for control characters:
 `~r` for CR, `~n` for LF (so a CRLF-bearing comment becomes
 `…~r~n…`), `~t` for TAB, and `~~` for `~` itself. PB IDE on Windows
-expects the underlying metadata to be CRLF — the Library Painter
+expects the underlying metadata to be CRLF: the Library Painter
 Properties dialog uses a multi-line Windows edit control that renders
 bare LF without a visible line break.
 
@@ -106,22 +106,22 @@ content is now UTF-8, not UTF-16). The file opens in any editor but
 PB rejects it.
 
 When the workspace setting is `UTF-8` (the PB 2022 default), the
-trap is narrower — many tools preserve UTF-8 BOM round-trip — but
+trap is narrower, many tools preserve UTF-8 BOM round-trip, but
 you can still corrupt the file by stripping the BOM, converting to
 UTF-8 no BOM, or changing CRLF to LF.
 
 Symptoms either way: PB IDE refuses to open the object, or ORCA's
 `pb_compile_entry_import` returns a vague compile error. The diff
-often looks "fine" in the editor — the breakage is in the byte-level
+often looks "fine" in the editor: the breakage is in the byte-level
 header, invisible without a hex check.
 
-## Rule 4 — reading the file must not translate newlines
+## Rule 4: reading the file must not translate newlines
 
 The rules above describe bytes going *out*. There is a matching rule
 for bytes coming *in*: read a `.sr*` **without newline translation**.
 
-A reader that helpfully converts CRLF to LF — the default in a lot of
-languages and editors — hands you a body whose every line differs from
+A reader that helpfully converts CRLF to LF, the default in a lot of
+languages and editors, hands you a body whose every line differs from
 what is in the library. Import that and the `.pbl` now holds LF, which
 means the next export differs from the last commit on every single
 line: a whole-file phantom diff produced by a one-line fix. The
@@ -131,7 +131,7 @@ The same goes for writing: preserve the BOM and the CRLF you found.
 
 **And do not measure line endings with a text-mode tool.** Anything that
 opens these files as text may translate newlines on the way in, so it
-reports what it produced rather than what is on disk — `grep -c $'\r$'`
+reports what it produced rather than what is on disk: `grep -c $'\r$'`
 under Git Bash counts a CR on lines that carry a bare LF, which is how a
 file that is 100% LF gets misread as 100% CRLF. Count bytes in binary
 mode: `open(path, 'rb')`, then compare occurrences of `\r\n` against
@@ -148,7 +148,7 @@ which is what makes drift visible in the first place.
 
 Use **`*.sr* -text`**, not `*.sr* binary`. Both stop the translation, but
 `binary` is a macro for `-diff -merge -text`, so git then answers
-`Binary files differ` for every change to a PowerBuilder object — trading a
+`Binary files differ` for every change to a PowerBuilder object: trading a
 silent-drift problem for an unreadable-diff one, and discarding the reason a
 project keeps a text projection at all. Keep `binary` for `*.pbl` and `*.pbd`,
 which really are opaque:
@@ -159,7 +159,7 @@ which really are opaque:
 *.pbd binary
 ```
 
-## Who writes these files — and why it should not be you
+## Who writes these files and why it should not be you
 
 **ORCA writes them.** `pb-orca-mcp` exposes the export in
 write-to-file mode (`PBORCA_ConfigureSession` +
@@ -179,7 +179,7 @@ pb_object_import_file(path, lib)          -> compiles and, when the
 
 Nothing in that loop asks you for an encoding, and nothing asks you to
 build a header block. Every rule on this page is a rule about what
-would break *if* you hand-assembled the file — which is exactly why the
+would break *if* you hand-assembled the file, which is exactly why the
 recommendation is not to.
 
 Two consequences worth knowing:
@@ -235,9 +235,9 @@ call sequences.
 ## The string API, and its (lack of) asymmetry
 
 Besides the file API there is a string API:
-`pb_library_entry_export` returns the entry's **body** — without the
+`pb_library_entry_export` returns the entry's **body**, without the
 `$PBExportHeader$` and `$PBExportComments$` lines, which are an on-disk
-convention rather than part of the source-as-syntax — and
+convention rather than part of the source-as-syntax, and
 `pb_compile_entry_import` takes a `syntax` string.
 
 The import **ignores header lines if they are present**, so the two
@@ -245,8 +245,8 @@ sides compose without any manual re-prepending: export a body, transform
 it, import it back. Entry comment metadata travels separately, via the
 `comments` parameter.
 
-ORCA itself is encoding-agnostic — strings cross the C ABI as wide
-chars — so encoding is purely a property of the on-disk representation,
+ORCA itself is encoding-agnostic, strings cross the C ABI as wide
+chars, so encoding is purely a property of the on-disk representation,
 never of the in-memory call. Pass a plain string, no BOM.
 
 Use the string API when the object is small or the transform is
@@ -255,14 +255,14 @@ through a conversation as a tool argument.
 
 ## Variants observed
 
-- **UTF-8 BOM dominates on git-managed projects** — corpus scan
+- **UTF-8 BOM dominates on git-managed projects**: corpus scan
   (2421 files across 8 entry types) found 100% of `.sra`/`.srw`/
   `.sru`/`.srf`/`.srd`/`.srm`/`.srs`/`.srj` files in a real
   `ws_objects/` mirror to be UTF-8 BOM + CRLF, not UTF-16 LE BOM.
   This is the consequence of `DefaultExportEncode "UTF-8"` in the
-  `.pbw` — the PB 2022 default. A survey of 24 `.pbw` files across one
-  organisation's PB stack — three shared framework libraries, one
-  enterprise product and its eleven customer variants — returned
+  `.pbw`, the PB 2022 default. A survey of 24 `.pbw` files across one
+  organisation's PB stack, three shared framework libraries, one
+  enterprise product and its eleven customer variants: returned
   `"UTF-8"` in every case.
 
   Practical consequence for agents: when editing a file under
@@ -275,7 +275,7 @@ through a conversation as a tool argument.
 - **Do `.sr*` files embed binary segments?** Yes, but narrowly: the
   binary tail is produced **only by OLE / ActiveX controls**, which
   serialize their state into the export. DataWindow pictures do *not*
-  produce one — that was the assumption, and it is wrong. Practical
+  produce one: that was the assumption, and it is wrong. Practical
   consequence: a `.srd` is text end-to-end, and a `.srw` is too unless
   it hosts an OLE control. When one does, the file is not safely
   editable as text past that point, which is another reason to let ORCA
@@ -293,12 +293,12 @@ through a conversation as a tool argument.
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[style-conventions]] — indent, keyword case, operator spacing: what
+- [[index]]: wiki entry point.
+- [[style-conventions]]: indent, keyword case, operator spacing: what
   the body looks like inside this envelope.
-- [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) — the
+- [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp): the
   export/import loop that produces these files, and the `pb-workflow`
   skill it ships describing what to commit afterwards.
 - [[application]], [[window]], [[userobject]], [[function]],
-  [[datawindow]], [[menu]], [[structure]], [[query]], [[project]] —
+  [[datawindow]], [[menu]], [[structure]], [[query]], [[project]],
   every entry type inherits the encoding rules from this page.

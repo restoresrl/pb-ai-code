@@ -24,13 +24,13 @@ end type
 
 Anatomy:
 
-- **`$PBExportHeader$<name>.srs`** — first text line. Required on
+- **`$PBExportHeader$<name>.srs`**: first text line. Required on
   disk; ignored by `pb_compile_entry_import`.
-- **`global type <name> from structure` … `end type`** — declares
+- **`global type <name> from structure` … `end type`**: declares
   the structure. The parent is `structure` for a flat record (all
   corpus observations to date use this); a structure may instead
   extend another structure to inherit its fields.
-- **Field lines** — `<type> <name>`, one per line, **indented by
+- **Field lines**: `<type> <name>`, one per line, **indented by
   4 spaces** (ORCA preserves the indent verbatim on round-trip).
   Supported field types include all PB scalars (`long`, `string`,
   `decimal`, `date`, …) plus arrays and other structures.
@@ -47,7 +47,7 @@ has at least one field.
 
 - Are nested structures supported (a structure field whose type is
   another structure), and how are they serialized?
-- Array-typed fields — fixed-size vs dynamic, declaration syntax.
+- How do fixed-size and dynamic array fields differ in their declarations?
 
 <!-- BEGIN auto-generated: pb-source-analyzer -->
 
@@ -82,5 +82,5 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.

@@ -27,8 +27,8 @@ scope chain just like a read access would. When a class has a
 private field with the **same name** as a global auto-instance,
 the local field shadows the global only in expressions; but
 `destroy` on the bare name targets the resolution that wins at
-that point of the source — which, depending on the declaration
-order and the type vs. variable disambiguation, can be the global
+that point of the source. Depending on declaration order and type vs.
+variable disambiguation, that can be the global
 auto-instance instead of the field.
 
 The net effect: a method that thinks it is freeing its own private
@@ -69,5 +69,5 @@ and from global auto-instances.
 
 ## Related
 
-- [exitprocess in destruction chain](exitprocess-in-destruction.md) —
+- [exitprocess in destruction chain](exitprocess-in-destruction.md):
   another "destroy thinks it's local, actually it's global" failure.

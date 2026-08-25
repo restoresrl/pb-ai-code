@@ -12,7 +12,7 @@ end event
 ## Why it bites
 
 `exitprocess()` is the runtime call that **terminates the
-PowerBuilder process** — analogous to `ExitProcess()` from the
+PowerBuilder process**: analogous to `ExitProcess()` from the
 Win32 API. It is not a "destroy this object" call; it does not
 release the receiver or run any further user-mode cleanup. It is
 intended for fatal abort scenarios (e.g. unrecoverable license
@@ -31,7 +31,7 @@ shutdown method, the consequence is:
    process is gone, including the call stack that would have told
    you what destructor it was.
 
-The name confusion is genuine — `exitprocess` reads like
+The name confusion is genuine: `exitprocess` reads like
 "finish this process / unit / scope" to anyone who has not
 encountered the API before. Compounded by other "exit"-style
 verbs in PB (`return`, `halt`, `halt close`), it is easy to grab
@@ -61,7 +61,7 @@ end event
 
 If you need a "graceful close the application" semantic from
 deep inside the object graph, post an event up to the main
-window or application object — let the top-level decide whether
+window or application object: let the top-level decide whether
 to call `halt close` or equivalent. **Do not** call `exitprocess`
 from a destructor.
 
@@ -74,6 +74,6 @@ from a destructor.
 
 ## Related
 
-- [destroy on auto-instance shadowing](destroy-on-auto-instance.md)
-  — sibling failure mode where a destruction call hits the wrong
+- [destroy on auto-instance shadowing](destroy-on-auto-instance.md):
+  sibling failure mode where a destruction call hits the wrong
   target.

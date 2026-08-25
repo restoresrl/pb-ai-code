@@ -11,7 +11,7 @@ Typically attached to a window.
 
 ## Canonical form
 
-Minimal valid `.srm` — a menu with no items, validated end-to-end
+Minimal valid `.srm`: a menu with no items, validated end-to-end
 against ORCA on PB 22 (compile + import + round-trip export):
 
 ```
@@ -36,15 +36,15 @@ end on
 
 Anatomy:
 
-- **`$PBExportHeader$<name>.srm`** — first text line. Required on
+- **`$PBExportHeader$<name>.srm`**: first text line. Required on
   disk; ignored by `pb_compile_entry_import`.
-- **`forward … end forward`** — declares the menu type before the
+- **`forward … end forward`**: declares the menu type before the
   body. PB needs this even for a flat single-type file because the
   body references the type symbol.
-- **`global type <name> from menu` … `end type`** — the body. Item
+- **`global type <name> from menu` … `end type`**: the body. Item
   definitions (sub-menu types) go inside this block.
-- **`global <name> <name>`** — the global instance declaration.
-- **`on <name>.create` / `on <name>.destroy`** — constructor /
+- **`global <name> <name>`**: the global instance declaration.
+- **`on <name>.create` / `on <name>.destroy`**: constructor /
   destructor with `call super::create` / `call super::destroy`. They
   are required even when empty; without them the parent chain breaks.
 
@@ -60,9 +60,8 @@ how many items / events typical menus carry.
 
 ## Open questions
 
-- Menu inheritance — how does an inherited menu serialize overrides
-  vs the parent definition?
-- Toolbar-attached menus — extra fields?
+- How does an inherited menu serialize overrides relative to its parent?
+- Do toolbar-attached menus carry extra fields?
 - Right-to-left / localization metadata in the file?
 
 <!-- BEGIN auto-generated: pb-source-analyzer -->
@@ -123,7 +122,7 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
-- [[window]] — menus are typically attached to windows.
-- [[patterns/event-syntax]] — TBD.
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[window]]: menus are typically attached to windows.
+- [[patterns/event-syntax]]: TBD.

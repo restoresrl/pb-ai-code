@@ -1,7 +1,7 @@
 ---
 name: style-conventions
 status: seeded
-description: Style conventions for PowerScript source — indent, line endings, keyword case, operator spacing. The four invariants the pb-format tool normalizes when a workspace opts in with a .pb-format.toml, the dialects observed in the wild, and the config surface. Out of scope for the tool: blank-line policy, identifier naming, continuation alignment, .srd bodies (tracked under "Future invariants").
+description: Style conventions for PowerScript source: indent, line endings, keyword case, operator spacing. The four invariants the pb-format tool normalizes when a workspace opts in with a .pb-format.toml, the dialects observed in the wild, and the config surface. Out of scope for the tool: blank-line policy, identifier naming, continuation alignment, .srd bodies (tracked under "Future invariants").
 ---
 
 # Style conventions for PowerScript source
@@ -23,7 +23,7 @@ except where called out.
 
 The engine is [`pb-format`](https://github.com/restoresrl/pb-format): a
 standalone, token-based PowerScript formatter, CLI and library,
-**independent of PowerBuilder and ORCA** — it works on source files on
+**independent of PowerBuilder and ORCA**: it works on source files on
 disk, on any OS.
 
 It is **optional**. This page describes what it does when a workspace
@@ -47,7 +47,7 @@ This page is the human-readable spec of what gets normalized away.
 | 2 | Line endings | `line_endings` | `"crlf"`, `"lf"` | `"crlf"` |
 | 3 | Keyword case | `keyword_case` | `"lower"`, `"upper"`, `"preserve"` | `"lower"` |
 | 4 | Operator spacing | `spaces_around_operators` | `true`, `false` | `true` |
-| — | Input tab width | `tab_width` | positive int | `4` |
+| none | Input tab width | `tab_width` | positive int | `4` |
 
 The defaults reflect the most common dialect across the corpus surveyed
 during design (see [Dialects observed](#dialects-observed)). They are
@@ -56,16 +56,16 @@ sensible-but-arbitrary: pick a workspace setting and commit to it.
 They apply to the **body** only. The `$PBExportHeader$` and
 `$PBExportComments$` lines are preserved verbatim.
 
-### Rule 1 — Indent unit
+### Rule 1: Indent unit
 
 Leading whitespace on each non-blank line is converted between the TAB
 form and the `N`-space form:
 
-- **`"tab"`** — one literal `\t` per level.
-- **`"spaces:N"`** — `N` ASCII spaces per level.
+- **`"tab"`**: one literal `\t` per level.
+- **`"spaces:N"`**: `N` ASCII spaces per level.
 
 This is a **1:1 substitution, not a re-indent.** The formatter does not
-infer logical nesting — that needs a parser, and no maintained
+infer logical nesting: that needs a parser, and no maintained
 PowerScript grammar exists (see
 [Why token-based](#why-token-based-and-what-would-change-that)). A line
 indented wrongly stays indented wrongly, in the other unit. `tab_width`
@@ -73,23 +73,23 @@ is the assumed input width when collapsing spaces to TAB; sub-unit
 residue (a line indented by 6 with `tab_width = 4`) is preserved rather
 than rounded away.
 
-Mid-line whitespace is never rewritten — alignment inside `table(…)`
+Mid-line whitespace is never rewritten: alignment inside `table(…)`
 blocks, comment boxes and column layouts survives untouched. Only
 leading whitespace is normalized.
 
-### Rule 2 — Line endings
+### Rule 2: Line endings
 
 Every line in the body is terminated with `0D 0A` (CRLF), including the
-last. This is the same rule that governs the file envelope — see
+last. This is the same rule that governs the file envelope: see
 [`encoding`](encoding.md). Any input newline style (`\r\n`, `\n`, `\r`)
 is normalized on emit.
 
 `"lf"` exists because the tool is general-purpose, not because PB wants
 it. **Keep `"crlf"` for PowerBuilder.** LF inside a `.pbl` makes the
-next export differ from the last commit on every line — a whole-file
+next export differ from the last commit on every line: a whole-file
 phantom diff.
 
-### Rule 3 — Keyword case
+### Rule 3: Keyword case
 
 PowerScript keywords are case-insensitive at compile time. The IDE's
 Auto Case normalizes them as you type, but what is on disk reflects
@@ -120,7 +120,7 @@ colliding with user-defined names.
 
 - Inside string literals (`"…"`).
 - Inside line comments (`// …`) and block comments (`/* … */`).
-- In a **member-access position** — the word immediately after `.` or
+- In a **member-access position**: the word immediately after `.` or
   `::`. A variable named `integer` accessed as `obj.integer` keeps its
   original casing, because semantically it is a member, not a type.
 
@@ -128,7 +128,7 @@ When the analysis cannot resolve "keyword, or identifier spelled like
 one", the original casing is preserved. Conservative by default: never
 rewrite when ambiguous.
 
-### Rule 4 — Spaces around binary operators
+### Rule 4: Spaces around binary operators
 
 Binary operators get exactly one ASCII space on each side:
 
@@ -138,14 +138,14 @@ Binary operators get exactly one ASCII space on each side:
 
 **Left alone:**
 
-- `&` at end of line — the PowerScript statement **continuation**
+- `&` at end of line, the PowerScript statement **continuation**
   marker. It must stay immediately before the newline; padding it would
   break the continuation.
-- `,` and `;` — separators, not operators.
+- `,` and `;`: separators, not operators.
 - `-` and `+` as **unary signs** (`-1`, `+x`). Binary and unary are told
   apart by the preceding token: after an operator, `(`, `[`, `{`, `,`,
   or at the start of a statement, the sign is unary.
-- Anything inside a string literal or a comment — same restriction as
+- Anything inside a string literal or a comment, same restriction as
   Rule 3.
 
 Note that PowerScript has no `&&` / `||`: `and` / `or` are words,
@@ -160,18 +160,18 @@ own.
 
 ## Dialects observed
 
-Two coherent dialects show up across mature codebases — each internally
+Two coherent dialects show up across mature codebases: each internally
 consistent, neither demonstrably better. The formatter does not pick
 one; the workspace decides.
 
-**Dialect A — "lowercase + Hungarian"**
+**Dialect A: "lowercase + Hungarian"**
 
 - `keyword_case = "lower"` (`if`, `return`, `integer`).
 - Local variables prefixed by type hint (`ll_count`, `ls_name`,
   `lb_flag`).
 - TAB indent, CRLF, spaces around binary operators.
 
-**Dialect B — "uppercase + plain"**
+**Dialect B: "uppercase + plain"**
 
 - `keyword_case = "upper"` (`IF`, `RETURN`, `INTEGER`).
 - Local variables without a type-hint prefix.
@@ -187,7 +187,7 @@ reference, which makes it a semantic rewrite, not a textual one.
 ## Configuration: `.pb-format.toml`
 
 Discovery walks **upward** from each source file until a config is
-found — the rule Prettier and dprint use. Put it at the workspace root.
+found: the rule Prettier and dprint use. Put it at the workspace root.
 
 ```toml
 [style]
@@ -236,7 +236,7 @@ Formatting **before** the import is what makes it stick: ORCA stores
 the source text as given and re-exports it byte-stably, so the
 normalized form is what ends up in both the `.pbl` and the text
 projection. Formatting the text files *without* importing leaves the
-`.pbl` stale — a commit that reviews clean and builds old.
+`.pbl` stale: a commit that reviews clean and builds old.
 
 For CI or a pre-commit hook no ORCA is involved: `pb-format check`
 exits non-zero on drift.
@@ -248,21 +248,21 @@ Known-but-deferred, in rough order of cost-to-value:
 - **Blank-line policy** between methods, events and declarations.
   Mostly cosmetic; codebases disagree on one-vs-two-vs-three. Tractable
   token-side.
-- **Continuation alignment** — where a line indents after a trailing
+- **Continuation alignment**: where a line indents after a trailing
   `&`. Two patterns observed: "current indent + one unit", and "aligned
   with the first token of the previous line". Needs column tracking on
   top of the token stream.
 - **Real re-indentation** from logical nesting, rather than the 1:1
   substitution of Rule 1. Needs an AST.
 - **Identifier naming** (Hungarian prefixes, leading underscore for
-  private members) — out of formatter scope entirely. Renaming touches
+  private members): out of formatter scope entirely. Renaming touches
   references, so it is a semantic refactor; it belongs in a linter.
-- **`.srd` (DataWindow) bodies** — a tabular DSL, not PowerScript. The
+- **`.srd` (DataWindow) bodies**: a tabular DSL, not PowerScript. The
   tool recognizes the extension and skips it. A future pass could
   normalize `column(…)` indentation, but only on real demand.
 
 When a deferred invariant graduates, it appends a new Rule to this page
-and a new key under `[style]`. Existing keys never change semantics —
+and a new key under `[style]`. Existing keys never change semantics:
 only new ones are added.
 
 ## Why token-based, and what would change that
@@ -287,10 +287,9 @@ sessions.)
 
 ## Open questions
 
-- Do any workspaces in the wild genuinely need
-  `keyword_case = "preserve"` — coexisting dialects within one codebase
-  that must be respected rather than normalized? If yes the option is
-  load-bearing; if no it can be dropped.
+- Do any workspaces genuinely need `keyword_case = "preserve"` because
+  several dialects coexist in one codebase? If so, the option is
+  load-bearing; otherwise it can be dropped.
 - Should `pb-format detect` propose `"preserve"` on a roughly even
   split, or pick the majority and let the user override? It currently
   picks the majority; an even split is arguably itself the finding.
@@ -301,12 +300,12 @@ sessions.)
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — the file envelope this body sits inside:
+- [[index]]: wiki entry point.
+- [[encoding]]: the file envelope this body sits inside:
   `DefaultExportEncode`, CRLF, `$PBExportHeader$`.
-- [`pb-format`](../../skills/pb-format/SKILL.md) skill — the agent-side
+- [`pb-format`](../../skills/pb-format/SKILL.md) skill, the agent-side
   flow: when to format, how to detect a dialect, when to leave style
   alone.
-- [`pb-src-format`](../../skills/pb-src-format/SKILL.md) skill — the
+- [`pb-src-format`](../../skills/pb-src-format/SKILL.md) skill, the
   writing flow, which owns structure and delegates style here.
-- [`pb-format`](https://github.com/restoresrl/pb-format) — the tool.
+- [`pb-format`](https://github.com/restoresrl/pb-format): the tool.

@@ -8,8 +8,8 @@ nothing.
 
 ## What we are asking permission for, in one sentence
 
-Permission to attach the **built search index** — a SQLite database derived
-from the publicly readable PowerScript reference on `docs.appeon.com` — to
+Permission to attach the **built search index**, a SQLite database derived
+from the publicly readable PowerScript reference on `docs.appeon.com`, to
 releases of the open-source [`pb-ai-code`](https://github.com/restoresrl/pb-ai-code)
 repository, so that a PowerBuilder developer gets it in one command instead of
 re-scraping the documentation site themselves.
@@ -30,7 +30,7 @@ unambiguous. From the copyright page of the *Users Guide for PowerBuilder*:
 GitHub release. So the answer is not to interpret the clause creatively; it is
 to ask for the written permission the clause itself contemplates.
 
-## The short version — for a conversation, not a document
+## The short version: for a conversation, not a document
 
 > We maintain a free, open-source toolkit that lets AI coding assistants work
 > on PowerBuilder codebases. One piece of it makes the assistant look up the
@@ -39,7 +39,7 @@ to ask for the written permission the clause itself contemplates.
 > cites the `docs.appeon.com` URL it came from.
 >
 > Today each developer builds that index by crawling your documentation site
-> themselves — about 1,300 pages, once per machine. We would rather build it
+> themselves: about 1,300 pages, once per machine. We would rather build it
 > once and attach it to our public releases, which means **your site gets
 > crawled once instead of once per user**. That needs your written permission,
 > because the manuals reserve reproduction rights, and we would rather ask
@@ -56,11 +56,11 @@ Precise, because a vague description invites a cautious no.
 
 | | |
 | --- | --- |
-| Source | `https://docs.appeon.com/pb2022r3/powerscript_reference/` — the section currently configured |
+| Source | `https://docs.appeon.com/pb2022r3/powerscript_reference/`: the section currently configured |
 | Size | 1,292 pages, one PB version, producing a 4.5 MB SQLite file |
 | Crawl behaviour | 200 ms between requests to the same host, conditional GET so a refresh re-fetches only what changed |
 | Contents per page | name, category, entry kind, description, syntax, arguments, return value, examples, "see also", and the **source URL** |
-| How it is used | four read-only MCP tools — search, get, list topics, list versions — called by an AI assistant during a code review |
+| How it is used | four read-only MCP tools: search, get, list topics, list versions: called by an AI assistant during a code review |
 | Not included | anything behind a login, anything from the product itself, any customer code |
 | Licence of the toolkit | MIT. The index would ship under whatever terms Appeon sets, stated separately from the code |
 
@@ -80,7 +80,7 @@ Stated plainly, including the part that is self-interested.
 - **Every AI answer points back to your documentation.** The tools return the
   canonical `docs.appeon.com` URL with every result, and the toolkit's rules
   require an assistant to cite it rather than assert PowerScript behaviour
-  from memory. The alternative is not silence — it is an assistant that
+  from memory. The alternative is not silence: it is an assistant that
   guesses, confidently and wrongly, and attaches a code change to the guess.
 - **PowerBuilder becomes usable with the tooling developers now expect.** The
   audience is people maintaining decades-old PB monoliths who are being asked
@@ -92,7 +92,7 @@ Stated plainly, including the part that is self-interested.
 
 ## Safeguards we are offering up front
 
-Not concessions extracted later — the shape we would prefer anyway.
+Not concessions extracted later: the shape we would prefer anyway.
 
 1. **Attribution.** The Appeon copyright notice travels with the file and is
    stated in the repository and in the release notes.
@@ -106,13 +106,13 @@ Not concessions extracted later — the shape we would prefer anyway.
 6. **No human-facing mirror.** We will not publish a readable copy of the
    documentation, in any form, at any time.
 7. **Whatever paperwork suits you.** A licence grant, a letter, or a line in
-   an email — whatever Appeon's counsel prefers.
+   an email: whatever Appeon's counsel prefers.
 
 ## If the full answer is no: a narrower ask
 
 Copyright protects expression, not facts. A **facts-only index** would carry,
 per entry, the name, the argument names and types, the return type, the entry
-kind, and the URL — and none of the descriptive prose or examples.
+kind, and the URL, and none of the descriptive prose or examples.
 
 That is much closer to a table of contents than to a reproduction of the
 manual, it still answers most of what an assistant needs during a code review,
@@ -123,17 +123,17 @@ We would rather ship the full index. We would take this happily.
 
 ## What we would like to come away with
 
-In order of preference:
+Preferred outcomes:
 
 1. Written permission to redistribute the built index, on the terms above.
 2. Written permission for the facts-only index.
-3. A clear "no", which is also a useful answer — it settles the question and
+3. A clear "no", which is also a useful answer: it settles the question and
    the kit keeps building locally, which is what it does today.
 
 There is also a smaller thing worth confirming while the subject is open:
-**that the local scraping itself is fine.** It is what every user does now, it
-is polite and cached, and no notice on the site forbids it — but if Appeon
-sees it differently, we would rather hear that from you than assume.
+**that the local scraping itself is fine.** Every user does this now. The
+scraper is polite and cached, and no notice on the site forbids it. If Appeon
+sees it differently, we would rather hear that than assume.
 
 ## Practical notes for the conversation
 

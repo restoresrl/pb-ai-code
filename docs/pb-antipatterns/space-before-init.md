@@ -26,7 +26,7 @@ expose the convention.
 
 If the developer skips the first call, `lul_buf_len` is still at
 its default `0`, so `space(0)` returns an empty string. The
-second API call then writes into a zero-length buffer — depending
+second API call then writes into a zero-length buffer: depending
 on the API and the Windows kernel mood, this either:
 
 - returns a "buffer too small" error code that the PB code
@@ -36,7 +36,7 @@ on the API and the Windows kernel mood, this either:
 
 The compiler does not flag it. The runtime does not flag it. The
 PB IDE does not flag it. The bug only surfaces when the API in
-question genuinely needs space — often a development machine
+question genuinely needs space: often a development machine
 runs fine and a customer machine with a longer username does not.
 
 ## Idiomatic fix
@@ -83,7 +83,7 @@ Win32 W call should be inspected for the missing first call.
 
 ## Related
 
-- [unchecked fileopen() return](fileopen-unchecked.md) — similar
+- [unchecked fileopen() return](fileopen-unchecked.md): similar
   pattern of skipping a check on an IO-style return value.
-- [isnull on numeric types](isnull-on-numeric.md) — same family
+- [isnull on numeric types](isnull-on-numeric.md): same family
   ("Win32 sentinel value not properly guarded").

@@ -18,8 +18,8 @@ end if
 
 A `.pbl` does not know which executable will link it. In a workspace
 where one framework library is shared between interactive applications
-and services or API servers — the normal shape of a PowerBuilder
-product line — every process-level decision taken inside that library
+and services or API servers, the normal shape of a PowerBuilder
+product line, every process-level decision taken inside that library
 is taken on behalf of hosts the author never considered.
 
 Two calls do the damage, and they fail differently:
@@ -32,7 +32,7 @@ Two calls do the damage, and they fail differently:
   would have logged is on the other side of the call.
 - **`HALT` / `HALT CLOSE`** terminates the process. In a service that
   is a silent stop, usually followed by a restart by the service
-  manager, then the same stop — a crash loop whose cause is three
+  manager, then the same stop: a crash loop whose cause is three
   libraries away from the symptom.
 
 Both are reasonable in the application layer, where something knows a
@@ -41,7 +41,7 @@ not style: the library cannot answer the question the calls presuppose.
 
 `HALT` also skips cleanup. Anything the failing function had already
 `CREATE`d is leaked, and any `finally` further up the stack does not
-run — so the failure path is precisely where the state is worst.
+run, so the failure path is precisely where the state is worst.
 
 ## Idiomatic fix
 
@@ -61,7 +61,7 @@ end if
 Return TRUE
 ```
 
-Where the library needs to *report* rather than merely fail, throw —
+Where the library needs to *report* rather than merely fail, throw:
 the exception carries the message to whatever layer knows how to show
 it, and it unwinds cleanly:
 
@@ -79,14 +79,14 @@ let the top level call `halt close`.
 
 ## How to find it
 
-The question — *"is this library loaded by a target with no
-interactive desktop?"* — is answerable mechanically, which makes this
+The question, *"is this library loaded by a target with no
+interactive desktop?"*, is answerable mechanically, which makes this
 one of the few antipatterns with a reliable detection recipe rather
 than a judgement call:
 
 1. Grep the library's sources for `MessageBox`, `HALT`, `MessageBox(`
    in NVOs and non-visual code.
-2. **Get the target list from the `.pbw`**, via `pb_target_info` — not
+2. **Get the target list from the `.pbw`**, via `pb_target_info`, not
    from a glob over `*.pbt`. The two disagree in both directions: a
    glob misses targets kept in subdirectories and picks up orphaned
    `.pbt` files no workspace declares any more. In the case below the
@@ -97,7 +97,7 @@ than a judgement call:
    library and produces a service or a server is a match;
    `pb_target_info` on the survivors resolves the relative paths.
 
-A hit inside a `window` or `menu` is usually fine — those cannot run
+A hit inside a `window` or `menu` is usually fine: those cannot run
 headless. A hit inside a `userobject`, a global function or an
 application-level helper is the one to look at.
 
@@ -106,8 +106,8 @@ application-level helper is the one to look at.
 - A warehouse-management product line (review run 2026-08-12): the
   transaction framework's `duplicate()` method used `MessageBox` +
   `HALT CLOSE` on connection failure. The library was loaded by **11 of
-  the 14 targets** the workspace declares, **5 of them headless** — two
-  REST servers and three Windows services — with an unattended ETL
+  the 14 targets** the workspace declares, **5 of them headless**, two
+  REST servers and three Windows services, with an unattended ETL
   executable and a test runner as further candidates. It had no callers
   at the time, which is the only reason it had never fired; the finding
   was ranked on severity, not likelihood.
@@ -121,13 +121,13 @@ application-level helper is the one to look at.
   turns this from an opinion into a finding: grep the `.pbt` files for
   the library name, then read the target table in the project's own
   `AGENTS.md` to see which of those targets have no desktop. Neither
-  half is enough alone — the `.pbt` says who links it, the target table
+  half is enough alone: the `.pbt` says who links it, the target table
   says who runs headless.
 
 ## Related
 
-- [`exitprocess-in-destruction`](exitprocess-in-destruction.md) — the
+- [`exitprocess-in-destruction`](exitprocess-in-destruction.md): the
   narrower, more violent case: process termination reached from a
-  destructor. Same family — process-level control flow taken by library
-  code — with the added trap that destructors run at times nobody
+  destructor. Same family, process-level control flow taken by library
+  code, with the added trap that destructors run at times nobody
   chose.

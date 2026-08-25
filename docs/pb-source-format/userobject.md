@@ -1,12 +1,12 @@
 ---
 name: userobject
 status: seeded
-description: Layout of .sru files (PB User Object entry — visual or non-visual).
+description: Layout of .sru files (PB User Object entry: visual or non-visual).
 ---
 
 # Userobject (`.sru`)
 
-A reusable building block — either visual (custom controls, response
+A reusable building block: either visual (custom controls, response
 windows of a kind) or non-visual (logic-only classes). The same
 extension serves both flavors; the type is determined by the
 `global type … from …` line.
@@ -41,21 +41,21 @@ end on
 
 Anatomy:
 
-- **`$PBExportHeader$<name>.sru`** — first text line. Required on
+- **`$PBExportHeader$<name>.sru`**: first text line. Required on
   disk; ignored by `pb_compile_entry_import`.
-- **`forward … end forward`** — declares the userobject type up front.
-- **`global type <name> from <parent>`** — the body. `<parent>`
+- **`forward … end forward`**: declares the userobject type up front.
+- **`global type <name> from <parent>`**: the body. `<parent>`
   determines flavor:
-  - `nonvisualobject` — NVO, pure logic, no UI surface.
-  - `userobject` / `customvisual` — generic visual base.
-  - `commandbutton`, `datawindow`, `dragobject`, … — specialized
+  - `nonvisualobject`: NVO, pure logic, no UI surface.
+  - `userobject` / `customvisual`: generic visual base.
+  - `commandbutton`, `datawindow`, `dragobject`, …: specialized
     visual ancestors.
-  - a custom `u_<base>` / `n_<base>` — typical in framework-heavy
+  - a custom `u_<base>` / `n_<base>`: typical in framework-heavy
     codebases (see parent-class corpus list below).
-- **`global <name> <name>`** — global instance declaration. Present
+- **`global <name> <name>`**: global instance declaration. Present
   even though userobjects are normally instantiated by name, not used
   as a global.
-- **`on <name>.create` / `on <name>.destroy`** — constructor /
+- **`on <name>.create` / `on <name>.destroy`**: constructor /
   destructor. Both `call super::create` / `call super::destroy` *and*
   `TriggerEvent( this, "constructor" )` / `…, "destructor"` are
   required to fire the user-defined events of the same name. The
@@ -75,13 +75,11 @@ block; instance variables in a `type variables` block.
 
 ## Open questions
 
-- The full taxonomy of base types (`nonvisualobject`,
-  `userobject`, `customvisual`, `external`, `transaction`, etc.) —
-  which is which, and how does the file structure differ between
-  them?
-- Userobjects that inherit from another userobject (multi-level
-  hierarchy) — ordering of overrides and instance variables in the
-  file.
+- How does the file structure differ among base types such as
+  `nonvisualobject`, `userobject`, `customvisual`, `external` and
+  `transaction`?
+- In a multi-level userobject hierarchy, how are overrides and instance
+  variables ordered in the file?
 
 <!-- BEGIN auto-generated: pb-source-analyzer -->
 
@@ -141,11 +139,11 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
-- [[window]] — windows commonly inherit from visual userobjects.
-- [[function]] — userobject functions are structurally similar to
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[window]]: windows commonly inherit from visual userobjects.
+- [[function]]: userobject functions are structurally similar to
   global functions but live inside the type block.
-- [[patterns/forward]] — TBD.
-- [[patterns/type-variables]] — TBD.
-- [[patterns/event-syntax]] — TBD.
+- [[patterns/forward]]: TBD.
+- [[patterns/type-variables]]: TBD.
+- [[patterns/event-syntax]]: TBD.

@@ -12,7 +12,7 @@ an object to a text file. That format is what this wiki covers.
 
 An agent that edits PB source files has to produce text that the PB
 IDE (or the `pb_compile_entry_import` MCP tool on top of ORCA) will
-accept. Errors here are not PowerScript syntax errors — they are
+accept. Errors here are not PowerScript syntax errors: they are
 *file-format* errors: missing header, wrong block ordering, wrong
 encoding, missing terminators. Compile-time error messages tend to be
 unhelpful for this category. A wiki of canonical forms and observed
@@ -23,7 +23,7 @@ variants short-circuits the trial-and-error.
 It is not finished, and it is not meant to be: it documents what has been
 observed. A project using this kit holds a **snapshot** of these pages, so
 an agent that meets an undocumented construction cannot edit them where it
-works — it writes a note into the review's plan file instead, and the note
+works: it writes a note into the review's plan file instead, and the note
 is carried back. [`wiki-notes.md`](../wiki-notes.md) explains the shape of
 a note, why the fields are what they are, and how to turn one into a
 change here.
@@ -46,9 +46,9 @@ One page per entry type:
 
 Plus cross-cutting concerns:
 
-- [encoding](encoding.md) — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`. Read this first.
-- [style-conventions](style-conventions.md) — indent character, keyword case, operator spacing, line endings. The four invariants the optional [`pb-format`](https://github.com/restoresrl/pb-format) tool normalizes when a workspace opts in with a `.pb-format.toml`.
-- [patterns/](patterns/) — recurring blocks that appear in multiple entry types: `forward`, `type variables`, `event`, `on …` blocks, etc.
+- [encoding](encoding.md): `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`. Read this first.
+- [style-conventions](style-conventions.md): indent character, keyword case, operator spacing, line endings. The four invariants the optional [`pb-format`](https://github.com/restoresrl/pb-format) tool normalizes when a workspace opts in with a `.pb-format.toml`.
+- [patterns/](patterns/): recurring blocks that appear in multiple entry types: `forward`, `type variables`, `event`, `on …` blocks, etc.
 
 ## Page conventions
 
@@ -88,16 +88,16 @@ variants from real observation).
 
 Two channels:
 
-1. **Bootstrap** — the `pb-source-analyzer` tool
+1. **Bootstrap**: the `pb-source-analyzer` tool
    (`tools/pb-source-analyzer/`) ingests a `.sr*` tree and emits
    aggregated pattern statistics. The output is anonymized (no
    project-specific names) and merged into these pages.
 
-2. **Incremental** — when an agent is about to edit a `.sr*` and the
+2. **Incremental**, when an agent is about to edit a `.sr*` and the
    relevant page is incomplete or the file shows a variant not yet
    documented, the agent appends a new entry under "Variants observed"
    (or opens an item under "Open questions"). This is the
-   [Karpathy "LLM Wiki" pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) —
+   [Karpathy "LLM Wiki" pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f),
    the agent contributes to the knowledge base as a side-effect of
    doing the work.
 
@@ -115,11 +115,11 @@ The skill that triggers this behavior is
   step. The pages here describe what the text inside that file looks
   like.
 - Not project-specific. Conventions, naming, and patterns specific to
-  one codebase belong outside this wiki (layer 3 — deferred).
+  one codebase belong outside this wiki (layer 3: deferred).
 
 ## A `.pbl` holds two things, and only one of them is here
 
-Every page in this wiki describes the **source** form of an entry — the
+Every page in this wiki describes the **source** form of an entry: the
 text an export produces and an import consumes. A `.pbl` also holds the
 **compiled p-code**, and several behaviours that look mysterious from
 the source side are explained by that second half:
@@ -134,7 +134,7 @@ the source side are explained by that second half:
 - **A failed import damages the two halves differently.** Measured on
   one entry: the source grew by the edited line (`source_size`
   3920 → 3962) while the compiled form **shrank by 1218 bytes**
-  (`object_size` 6792 → 5574) — the event that failed to compile lost
+  (`object_size` 6792 → 5574): the event that failed to compile lost
   its p-code. The entry is left with new text and a mutilated object,
   not with old code.
 - **An export cannot show you any of this.** It returns the source
@@ -142,9 +142,9 @@ the source side are explained by that second half:
   text. Verifying a library by diffing exported sources is therefore
   blind to exactly the failure mode a bad import produces.
 
-`pb_library_entry_information` reports the two sizes separately —
+`pb_library_entry_information` reports the two sizes separately,
 `source_size` (in UTF-16 code units, so halve it for the exported
-bytes) and `object_size` — which is the only view of the compiled half
+bytes) and `object_size`, which is the only view of the compiled half
 the tooling offers.
 
 The write loop in

@@ -1,12 +1,12 @@
 ---
 name: project
 status: stub
-description: Layout of .srj files (PB Project entry — build target definition).
+description: Layout of .srj files (PB Project entry: build target definition).
 ---
 
 # Project (`.srj`)
 
-A project entry defines a build target — executable, deployment, or
+A project entry defines a build target: executable, deployment, or
 component packaging. Usually one or two per application target.
 
 ## Canonical form
@@ -23,8 +23,7 @@ component packaging. Usually one or two per application target.
   deployment projects in file structure.
 - How resource manifests, version info, and icon references are
   embedded.
-- Conditional build options — are they stored in the `.srj` or
-  externally?
+- Are conditional build options stored in the `.srj` or externally?
 
 <!-- BEGIN auto-generated: pb-source-analyzer -->
 
@@ -48,6 +47,6 @@ Derived from `pb-source-analyzer` over a private corpus. Do not edit by hand; th
 
 ## Cross-references
 
-- [[index]] — wiki entry point.
-- [[encoding]] — `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
-- [[application]] — projects target one application object.
+- [[index]]: wiki entry point.
+- [[encoding]]: `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$` rules.
+- [[application]]: projects target one application object.
