@@ -13,6 +13,29 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-08-25
+
+### Changed
+
+- The generated `AGENTS.md` is now a short project snapshot followed by four
+  PowerBuilder workflow rules. Recovery details remain in the installed
+  skills, where they can stay current without turning the project's permanent
+  instruction file into another guide. The file says that its workspace,
+  projection and Git entries came from install-time checks and need manual
+  maintenance.
+
+### Fixed
+
+- The generated `AGENTS.md` no longer lists `.pbt` files found by a shallow
+  filesystem search. That list included orphaned files, missed targets in
+  deeper directories, and did not represent the targets declared by the
+  workspace. The installer still records the `.pbw`; skills resolve its real
+  targets when they need them.
+- A missing PowerBuilder version now has valid Markdown. If an existing
+  `AGENTS.md` records a different version from `--pb-version`, the installer
+  leaves the file alone but reports both values and warns which one a later
+  flag-free install will reuse.
+
 ## [0.7.1] - 2026-08-25
 
 ### Changed

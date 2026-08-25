@@ -485,6 +485,7 @@ def _write_agents_md(reporter: Reporter, target: Path, pb_version: str | None) -
         sources_protected=gitignore_mod.sources_protected(target),
     )
     rel = agentsmd_mod.FILE_NAME
+    recorded_pb_version = agentsmd_mod.read_version(target)
     try:
         created = agentsmd_mod.create(target, facts)
     except OSError as exc:
@@ -495,7 +496,13 @@ def _write_agents_md(reporter: Reporter, target: Path, pb_version: str | None) -
     if created:
         reporter.block(report_mod.agents_md_written(rel, pb_version))
         return
-    reporter.block(report_mod.agents_md_exists(rel, pb_version))
+    reporter.block(
+        report_mod.agents_md_exists(
+            rel,
+            pb_version,
+            recorded_pb_version=recorded_pb_version,
+        )
+    )
     reporter.block(report_mod.quoted_block(agentsmd_mod.block(facts)))
 
 

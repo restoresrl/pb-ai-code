@@ -366,7 +366,8 @@ def test_ledger21_the_copy_set_is_closed(tmp_path: Path) -> None:
     # and shipping it into a customer's PowerBuilder project would tell an
     # agent to go and edit the kit.
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
-    assert "PowerBuilder facts an agent needs" in written
+    assert "PowerBuilder project" in written
+    assert "PowerBuilder workflow" in written
     assert "pb-ai-code" not in written.splitlines()[0]
     assert not [name for name in installed if name.endswith(".db")]
     assert not [name for name in installed if "appeon-index/" in name]

@@ -692,18 +692,38 @@ def agents_md_written(rel: str, pb_version: str | None) -> list[Line]:
     return lines
 
 
-def agents_md_exists(rel: str, pb_version: str | None) -> list[Line]:
+def agents_md_exists(
+    rel: str,
+    pb_version: str | None,
+    *,
+    recorded_pb_version: str | None,
+) -> list[Line]:
     """It is theirs. Print the block; do not touch the file.
 
     An installer that appended to a hand-maintained instruction file would
     corrupt it a little on every update, and the corruption would be read
-    by an agent as instructions.
+    by an agent as instructions. A version conflict is reported here because
+    the marker follows the command line while the existing file stays unchanged.
     """
     lines = [
         BLANK,
         Line(f"Note: {rel} already exists, so it was left alone.", "yellow"),
     ]
-    if pb_version is not None:
+    if (
+        pb_version is not None
+        and recorded_pb_version is not None
+        and pb_version != recorded_pb_version
+    ):
+        lines += [
+            Line(
+                f"      It records PowerBuilder {recorded_pb_version}, but this install uses "
+                f"{pb_version}.",
+                "yellow",
+            ),
+            Line("      Update AGENTS.md before the next install. Without --pb-version,"),
+            Line(f"      the installer will reuse {recorded_pb_version}. Suggested section:"),
+        ]
+    elif pb_version is not None:
         lines.append(
             Line(f"      It should record that this project uses PowerBuilder {pb_version}")
         )

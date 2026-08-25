@@ -107,10 +107,9 @@ def test_the_version_reaches_both_agents_md_and_the_marker(tmp_path: Path) -> No
     assert result.returncode == 0, result.stderr
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
-    assert "**PowerBuilder version: 22.0**" in written
-    # The reason it has to be maintained by hand, stated in the file itself.
-    assert "release 6 DataWindows" in written
-    assert "ever migrated" in written
+    assert "PowerBuilder version: 22.0" in written
+    assert "install-time snapshot" in written
+    assert "migrated to another" in written
 
     marker = (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
     assert "# PB:        22.0" in marker
@@ -148,8 +147,9 @@ def test_without_a_version_the_file_says_so_rather_than_guessing(tmp_path: Path)
     assert result.returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
-    assert "not stated" in written
-    assert "no agent should assume one" in written
+    assert "PowerBuilder version: **not stated**" in written
+    assert "**PowerBuilder version: **" not in written
+    assert "Ask before opening an ORCA session" in written
     assert "PowerBuilder version not stated" in result.stdout
 
     marker = (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
@@ -199,63 +199,64 @@ def test_an_existing_agents_md_is_never_touched(tmp_path: Path) -> None:
     assert "PowerBuilder version: 22.0" in result.stdout
 
 
-def test_the_written_file_states_what_was_read_off_the_disk(tmp_path: Path) -> None:
-    """Facts, not deductions: the workspace files, the projection, git.
+def test_an_existing_agents_md_reports_a_conflicting_version(tmp_path: Path) -> None:
+    """The command-line version wins, but a stale project file cannot stay silent."""
+    target = tmp_path / "target"
+    target.mkdir()
+    original = "# app\n\n- PowerBuilder version: 19.2\n"
+    (target / "AGENTS.md").write_text(original, encoding="utf-8")
 
-    Everything in the block is either something a person said or something
-    that can be checked by looking. A generated instruction file that
-    guessed would be believed.
+    result = run_install(target, "--pb-version", "22.0")
+
+    assert result.returncode == 0
+    assert (target / "AGENTS.md").read_text(encoding="utf-8") == original
+    assert "records PowerBuilder 19.2, but this install uses 22.0" in result.stdout
+    assert "Without --pb-version" in result.stdout
+    assert "will reuse 19.2" in result.stdout
+    marker = (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
+    assert "# PB:        22.0" in marker
+
+
+def test_the_written_file_records_the_workspace_not_loose_target_files(tmp_path: Path) -> None:
+    """The workspace is useful; a shallow glob of target files is not.
+
+    The workspace declares the real target list. Looking for nearby `.pbt`
+    files can include orphaned targets and miss valid ones in deeper
+    directories, so the generated file records only the workspace.
     """
     target = tmp_path / "target"
     (target / "src").mkdir(parents=True)
     (target / "src" / "app.pbw").write_text("", encoding="utf-8")
-    (target / "src" / "app.pbt").write_text("", encoding="utf-8")
+    (target / "src" / "orphaned.pbt").write_text("", encoding="utf-8")
 
     assert run_install(target, "--pb-version", "22.0").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     assert "`src/app.pbw`" in written
-    assert "`src/app.pbt`" in written
-    # No ws_objects and no git in this target, and both are hazards worth
-    # naming rather than omissions worth hiding.
-    assert "No text projection" in written
-    assert "Not under version control" in written
+    assert "Targets:" not in written
+    assert "orphaned.pbt" not in written
+    assert "Text projection: **not found**" in written
+    assert "Version control: **Git repository not found**" in written
 
 
-def test_the_hazard_is_stated_with_the_half_the_kit_already_covers(tmp_path: Path) -> None:
-    """Naming the risk without naming the mitigation produces a wrong conclusion.
-
-    It produced one twice. An agent read "a change cannot be undone" next to
-    a `pbl_only` workspace and told the user an import here is
-    unrecoverable, recommending a manual copy of the `.pbl` - while
-    `pb-apply-plan`, installed in the same directory, snapshots the library
-    before every fix and restores it byte for byte when the import fails.
-
-    So the file says both halves: a failed import is already covered, and a
-    successful change that later proves wrong is the risk that a copy or a
-    `git init` actually buys protection against.
-    """
+def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) -> None:
+    """Stable operating rules belong here; detailed recovery guidance does not."""
     target = tmp_path / "target"
     target.mkdir()
+
     assert run_install(target, "--pb-version", "22.0").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
-    assert "pb-apply-plan" in written
-    assert "No manual copy is needed" in written
-    # The two halves, each identified as such.
-    assert "**failed** import" in written
-    assert "**successful** change" in written
-    # And the case neither protects.
-    assert "by a tool other than the apply loop" in written
+    assert "## PowerBuilder workflow" in written
+    assert "installed `pb-*` skills" in written
+    assert "configured `pb_*` ORCA tools" in written
+    assert "Never edit or replace a `.pbl` file directly" in written
+    assert "pb-apply-plan" not in written
+    assert len(written.splitlines()) < 30
 
 
-def test_a_workspace_with_both_projection_and_git_is_not_lectured(tmp_path: Path) -> None:
-    """The passage is about a hazard; where there is none it does not appear.
-
-    A project with a text projection under version control has a diff to
-    read and a history to return to, so the paragraph would be noise - and
-    noise in an instruction file is read as instruction.
-    """
+def test_a_workspace_with_projection_and_git_records_both_facts(tmp_path: Path) -> None:
+    """The project section is a short snapshot of the install-time facts."""
     target = tmp_path / "target"
     (target / "ws_objects").mkdir(parents=True)
     subprocess.run(["git", "init", "-q", str(target)], check=True, capture_output=True)
@@ -263,8 +264,9 @@ def test_a_workspace_with_both_projection_and_git_is_not_lectured(tmp_path: Path
     assert run_install(target, "--pb-version", "22.0").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
-    assert "text projection" in written
-    assert "**failed** import" not in written
+    assert "Text projection: `ws_objects/` found" in written
+    assert "Version control: Git" in written
+    assert "Source protection: **missing for `.sr*` files**" in written
 
 
 def test_the_kits_own_agents_md_is_never_the_one_installed(tmp_path: Path) -> None:
@@ -307,7 +309,6 @@ def test_survey_reads_the_disk_and_nothing_else(tmp_path: Path) -> None:
     facts = agentsmd.survey(root, pb_version=None, is_git=True)
 
     assert facts.workspaces == ("app.pbw",)
-    assert facts.targets == ()
     assert facts.has_projection is True
     assert facts.is_git is True
     assert facts.pb_version is None
