@@ -38,10 +38,10 @@ uv --version
 Install a release as a persistent `uv` tool:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.1
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.2
 ```
 
-The `@v0.11.1` part is a Git tag, not a decoration. It makes the install
+The `@v0.11.2` part is a Git tag, not a decoration. It makes the install
 repeatable: every machine gets the same released code. If you leave the tag
 off, `uv` installs the repository's default branch, which may be newer than the
 latest GitHub release.
@@ -170,18 +170,71 @@ usually load the skill list and MCP servers only when a session starts.
 
 ## Updating
 
-Updating has two independent parts.
+Updating has two independent parts: the persistent commands and each generated
+project bundle. `pb-ai-code update` handles both when you run it from an
+installed project.
 
-### Update commands and project bundles
+### Update commands and the current project bundle
 
-Install the desired release globally, then install it in each project:
+From the project root, run:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.1
+pb-ai-code update
+```
+
+The command checks the latest stable GitHub Release, compares it with the
+persistent tool and the project's marker, then asks before changing anything.
+When an update is available, it installs the release globally with `uv` and
+uses that same release to refresh the project's skills, knowledge base, and MCP
+configuration. Restart the assistant afterwards.
+
+Use `--yes` only in an already approved non-interactive flow:
+
+```powershell
+pb-ai-code update --yes
+```
+
+Run this without an installed project to update only the persistent tool. A
+project with no marker is not changed; use `pb-ai-code install` to configure it
+for the first time.
+
+### Check without changing anything
+
+```powershell
+pb-ai-code update --check
+```
+
+For an agent or another program, use the JSON form:
+
+```powershell
+pb-ai-code update --check --json
+```
+
+The response contains `update_available`, `global_update_available`, and, for
+an installed project, `project_update_available`. Checks use GitHub Releases,
+not the default Git branch. A successful check is cached in the current user's
+local data directory for 24 hours; use `--refresh` to bypass the cache:
+
+```powershell
+pb-ai-code update --check --refresh
+```
+
+The generated `AGENTS.md` tells an agent to run the JSON check once at the
+start of a session. If an update is available, it must offer the update and
+wait for the user's approval. It must not update the user's global tool or the
+project automatically.
+
+### Pin a particular release
+
+To install a specific release instead of the latest published release, use its
+tag explicitly and then install it in each project:
+
+```powershell
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.2
 pb-ai-code install --target C:\Projects\MyApp
 ```
 
-Replace `v0.11.1` with the release tag you chose. Do not omit the tag unless
+Replace `v0.11.2` with the release tag you chose. Do not omit the tag unless
 you deliberately want the current default branch instead of a released version.
 Re-run the last command for every project that should receive that release. The
 marker file records the installed source and `pb-ai-code status` displays it.
@@ -203,7 +256,7 @@ if it has the server open.
 Use `uvx` if you cannot or do not want to install persistent commands:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.2 `
   pb-ai-code install --target C:\Projects\MyApp --pb-version 22.0
 ```
 
@@ -211,7 +264,7 @@ This installs the project bundle but does not make `pb-ai-code` available in
 future terminals. Build PB Search with the same one-off form if required:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.2 `
   pb-appeon-index update --all
 ```
 

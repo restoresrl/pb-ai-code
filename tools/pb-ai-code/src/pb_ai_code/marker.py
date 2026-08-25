@@ -228,6 +228,7 @@ class MarkerFields:
     sha: str | None
     branch: str | None
     harness: str | None
+    pb_version: str | None
     mcp: str | None
     appeon: str | None
     contents: tuple[str, ...]
@@ -337,10 +338,10 @@ def write(path: Path, text: str) -> None:
         raise
 
 
-#: The six keys :func:`parse` reads back. A fixed alternation rather than
+#: The seven keys :func:`parse` reads back. A fixed alternation rather than
 #: "whatever precedes a colon", because ``# Source of truth:`` and
 #: ``# To update:`` are prose, not values.
-_KEY_RE = re.compile(r"^#[ \t]+(Installed|Version|Source|Harness|MCP|Appeon):[ \t]*(.*)$")
+_KEY_RE = re.compile(r"^#[ \t]+(Installed|Version|Source|Harness|PB|MCP|Appeon):[ \t]*(.*)$")
 
 #: Enough of :data:`DIRTY_MARKER_WARNING` to recognise it, and not enough
 #: to collide with the settings-replaced WARN.
@@ -431,6 +432,7 @@ def parse(text: str) -> MarkerFields:
         sha=sha,
         branch=branch,
         harness=values.get("Harness"),
+        pb_version=values.get("PB"),
         mcp=values.get("MCP"),
         appeon=values.get("Appeon"),
         contents=tuple(contents),

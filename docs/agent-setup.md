@@ -49,7 +49,7 @@ If `uv` exists but either persistent command is missing, ask before installing
 this release for the current user:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.1
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.2
 ```
 
 Open a new terminal if needed, then verify:
@@ -75,7 +75,7 @@ pb-appeon-index update --all
 If the persistent command is unavailable by the user's choice, use:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.2 `
   pb-appeon-index update --all
 ```
 
@@ -108,7 +108,7 @@ If the persistent command is unavailable, replace the command in either example
 with:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.2 `
   pb-ai-code install
 ```
 
@@ -125,7 +125,7 @@ pb-ai-code status --target C:\Projects\MyApp --json
 For a one-off install:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.2 `
   pb-ai-code status --target C:\Projects\MyApp --json
 ```
 
@@ -144,7 +144,25 @@ If the project already has an `AGENTS.md`, the installer leaves it unchanged
 and prints the PowerBuilder version note to add manually. Report that result to
 the user instead of editing their instruction file without permission.
 
-## 6. Explain the client limitation and restart
+## 6. Check for updates at the start of a later session
+
+When an agent begins work in an installed project, run this once per session:
+
+```powershell
+pb-ai-code update --check --json
+```
+
+The result is cached for 24 hours and changes neither the machine nor the
+project. If `update_available` is `true`, tell the user which release is
+available and offer to run `pb-ai-code update`. Do not run that command until
+the user approves: it can update a persistent tool for the current Windows user
+and regenerate files in the project.
+
+Do not treat a failed check as a setup failure. Network access and GitHub may be
+unavailable; continue with the installed bundle and mention the check only if it
+matters to the requested work.
+
+## 7. Explain the client limitation and restart
 
 `.mcp.json` is a neutral project MCP configuration. Claude Code reads it
 directly. A client with a different MCP format may require translation into its

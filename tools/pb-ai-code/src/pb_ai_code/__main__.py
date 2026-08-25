@@ -6,6 +6,7 @@ Subcommands::
             [--skills-dir REL] [--commands-dir REL]
             [--skip-mcp-config] [--dry-run]
     status  [--target PATH] [--json]
+    update  [--target PATH] [--check] [--json] [--refresh] [--yes]
 
 Long options only — the house rule is that not one short flag exists in
 either sibling CLI. ``--harness`` takes ``type=str.lower`` so
@@ -42,6 +43,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -60,6 +62,7 @@ from . import pbversion as pbversion_mod
 from . import plan as plan_mod
 from . import provenance as provenance_mod
 from . import report as report_mod
+from . import update as update_mod
 from .harness import Adapter
 from .kit import Kit
 from .plan import Plan
@@ -561,6 +564,154 @@ def _cmd_status(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+# --- update ------------------------------------------------------------------
+
+
+def _update_install_args(target: Path, fields: marker_mod.MarkerFields) -> list[str]:
+    """Reconstruct the supported install shape from a project's marker.
+
+    Fixed harnesses need only their name. Generic installs recover their
+    custom sibling directories from the marker's Contents list. Markers from
+    before the PB line still work: the existing AGENTS.md supplies the
+    PowerBuilder version when the new installer runs.
+    """
+    if fields.harness not in harness_mod.HARNESS_IDS:
+        raise UsageError(
+            "the installed project has no recognised harness; run pb-ai-code install instead"
+        )
+    args = ["--target", str(target), "--harness", fields.harness]
+    if fields.harness == "generic":
+
+        def is_layout_entry(entry: str, name: str) -> bool:
+            normalised = entry.replace("\\", "/")
+            return normalised == name or normalised.endswith(f"/{name}")
+
+        skills = next(
+            (entry for entry in fields.contents if is_layout_entry(entry, "skills")),
+            None,
+        )
+        commands = next(
+            (entry for entry in fields.contents if is_layout_entry(entry, "commands")),
+            None,
+        )
+        if skills is not None:
+            args += ["--skills-dir", skills]
+        if commands is not None:
+            args += ["--commands-dir", commands]
+    if fields.pb_version and fields.pb_version != "not stated - see AGENTS.md":
+        args += ["--pb-version", fields.pb_version]
+    if fields.mcp == report_mod.MCP_MARKER_SKIPPED:
+        args.append("--skip-mcp-config")
+    return args
+
+
+def _update_check_payload(
+    result: update_mod.CheckResult,
+    *,
+    project_version: str | None,
+) -> dict[str, object]:
+    """The stable machine-readable result used by an agent at session start."""
+    project_needs_update = project_version is not None and project_version != result.latest.version
+    return {
+        "running_version": result.running_version,
+        "latest_version": result.latest.version,
+        "latest_tag": result.latest.tag,
+        "release_url": result.latest.url,
+        "global_update_available": result.update_available,
+        "project_version": project_version,
+        "project_update_available": project_needs_update,
+        "update_available": result.update_available or project_needs_update,
+        "from_cache": result.from_cache,
+    }
+
+
+def _confirm_update() -> bool:
+    """Ask before changing a global tool or a consumer project."""
+    if not sys.stdin.isatty():
+        raise UsageError("update needs --yes when it is run without an interactive terminal")
+    try:
+        return input("Install the available pb-ai-code update? [y/N] ").strip().lower() in {
+            "y",
+            "yes",
+        }
+    except EOFError:
+        return False
+
+
+def _cmd_update(args: argparse.Namespace) -> int:
+    """Check a release, then update the persistent tool and installed project."""
+    target = plan_mod.validate_target(args.target)
+    marker_path = marker_mod.find(target)
+    fields = (
+        marker_mod.parse(marker_path.read_text(encoding="utf-8-sig"))
+        if marker_path is not None
+        else None
+    )
+    running_version = provenance_mod.distribution_version()
+    try:
+        checked = update_mod.check(running_version, refresh=bool(args.refresh))
+    except update_mod.UpdateCheckError as exc:
+        if args.check:
+            payload = {
+                "running_version": running_version,
+                "update_available": False,
+                "check_error": str(exc),
+            }
+            if args.json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(f"Update check unavailable: {exc}")
+            return EXIT_OK
+        raise
+
+    payload = _update_check_payload(
+        checked,
+        project_version=fields.version if fields is not None else None,
+    )
+    if args.check:
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        elif payload["update_available"]:
+            print(
+                f"Update available: {checked.latest.version} (installed tool: {running_version})."
+            )
+        else:
+            print(f"pb-ai-code is up to date ({checked.latest.version}).")
+        return EXIT_OK
+
+    project_needs_update = bool(payload["project_update_available"])
+    if not checked.update_available and not project_needs_update:
+        print(f"pb-ai-code is already up to date ({checked.latest.version}).")
+        return EXIT_OK
+    if not args.yes and not _confirm_update():
+        print("Update cancelled.")
+        return EXIT_OK
+
+    if checked.update_available:
+        print(f"Updating the persistent tool to {checked.latest.tag}...")
+        result = update_mod.run(update_mod.global_install_command(checked.latest))
+        if result != 0:
+            raise update_mod.UpdateCheckError(
+                f"uv could not install {checked.latest.tag} (exit {result})"
+            )
+
+    if fields is not None and (checked.update_available or project_needs_update):
+        print(f"Updating the project bundle to {checked.latest.tag}...")
+        command = update_mod.project_install_command(
+            checked.latest,
+            _update_install_args(target, fields),
+        )
+        result = update_mod.run(command)
+        if result != 0:
+            raise update_mod.UpdateCheckError(
+                f"the project bundle update to {checked.latest.tag} failed (exit {result})"
+            )
+        print("Project bundle updated. Restart the assistant to load the new skills and MCP setup.")
+    elif checked.update_available:
+        print("Persistent tool updated. Run pb-ai-code install in each project you want to update.")
+    return EXIT_OK
+
+
 # --- argument parsing --------------------------------------------------------
 
 
@@ -633,6 +784,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="machine-readable form on stdout, and nothing else",
     )
     p_status.set_defaults(func=_cmd_status)
+
+    p_update = sub.add_parser(
+        "update",
+        help="check GitHub Releases and update the tool and, when installed, this project",
+    )
+    p_update.add_argument(
+        "--target",
+        default=_DEFAULT_TARGET,
+        help="installed project to update when it has a marker (default: .)",
+    )
+    p_update.add_argument(
+        "--check",
+        action="store_true",
+        help="report whether a release is available; change nothing",
+    )
+    p_update.add_argument(
+        "--json",
+        action="store_true",
+        help="machine-readable output for --check",
+    )
+    p_update.add_argument(
+        "--refresh",
+        action="store_true",
+        help="ignore the 24-hour local release-check cache",
+    )
+    p_update.add_argument(
+        "--yes",
+        action="store_true",
+        help="perform the update without asking for confirmation",
+    )
+    p_update.set_defaults(func=_cmd_update)
     return parser
 
 

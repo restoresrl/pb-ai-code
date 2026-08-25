@@ -7,7 +7,7 @@ setup walkthrough.
 ## Commands
 
 ```text
-pb-ai-code [--version] {install,status}
+pb-ai-code [--version] {install,status,update}
 pb-appeon-index {scrape,build,update,search,serve-mcp,versions}
 ```
 
@@ -42,6 +42,24 @@ pb-ai-code status [--target PATH] [--json]
 
 `--json` writes only machine-readable status to standard output. The command
 reads the marker created during installation and does not contact the network.
+
+### `pb-ai-code update`
+
+```text
+pb-ai-code update [--target PATH] [--check] [--json] [--refresh] [--yes]
+```
+
+Without `--check`, the command finds the latest stable GitHub Release and asks
+before updating. In an installed project, it updates both the persistent tool
+and the project bundle; elsewhere, it updates only the persistent tool.
+
+| Option | Effect |
+| --- | --- |
+| `--target PATH` | Project to inspect or update. Defaults to the current directory. |
+| `--check` | Report availability only; make no changes. |
+| `--json` | Machine-readable result for `--check`. |
+| `--refresh` | Ignore the successful 24-hour local release-check cache. |
+| `--yes` | Skip the confirmation prompt for an approved update. |
 
 ### `pb-appeon-index`
 

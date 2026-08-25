@@ -13,6 +13,7 @@ Verbs:
     install   copy skills, commands, knowledge base, harness settings and
               the MCP server block into the target, then write a marker
     status    read the marker back and say what is installed there
+    update    check GitHub Releases and update the persistent tool and project
 
 Each verb is a subcommand of ``python -m pb_ai_code`` or of the console
 script ``pb-ai-code``.

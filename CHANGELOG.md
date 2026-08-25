@@ -13,6 +13,21 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-08-25
+
+### Added
+
+- Added `pb-ai-code update` to check published GitHub Releases and, with
+  approval, update the persistent tool and the bundle in the current project.
+- Added a cached, JSON-capable update check for agents at the start of a
+  session. The generated project instructions require user approval before an
+  update changes the machine or project.
+
+### Changed
+
+- Updated installation and agent setup guidance for release checks and the
+  coordinated project update flow.
+
 ## [0.11.1] - 2026-08-25
 
 ### Changed
