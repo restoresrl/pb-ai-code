@@ -72,7 +72,10 @@ def install_bytes(target: Path, home: Path) -> subprocess.CompletedProcess[bytes
 
     ``capture_output`` without ``text`` keeps the bytes: the point of these
     tests is which bytes came out, and decoding them here would hide the
-    very failure being pinned.
+    very failure being pinned. The target is the child process's working
+    directory rather than a command-line argument. Some Windows launchers
+    replace non-ANSI command-line arguments before Python starts, which tests
+    argument transport instead of the report writer.
     """
     home.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
@@ -88,12 +91,11 @@ def install_bytes(target: Path, home: Path) -> subprocess.CompletedProcess[bytes
             "-m",
             "pb_ai_code",
             "install",
-            "--target",
-            str(target),
             "--harness",
             "claude-code",
         ],
         capture_output=True,
+        cwd=target,
         env=env,
     )
 
