@@ -2,7 +2,7 @@
 name: pb-src-format
 description: Use this whenever you are about to write or edit the content of a PowerBuilder source file (.sra/.srw/.sru/.srf/.srd/.srm/.srs/.srq/.srj). Tells you where to find the canonical layout for each entry type, how to spot variants the wiki has not documented yet, and how to grow the wiki as you meet new cases. The file itself is produced by ORCA through pb-orca-mcp — this skill is about writing correct content inside it, not about assembling the file.
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Editing PB source content with the format wiki
@@ -16,8 +16,9 @@ the loop is described in
 
 ## The division of labour, stated once
 
-**Never hand-assemble a `.sr*` file.** ORCA writes it, byte-identical
-to what the IDE produces:
+**Never hand-assemble a `.sr*` file.** ORCA exports the source held by the
+`.pbl` to a scratch file. You edit that scratch file, import it into the
+library, and PowerBuilder updates its managed projection:
 
 ```
 pb_object_export_file(lib, entry, type)   -> ORCA writes <entry>.<ext>
@@ -27,19 +28,21 @@ pb_object_import_file(path, lib)          -> compiles, reports errors,
                                              projection in the same call
 ```
 
-So the envelope — the `$PBExportHeader$` line, the `$PBExportComments$`
-line, the BOM, the CRLF line endings — is not yours to build. What is
-yours is the **content between them**, and that is what the wiki
-documents.
+The envelope, including `$PBExportHeader$`, `$PBExportComments$`, the BOM,
+and line endings, is not yours to build. What is yours is the **content
+between them**, and that is what the wiki documents.
 
-Three rules when you edit the exported file:
+Rules for the scratch export:
 
-- Leave the `$PBExport*` header lines alone. They carry the entry's
-  identity and its comment metadata.
-- **Do not translate newlines.** The file is CRLF. An editor that
-  normalizes to LF turns a one-line fix into a whole-file diff and puts
-  LF inside the `.pbl`.
+- Leave the `$PBExport*` header lines alone. They carry the entry identity
+  and comment metadata.
+- **Do not translate newlines during an ordinary edit.** A healthy IDE
+  projection uses CRLF, but a `.pbl` can retain noncanonical LF. Preserve
+  what the export gave you so a functional fix does not become a whole-file
+  maintenance change.
 - **Do not re-encode.** Preserve the BOM you found.
+- **Never copy the result into `ws_objects/`.** Import it through ORCA and
+  require PowerBuilder's sync to update the projection.
 
 The only case where content has to come from somewhere other than an
 export is a **brand-new entry**, because there is nothing to export

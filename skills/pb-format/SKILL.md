@@ -2,7 +2,7 @@
 name: pb-format
 description: Use this when you need to apply, generate, or verify PowerScript style conventions (indent, keyword case, operator spacing, line endings) on a .sr* source — either as a step in the edit loop before importing, or after the fact over a whole library. Owns the .pb-format.toml config contract and the boundary between style normalization (this skill) and structural format (pb-src-format). The engine is pb-format, a separate, optional CLI: everything here degrades to a no-op when it is not installed.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # PowerScript style formatting
@@ -142,18 +142,20 @@ go through ORCA to reach the `.pbl`; formatting the text files alone
 would leave the binary stale. The flow, which the `/pb-format` command
 wraps:
 
-1. `pb_library_export_sources(lib_path)` — writes every entry in the
-   library out as text, in one call. (On a `pbl_only` project this
-   *creates* a source projection that did not exist; say so first.)
-2. `pb-format check <dir>` — reports which files would change, and
-   exits non-zero if any would. This is the honest budget estimate:
-   it tells you the size of the diff before you commit to it.
-3. `pb-format format <dir>` — rewrites them.
-4. For each changed file, `pb_object_import_file` to land it in the
-   `.pbl`, with confirmation per entry and the compile result checked.
+1. `pb_library_export_sources(lib_path, dest_dir=<scratch>)` writes every
+   entry to a directory outside the project. It must not create or replace
+   `ws_objects/`; the PowerBuilder IDE owns that projection.
+2. `pb-format check <scratch>` reports which files would change and exits
+   non-zero if any would. This is the budget estimate before committing to a
+   sweep.
+3. `pb-format format <scratch>` rewrites only the exported scratch files.
+4. For each changed file, use `pb_object_import_file` to land it in the
+   `.pbl`, check the compile result, and require PowerBuilder's projection
+   sync to succeed.
 
-Steps 2-3 are also the right thing to wire into a pre-commit hook or
-CI, with no ORCA involved: `check` exits 1 on drift.
+A read-only `pb-format check` can run in a pre-commit hook or CI and exits 1
+on drift. Do not run `format` directly over `ws_objects/`; that would modify
+the projection without changing the `.pbl` through ORCA.
 
 ## Entry point 3 — writing a file with no PB in the loop
 

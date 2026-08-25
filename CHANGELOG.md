@@ -13,6 +13,55 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-25
+
+### Changed
+
+- The write workflow now states one authority model throughout: `pb-ai-code`
+  changes objects in their `.pbl` through ORCA, and PowerBuilder owns the
+  `ws_objects/` projection. Reads and searches may use projected source, but
+  no skill creates, edits, copies, or deletes projected files directly.
+- A `pbl_only` workspace stays that way until a developer enables Git or SVN
+  in the PowerBuilder IDE. Bulk exports always go to scratch and no longer
+  offer to bootstrap a project projection.
+- Line-ending maintenance no longer imports the checked-out projection into
+  the `.pbl` by default. A mismatch stops the flow because it does not prove
+  which side is current. Explicit normalization starts from a scratch export,
+  lands through ORCA, and requires PowerBuilder's sync to succeed.
+- Unattended apply runs stop on source-control configuration problems. They no
+  longer edit or commit a project's `.gitattributes` on their own.
+- Existing `.mcp.json` files retain their LF or CRLF style after a merge. New
+  files still use CRLF.
+
+### Added
+
+- [`authority-and-sync.md`](docs/pb-source-format/authority-and-sync.md)
+  records the create, modify, and delete contract between the `.pbl`, ORCA,
+  and PowerBuilder's managed projection.
+- The installer checks effective `text` and `diff` attributes on real `.sr*`
+  paths. It reports scoped or nested rule conflicts, explicit binary rules,
+  UTF-16 files, and NUL-bearing exports separately from missing byte
+  protection. SVN working copies are identified without receiving Git advice.
+
+### Fixed
+
+- The format guide no longer claims that LF-only source is always rejected.
+  Imports can retain LF in a `.pbl`; it is noncanonical and causes later
+  whole-file projection diffs.
+- Removed the PowerShell fallback that changed a BOM without reliably
+  restoring CRLF and wrote directly to `ws_objects/`.
+- `pb-source-analyzer` now checks the complete decoded file for bare LF and
+  bare CR instead of sampling only its first 2048 characters.
+- Installer comments no longer name a stale, checkout-specific mix of LF and
+  CRLF payload files.
+
+### Testing
+
+- Added Git fixtures for missing, scoped, nested, mixed, and binary
+  attributes, plus UTF-16 diffability and read-only empty projections.
+- Added byte-level coverage for generated `AGENTS.md` and newline preservation
+  when merging an existing `.mcp.json`.
+
 ## [0.7.2] - 2026-08-25
 
 ### Changed

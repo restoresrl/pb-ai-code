@@ -89,8 +89,8 @@ def decode_file(path: Path) -> tuple[str | None, str, bool]:
     ``encoding_kind`` is one of ``utf-16-le-bom``, ``utf-16-be-bom``,
     ``utf-8-bom``, ``utf-8-no-bom``, ``empty``, or ``unknown``.
 
-    ``crlf_ok`` is True iff at least one CRLF appears in the first
-    2 KiB and no bare LF appears outside CRLF pairs in that window.
+    ``crlf_ok`` is True iff the complete decoded file contains at least one
+    CRLF and contains neither bare LF nor bare CR terminators.
     """
     data = path.read_bytes()
     if len(data) < 2:
@@ -127,8 +127,9 @@ def decode_file(path: Path) -> tuple[str | None, str, bool]:
     if text is None:
         return None, kind, False
 
-    head = text[:2048]
-    crlf_ok = "\r\n" in head and not re.search(r"(?<!\r)\n", head)
+    crlf_ok = (
+        "\r\n" in text and not re.search(r"(?<!\r)\n", text) and not re.search(r"\r(?!\n)", text)
+    )
     return text, kind, crlf_ok
 
 

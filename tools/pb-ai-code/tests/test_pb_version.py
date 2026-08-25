@@ -115,6 +115,18 @@ def test_the_version_reaches_both_agents_md_and_the_marker(tmp_path: Path) -> No
     assert "# PB:        22.0" in marker
 
 
+def test_created_agents_md_is_utf8_without_bom_and_crlf(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+
+    assert run_install(target, "--pb-version", "22.0").returncode == 0
+
+    raw = (target / "AGENTS.md").read_bytes()
+    assert not raw.startswith(b"\xef\xbb\xbf")
+    assert raw.count(b"\n") == raw.count(b"\r\n")
+    assert raw.endswith(b"\r\n") and not raw.endswith(b"\r\n\r\n")
+
+
 def test_a_bad_version_exits_2_and_writes_nothing(tmp_path: Path) -> None:
     """Ledger 14: everything that can fail fails before the first copy.
 
@@ -236,7 +248,18 @@ def test_the_written_file_records_the_workspace_not_loose_target_files(tmp_path:
     assert "Targets:" not in written
     assert "orphaned.pbt" not in written
     assert "Text projection: **not found**" in written
-    assert "Version control: **Git repository not found**" in written
+    assert "Version control: **Git or SVN working copy not found**" in written
+
+
+def test_an_svn_workspace_is_not_reported_as_unversioned(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    (target / ".svn").mkdir(parents=True)
+
+    assert run_install(target, "--pb-version", "22.0").returncode == 0
+
+    written = (target / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Version control: Subversion working copy" in written
+    assert "Git source protection" not in written
 
 
 def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) -> None:
@@ -250,6 +273,7 @@ def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) 
     assert "## PowerBuilder workflow" in written
     assert "installed `pb-*` skills" in written
     assert "configured `pb_*` ORCA tools" in written
+    assert "Never edit or delete files under `ws_objects/`" in written
     assert "Never edit or replace a `.pbl` file directly" in written
     assert "pb-apply-plan" not in written
     assert len(written.splitlines()) < 30
@@ -258,7 +282,9 @@ def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) 
 def test_a_workspace_with_projection_and_git_records_both_facts(tmp_path: Path) -> None:
     """The project section is a short snapshot of the install-time facts."""
     target = tmp_path / "target"
-    (target / "ws_objects").mkdir(parents=True)
+    projection = target / "ws_objects" / "app.pbl.src"
+    projection.mkdir(parents=True)
+    (projection / "sample.srw").write_bytes(b"$PBExportHeader$sample.srw\r\n")
     subprocess.run(["git", "init", "-q", str(target)], check=True, capture_output=True)
 
     assert run_install(target, "--pb-version", "22.0").returncode == 0
@@ -266,7 +292,23 @@ def test_a_workspace_with_projection_and_git_records_both_facts(tmp_path: Path) 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     assert "Text projection: `ws_objects/` found" in written
     assert "Version control: Git" in written
-    assert "Source protection: **missing for `.sr*` files**" in written
+    assert "Git source protection: **missing for `.sr*` files**" in written
+    assert "never edits `.gitattributes`" in written
+
+
+def test_agents_md_distinguishes_byte_protection_from_diffability(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    projection = target / "ws_objects" / "app.pbl.src"
+    projection.mkdir(parents=True)
+    (projection / "sample.srw").write_bytes(b"$PBExportHeader$sample.srw\r\n")
+    (target / ".gitattributes").write_text("*.sr* binary\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(target)], check=True, capture_output=True)
+
+    assert run_install(target, "--pb-version", "22.0").returncode == 0
+
+    written = (target / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Source diffs: **some `.sr*` files are binary to Git**" in written
+    assert "Git source protection: **missing" not in written
 
 
 def test_the_kits_own_agents_md_is_never_the_one_installed(tmp_path: Path) -> None:
@@ -311,6 +353,7 @@ def test_survey_reads_the_disk_and_nothing_else(tmp_path: Path) -> None:
     assert facts.workspaces == ("app.pbw",)
     assert facts.has_projection is True
     assert facts.is_git is True
+    assert facts.is_svn is False
     assert facts.pb_version is None
 
 

@@ -538,9 +538,9 @@ def test_ledger27_28_link_rewrite_count_scope_and_byte_exactness(tmp_path: Path)
 
     The substitution is literal, ordinal and case-sensitive, applies to
     every occurrence, and is scoped to ``<skills>/<name>/SKILL.md``.
-    Everything else must arrive byte-identical: the tree legitimately
-    mixes line endings (``wiki-notes.md`` is CRLF, the skills are LF) and
-    Python's text mode would CRLF-ify exactly the rewritten files.
+    Everything else must arrive byte-identical. A local checkout can contain
+    either newline form, and Python text mode must not make the installed
+    payload depend on which files happened to need a link rewrite.
     """
     target = tmp_path / "target"
     target.mkdir()

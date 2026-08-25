@@ -35,17 +35,19 @@ edit the file with ordinary text tools
 pb_object_import_file(path, lib)          -> compile + sync in one call
 ```
 
-The consequences went beyond a rename. **The text projection is updated
-in the same call that writes the `.pbl`**, so every "remember to
-propagate to `ws_objects/`" step and every "commit both files" checklist
-was deleted rather than rewritten, the skills got shorter. The caller
-no longer chooses an encoding either: ORCA writes the file, byte
-identical to the IDE's. Three new tools are now load-bearing:
+The consequences went beyond a rename. **The `.pbl` is the operational
+authority, and PowerBuilder updates its managed text projection in the same
+call.** Every "remember to propagate to `ws_objects/`" step and every manual
+copy checklist was deleted. The agent exports to scratch, imports through
+ORCA, and checks `sync`; it never creates or maintains `ws_objects/` itself.
+The caller no longer chooses an encoding either: PowerBuilder writes the
+projected file. Three new tools are now load-bearing:
 `pb_workspace_info` (project shape, encoding, git, and
 `outside_source_tree`, with no ORCA session and no PB install), which
 is the first call of every flow; `pb_library_export_sources` (a whole
-library to disk in one call), which turns "who calls this" from 1000
-ORCA queries into a grep; and the `pb-orca-mcp check <target>` CLI as
+library to an explicit scratch directory), which turns "who calls this"
+from 1000 ORCA queries into a grep without creating a project projection;
+and the `pb-orca-mcp check <target>` CLI as
 the diagnostic prerequisite when bring-up fails.
 
 Two beliefs baked into the old docs were also wrong and are now
@@ -206,7 +208,7 @@ project:
 | **Design**: know which PB patterns to use | none | Style/architecture-guide skill + Appeon docs context |
 | **Design**: scaffold new entries (PBL, app, window, userobject, …) | `pb_library_create`, `pb_compile_entry_import` with minimal syntax (Application has a known catch-22) | Skill carrying the correct minimal template per `entry_type` |
 | **Coding**: know PowerScript syntax + PB runtime API | none | **Appeon documentation ingested** (priority) |
-| **Coding**: edit `.sr*` respecting encoding | Entirely covered: ORCA writes the file (`pb_object_export_file`) and reads it back (`pb_object_import_file`), keeping the text projection in step in the same call | Nothing: the caller never picks an encoding |
+| **Coding**: edit `.sr*` respecting encoding | Entirely covered: ORCA exports to scratch (`pb_object_export_file`) and imports into the `.pbl` (`pb_object_import_file`); PowerBuilder then synchronizes its managed projection | Nothing: the caller never picks an encoding or writes `ws_objects/` |
 | **Coding**: propagate to `.pbl` and read errors | `pb_compile_entry_import{,_list}`, `pb_scc_refresh_target`, `pb_get_last_compile_errors` | none |
 | **Testing**: decide/write tests | none | Skill that knows the chosen test framework(s): agnostic with adapters |
 | **Testing**: compile the test runner | `pb_executable_create` | none |

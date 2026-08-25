@@ -2,7 +2,7 @@
 name: pb-context-build
 description: Use this when you are about to read, review, or refactor PowerBuilder code in a monolithic legacy workspace and need to assemble a scoped context pack — a budgeted slice of entries (sources + dependency map) instead of dumping whole PBLs into the conversation. Orchestrates pb-orca-mcp primitives (pb_workspace_info, pb_target_info, pb_library_directory, pb_object_query_hierarchy, pb_object_query_reference, pb_library_entry_export, pb_library_export_sources). Required pre-step for the pb-review flow. Covers outgoing references (callees, ancestors used, types declared) natively via ORCA. Incoming references (callers) are not native to ORCA — they require an opt-in brute-force inversion of the library index and are off by default.
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Building a scoped context pack for review / refactoring
@@ -50,7 +50,7 @@ This skill never replaces a primitive; it sequences them.
 | `pb_object_query_reference(lib_path, entry_name, entry_type)` | **Outgoing** refs of an entry (callees, ancestors used, types declared, windows opened). `ref_type` ∈ {`simple`, `open`} | yes | **yes** |
 | `pb_library_entry_information(lib_path, entry_name, entry_type)` | Metadata for an entry (timestamps, size, base class, comment) | yes | no |
 | `pb_library_entry_export(lib_path, entry_name, entry_type)` | Source **body** of one entry, as a string in the response | yes | no |
-| `pb_library_export_sources(lib_path)` | Every entry in the library written out as `.sr*` files, in one call | yes | no |
+| `pb_library_export_sources(lib_path, dest_dir)` | Export every entry to an explicit scratch directory outside the project | yes | no |
 
 **Two prerequisites, not one.** The last column exists because ORCA
 distinguishes them and reports them separately: a session that is open
@@ -170,27 +170,24 @@ binary tail of serialized control state, and on one measured
 reading — it is opaque and unreviewable — and wrong for anything that
 compares sizes or bytes, where `pb_object_export_file` to a scratch
 directory is the primitive that returns the whole file.
-`pb_library_export_sources` writes a
-whole library to disk in one call — reach for it when you want to
-**grep** across a library rather than read it (every caller of a
-name, every `Dynamic Call`, every use of a literal), and when the
-library is large enough that per-entry calls would dominate.
+`pb_library_export_sources` writes a whole library to disk in one call.
+Use it when you want to **grep** across a library rather than read it
+(entry callers, `Dynamic Call`, or uses of a literal), and when per-entry
+calls would dominate. Always pass a `dest_dir` outside the project. The
+result is scratch data, never a replacement for the projection that the
+PowerBuilder IDE creates and manages.
 
-**Do not read its response.** It returns one record per entry, each
-carrying the full absolute path, so the reply grows with the library
-and none of it is content. Measured: 21 entries came back as ~5.5 KB of
-JSON, about 262 bytes an entry. Extrapolated to the libraries you would
-actually reach for it on, that is ~25 KB for a 96-entry library and
-**~84 KB for a 327-entry one** — over half the whole source budget,
-spent on repeated paths. The primitive you reached for to save context
-costs more of it than the entries you were avoiding. Take `count`,
-`skipped` and `failed` from the response, take the `dest_dir` you
-already passed, and go to the files.
+**Do not read its response.** It returns one record per entry, each carrying
+the full absolute path, so the reply grows with the library and none of it
+is content. Measured: 21 entries came back as ~5.5 KB of JSON, about 262
+bytes an entry. Extrapolated to the libraries you would actually use it on,
+that is ~25 KB for a 96-entry library and **~84 KB for a 327-entry one**.
+Take `count`, `skipped`, and `failed` from the response, take the `dest_dir`
+you passed, and read the files there.
 
-Bear in mind it materializes files: on a `pbl_only` project it
-*creates* a source projection that did not exist, which changes the
-shape of the
-repository. Say so before running it there.
+On a `pbl_only` project, do not use a bulk export to create `ws_objects/`.
+The developer enables Git or SVN in the PowerBuilder IDE, and PowerBuilder
+creates the managed projection.
 
 ## Step 0 — Ask the workspace what it is
 
@@ -213,29 +210,30 @@ A library sitting in `dep/`, `vendor/`, `lib/` or beside the `.pbl`s
 without a projection is the shape to expect. Note that it may not be in
 any target's `LibList`, so enumerating the liblist is not a substitute.
 
-- **`mode`** — `ws_objects` (this library keeps `.sr*` text sources
-  next to the `.pbl`, and those are the source of truth) or
-  `pbl_only` (the `.pbl` is everything). It decides what a fix will
-  touch and what the user commits at the end. **Per library, not per
-  project**: a vendored `.pbl` inside a project that plainly keeps text
-  sources answers `pbl_only`, and that is a fact about the library. Do
-  not carry one library's answer to another — and do not read it as
-  licence to run `pb_library_export_sources` on a library whose missing
-  projection is the very thing that marks it as vendored.
+- **`mode`**: `ws_objects` means PowerBuilder maintains a readable `.sr*`
+  projection beside the `.pbl`; `pbl_only` means the library has no managed
+  projection. `pb-ai-code` reads and searches the projection, but every
+  write acts on the `.pbl` through ORCA and lets PowerBuilder synchronize
+  it. The answer is **per library, not per project**. A vendored `.pbl`
+  inside a projected workspace can still be `pbl_only`. Do not carry one
+  library's answer to another, and never create a projection for a vendored
+  library.
 - **`source_protection`** — `protected`, `unprotected` or `no_git`.
   **`unprotected` is a stop-and-say-so, not a footnote.** No
   `.gitattributes` rule exempts the `.sr*` files from git's
   line-ending translation, so git stores them with LF and hands them
-  back as CRLF: the index and the working tree differ by exactly the
-  bytes ORCA writes. A change lands in the `.pbl` and its projection
-  while `git status` stays clean, and nobody sees the drift until a
-  fresh checkout. Measure how far it has already gone with
-  `git ls-files --eol <projection dir>` — count the files reported
-  `i/lf w/crlf` — and report the number. Do not fix it silently as
-  part of other work: the fix is `*.sr* -text` (and `*.pbl`, `*.pbd` as `binary`) plus
-  `git add --renormalize -- '*.sr*' '*.pbl' '*.pbd'`, which rewrites every source in the index
-  and belongs in its own commit with its own explanation.
-  Use `-text`, not `binary`: both stop the translation, but `binary` implies `-diff`, so git answers "Binary files differ" and the change cannot be read — which is what the projection is for.
+  back as CRLF, so the index and working tree differ from the bytes
+  PowerBuilder wrote. A line-ending-only edit can have an empty diff and
+  disappear after staging without Git ever storing the working bytes.
+  Measure the condition with `git ls-files --eol <projection dir>` and
+  effective attributes on the real `.sr*` paths. Report it, but do not edit
+  the project-owned `.gitattributes` in this read-only flow.
+
+  The repair is `*.sr* -text`, with `*.pbl` and `*.pbd` as `binary`, then
+  `git add --renormalize` scoped to the real projection paths. The working
+  files must remain byte-identical before and after. Use `-text`, not
+  `binary`: both stop translation, but `binary` disables diffs. An SVN
+  checkout needs a separate property check and no Git configuration.
 - **`export_encode`** — the workspace's `DefaultExportEncode`. You never
   have to act on it (ORCA writes the files), but it belongs in the
   pack: it is what makes a hand-edited file look out-of-sync to the
@@ -268,11 +266,10 @@ any target's `LibList`, so enumerating the liblist is not a substitute.
   the reviewer files a finding that will be overwritten by the next
   dependency update.
 
-- **`work_dir`** — where working files go for a library with no
-  projection, i.e. exactly the vendored case: `<root>/.pb-orca`. Worth
-  reading because the first export against such a library creates that
-  directory, and it is often not in the project's `.gitignore`. Say so
-  rather than leaving an untracked directory for someone to find.
+- **`work_dir`**: the server's default scratch location for a library with
+  no projection. Do not rely on it during context building. Pass an explicit
+  `dest_dir` outside the project so a read-only flow leaves no `.pb-orca/`
+  directory behind and cannot be mistaken for a project projection.
 
 
 Record all four at the top of the context pack.
@@ -407,7 +404,7 @@ Input: one `lib_path`.
    and ask for refinement (single entry, or a pattern on entry name).
    If what the user actually wants is a *search* across the library
    rather than a read of it, that is the case for
-   `pb_library_export_sources` plus grep.
+   `pb_library_export_sources` with an external scratch `dest_dir`, plus grep.
 
 ### Flavor D — intent-driven (default for "review the X flow")
 
@@ -506,9 +503,9 @@ downstream skill needs the caller set. When activated:
    `ref_type` from the query.
 
 **The cheaper alternative worth offering first.** If the question is
-"who mentions this name", `pb_library_export_sources` on the
-candidate libraries plus a grep over the resulting files answers it
-in a couple of calls instead of a thousand. Being textual, it also
+"who mentions this name", `pb_library_export_sources` on the candidate
+libraries, always with an external scratch `dest_dir`, plus a grep over the
+resulting files answers it in a couple of calls instead of a thousand. Being textual, it also
 catches the dynamic invocations ORCA cannot see. Offer it as the fast
 pass; reserve the inversion for when exactness matters.
 

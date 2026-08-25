@@ -225,18 +225,16 @@ the library is ORCA's job, through
 order matters:
 
 ```text
-pb_object_export_file   -> ORCA writes the .sr*
-edit the file
-pb-format format <file> -> normalize the body in place
-pb_object_import_file   -> compile into the .pbl (and update the
-                           text projection in the same call)
+pb_object_export_file(dest_dir=<scratch>) -> export from the .pbl
+edit and format the scratch file
+pb_object_import_file                     -> compile into the .pbl;
+                                             PowerBuilder syncs ws_objects
 ```
 
-Formatting **before** the import is what makes it stick: ORCA stores
-the source text as given and re-exports it byte-stably, so the
-normalized form is what ends up in both the `.pbl` and the text
-projection. Formatting the text files *without* importing leaves the
-`.pbl` stale: a commit that reviews clean and builds old.
+Formatting **before** the import is what makes it stick: ORCA stores the
+source text as given, and PowerBuilder updates its managed projection after
+the library changes. Never run the formatter directly over `ws_objects/`.
+That would bypass the `.pbl` and leave the two forms inconsistent.
 
 For CI or a pre-commit hook no ORCA is involved: `pb-format check`
 exits non-zero on drift.

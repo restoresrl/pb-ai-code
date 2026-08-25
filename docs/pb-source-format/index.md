@@ -46,8 +46,15 @@ One page per entry type:
 
 Plus cross-cutting concerns:
 
-- [encoding](encoding.md): `DefaultExportEncode` + CRLF + `$PBExportHeader$` / `$PBExportComments$`. Read this first.
-- [style-conventions](style-conventions.md): indent character, keyword case, operator spacing, line endings. The four invariants the optional [`pb-format`](https://github.com/restoresrl/pb-format) tool normalizes when a workspace opts in with a `.pb-format.toml`.
+- [PBL authority and synchronization](authority-and-sync.md): why
+  `ws_objects/` is read-only to an agent, and how PowerBuilder keeps it in
+  step after an ORCA operation. Read this first.
+- [encoding](encoding.md): `DefaultExportEncode`, CRLF, and the
+  `$PBExportHeader$` / `$PBExportComments$` envelope.
+- [style conventions](style-conventions.md): indent character, keyword case,
+  operator spacing, and line endings. These are the four invariants the
+  optional [`pb-format`](https://github.com/restoresrl/pb-format) tool
+  normalizes when a workspace opts in with a `.pb-format.toml`.
 - [patterns/](patterns/): recurring blocks that appear in multiple entry types: `forward`, `type variables`, `event`, `on …` blocks, etc.
 
 ## Page conventions
@@ -111,9 +118,9 @@ The skill that triggers this behavior is
   [`appeon-query`](../../skills/appeon-query/SKILL.md) skill.
 - Not a workflow guide for getting edits into a `.pbl`. That is
   [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp)'s job: it
-  exports the file, compiles it back, and keeps the text projection in
-  step. The pages here describe what the text inside that file looks
-  like.
+  exports the file, compiles it back, and asks PowerBuilder to keep the text
+  projection in step. The pages here describe the text and the boundary that
+  prevents an agent from maintaining `ws_objects/` by hand.
 - Not project-specific. Conventions, naming, and patterns specific to
   one codebase belong outside this wiki (layer 3: deferred).
 

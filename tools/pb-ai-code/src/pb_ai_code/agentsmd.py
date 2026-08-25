@@ -50,8 +50,9 @@ class WorkspaceFacts:
     workspaces: tuple[str, ...]
     has_projection: bool
     is_git: bool
-    #: ``None`` when nothing true can be said — no git, or not a repository.
-    sources_protected: bool | None = None
+    is_svn: bool = False
+    #: Effective Git treatment of real projection files, when it can be checked.
+    source_protection: str | None = None
 
 
 def survey(
@@ -59,7 +60,8 @@ def survey(
     *,
     pb_version: str | None,
     is_git: bool,
-    sources_protected: bool | None = None,
+    is_svn: bool = False,
+    source_protection: str | None = None,
 ) -> WorkspaceFacts:
     """Look at the project, shallowly and cheaply.
 
@@ -77,7 +79,8 @@ def survey(
         workspaces=tuple(workspaces),
         has_projection=projection,
         is_git=is_git,
-        sources_protected=sources_protected,
+        is_svn=is_svn,
+        source_protection=source_protection,
     )
 
 
@@ -115,14 +118,27 @@ def _lines(facts: WorkspaceFacts) -> list[str]:
 
     if facts.is_git:
         out.append("- Version control: Git.")
+    elif facts.is_svn:
+        out.append("- Version control: Subversion working copy.")
     else:
-        out.append("- Version control: **Git repository not found**.")
+        out.append("- Version control: **Git or SVN working copy not found**.")
 
-    if facts.has_projection and facts.sources_protected is False:
+    if facts.has_projection and facts.source_protection in {"unprotected", "mixed"}:
+        qualifier = "inconsistent" if facts.source_protection == "mixed" else "missing"
         out += [
-            "- Source protection: **missing for `.sr*` files**. Add `*.sr* -text`",
-            "  to `.gitattributes` before a write workflow so Git does not translate",
-            "  their line endings.",
+            f"- Git source protection: **{qualifier} for `.sr*` files**. Do not run",
+            "  a write workflow until the effective attributes have been reviewed.",
+            "  The installer reports this condition but never edits `.gitattributes`.",
+        ]
+    elif facts.has_projection and facts.source_protection == "nondiffable":
+        out += [
+            "- Source diffs: **some `.sr*` files are binary to Git**. Their bytes",
+            "  are protected, but review those entries through an ORCA body diff.",
+        ]
+    elif facts.has_projection and facts.is_git and facts.source_protection == "unknown":
+        out += [
+            "- Git source protection: **unknown** because no real `.sr*` file was",
+            "  available to check. Do not infer safety from a synthetic path.",
         ]
 
     out += [
@@ -132,9 +148,9 @@ def _lines(facts: WorkspaceFacts) -> list[str]:
         "- Use the installed `pb-*` skills for review, impact analysis and",
         "  changes.",
         "- Use the configured `pb_*` ORCA tools for every `.pbl` operation.",
+        "- Never edit or delete files under `ws_objects/`; PowerBuilder owns it.",
         "- Never edit or replace a `.pbl` file directly.",
         "- Verify the PowerBuilder version before opening an ORCA session.",
-        "",
     ]
     return out
 

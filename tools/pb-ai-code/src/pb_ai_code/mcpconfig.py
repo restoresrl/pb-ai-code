@@ -226,11 +226,26 @@ def render_block(servers: Mapping[str, Any], dialect: str = DIALECT_MCP_JSON) ->
     return _dumps({SERVERS_KEY: dict(servers)}, ascii_only=True)
 
 
-def _encode(text: str) -> bytes:
-    """CRLF throughout, exactly one trailing newline, UTF-8 without a BOM."""
-    body = text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", LINE_ENDING)
-    if not body.endswith(LINE_ENDING):
-        body += LINE_ENDING
+def _line_ending(existing: bytes | None) -> str:
+    """Preserve a project-owned file's newline style; new files use CRLF."""
+    if existing is None:
+        return LINE_ENDING
+    without_crlf = existing.replace(b"\r\n", b"")
+    if b"\n" in without_crlf:
+        return "\n"
+    if b"\r\n" in existing:
+        return "\r\n"
+    if b"\r" in existing:
+        return "\r"
+    return LINE_ENDING
+
+
+def _encode(text: str, *, existing: bytes | None = None) -> bytes:
+    """Use one newline style, one trailing newline, and UTF-8 without a BOM."""
+    line_ending = _line_ending(existing)
+    body = text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", line_ending)
+    if not body.endswith(line_ending):
+        body += line_ending
     return body.encode(WRITE_ENCODING)
 
 
@@ -486,10 +501,10 @@ def scan_for_duplicates(
     return tuple(findings)
 
 
-def write_config(path: Path, text: str) -> None:
-    """Write the merged document, creating the parent directory on demand."""
+def write_config(path: Path, text: str, *, existing: bytes | None = None) -> None:
+    """Write the merge and preserve an existing project's newline style."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(_encode(text))
+    path.write_bytes(_encode(text, existing=existing))
 
 
 def canonical_key(name: str, owned: Sequence[str]) -> str | None:

@@ -16,12 +16,11 @@ them; ``shutil.rmtree`` and ``shutil.copyfile`` raise ``PermissionError``.
 A target checked out read-only, or a bundle somebody committed, would
 break the port where the script worked.
 
-**Copies are byte-exact.** No newline translation, no re-encoding, no BOM
-introduced. The tree legitimately mixes line endings — ``wiki-notes.md``
-is CRLF in the working tree, the skills are LF — and the bundle
-reproduces that mix. So: ``shutil.copy2`` only, and the rewrite reads and
-writes **bytes**. Python's text mode would CRLF-ify exactly the five
-rewritten ``SKILL.md`` files on Windows and leave the other two alone.
+**Copies are byte-exact.** No newline translation, re-encoding, or BOM is
+introduced. A developer checkout can still contain CRLF files left from
+before its LF attributes took effect, and the payload must reproduce the
+checkout it was built from. Use ``shutil.copy2`` only; the link rewrite reads
+and writes **bytes**.
 
 Deletion is scoped to the destinations about to be written, and nothing
 else: a stale skill, a stale doc tree, a user's own skill, a loose user

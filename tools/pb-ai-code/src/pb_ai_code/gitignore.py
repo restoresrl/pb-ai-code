@@ -32,8 +32,10 @@ from __future__ import annotations
 
 import os
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 
 def _same_path(left: Path, right: Path) -> bool:
@@ -130,33 +132,118 @@ def check(target: Path, bundle_root: str) -> IgnoreStatus:
     return IgnoreStatus(is_repo=True, repo_root=repo_root, ignored=ignored, target=target)
 
 
-def sources_protected(target: Path) -> bool | None:
-    """Is there a ``.gitattributes`` rule keeping git off the ``.sr*`` sources?
+ProtectionStatus = Literal[
+    "protected",
+    "unprotected",
+    "nondiffable",
+    "mixed",
+    "unknown",
+    "no_projection",
+    "no_git",
+]
 
-    ``None`` when nothing true can be said: no git, or not a repository.
 
-    Asked through ``git check-attr`` rather than by reading
-    ``.gitattributes``, because git's own rule engine is the thing that
-    decides — precedence between files, negation, the last matching pattern
-    winning. A reimplementation would answer differently on exactly the
-    repositories that need the answer most.
+@dataclass(frozen=True)
+class SourceProtection:
+    """Effective Git treatment of the projection files that actually exist."""
 
-    The probe path does not have to exist: ``check-attr`` applies the
-    patterns to a name, not to a file. So this can be asked before the
-    install writes anything, and on a workspace whose projection lives
-    somewhere this function never looks.
+    status: ProtectionStatus
+    checked_files: int
+    unprotected_files: tuple[str, ...] = ()
+    nondiffable_files: tuple[str, ...] = ()
 
-    ``unset`` is the protected answer — it is what ``*.sr* -text`` produces.
-    ``unspecified`` means no rule matched, which is the hazard: git holds LF,
-    hands back CRLF, and a change that lands in both the ``.pbl`` and its
-    projection leaves ``git status`` clean.
+
+def _projection_dirs(target: Path) -> tuple[Path, ...]:
+    """Projection directories at the two depths the installer surveys."""
+    found = [
+        path for path in (*target.glob("ws_objects"), *target.glob("*/ws_objects")) if path.is_dir()
+    ]
+    return tuple(sorted(found, key=lambda path: str(path).lower()))
+
+
+def _source_files(projections: Sequence[Path]) -> tuple[Path, ...]:
+    """Every existing PowerBuilder source under the discovered projections."""
+    files = [path for projection in projections for path in projection.rglob("*.sr*")]
+    return tuple(sorted((path for path in files if path.is_file()), key=lambda path: str(path)))
+
+
+def _attribute_values(target: Path, files: Sequence[Path]) -> dict[str, dict[str, str]] | None:
+    """Ask Git for ``text`` and ``diff`` on real files, in bounded chunks."""
+    values: dict[str, dict[str, str]] = {}
+    relative = [path.relative_to(target).as_posix() for path in files]
+    for start in range(0, len(relative), 64):
+        chunk = relative[start : start + 64]
+        answer = _git(target, "check-attr", "-z", "text", "diff", "--", *chunk)
+        if answer is None or answer[0] != 0:
+            return None
+        parts = answer[1].split("\0")
+        if parts and parts[-1] == "":
+            parts.pop()
+        if len(parts) % 3 != 0:
+            return None
+        for index in range(0, len(parts), 3):
+            path, attribute, value = parts[index : index + 3]
+            values.setdefault(path, {})[attribute] = value
+    return values
+
+
+def _git_will_treat_as_binary(path: Path) -> bool:
+    """Git's built-in diff treats UTF-16 and NUL-bearing OLE exports as binary."""
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return True
+    return data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" in data
+
+
+def source_protection(target: Path, projections: Sequence[Path] | None = None) -> SourceProtection:
+    """Classify byte protection and diffability on actual ``.sr*`` files.
+
+    No project file is written. ``git check-attr`` decides effective rules,
+    including nested ``.gitattributes`` files and later overrides. Checking
+    real paths avoids the old synthetic ``ws_objects/probe.srw`` answer,
+    which was wrong for scoped rules and projections below ``src/``.
     """
-    probe = "ws_objects/probe.srw"
-    answer = _git(target, "check-attr", "text", "--", probe)
-    if answer is None or answer[0] != 0:
+    if not check(target, ".").is_repo:
+        return SourceProtection(status="no_git", checked_files=0)
+    selected = tuple(projections) if projections is not None else _projection_dirs(target)
+    if not selected:
+        return SourceProtection(status="no_projection", checked_files=0)
+    files = _source_files(selected)
+    if not files:
+        return SourceProtection(status="unknown", checked_files=0)
+    attributes = _attribute_values(target, files)
+    if attributes is None:
+        return SourceProtection(status="unknown", checked_files=0)
+
+    unprotected: list[str] = []
+    nondiffable: list[str] = []
+    for path in files:
+        relative = path.relative_to(target).as_posix()
+        effective = attributes.get(relative, {})
+        if effective.get("text") != "unset":
+            unprotected.append(relative)
+            continue
+        if effective.get("diff") == "unset" or _git_will_treat_as_binary(path):
+            nondiffable.append(relative)
+
+    if unprotected:
+        status: ProtectionStatus = "unprotected" if len(unprotected) == len(files) else "mixed"
+    elif nondiffable:
+        status = "nondiffable"
+    else:
+        status = "protected"
+    return SourceProtection(
+        status=status,
+        checked_files=len(files),
+        unprotected_files=tuple(unprotected),
+        nondiffable_files=tuple(nondiffable),
+    )
+
+
+def sources_protected(target: Path) -> bool | None:
+    """Compatibility answer for callers that only care about byte translation."""
+    result = source_protection(target)
+    if result.status in {"no_git", "no_projection", "unknown"}:
         return None
-    # `<path>: text: <value>` — take the last field, the value.
-    line = answer[1].strip()
-    if not line:
-        return None
-    return line.rsplit(":", 1)[-1].strip() == "unset"
+    return result.status in {"protected", "nondiffable"}

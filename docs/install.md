@@ -289,8 +289,10 @@ can follow the whole chain.
 
 `harness/claude-code/settings.json` pre-approves the read-only and
 session-setup MCP tools, so a review does not stop for a prompt on every
-call. Everything that writes into a `.pbl`, creates a source projection,
-or builds an artefact stays interactive on purpose.
+call. Everything that writes into a `.pbl` or builds an artefact stays
+interactive on purpose. The kit never creates `ws_objects/`; the developer
+enables Git or SVN in the PowerBuilder IDE, which creates and manages that
+projection.
 
 If you rename the MCP server from `pb-orca` to something else, update
 the `mcp__pb-orca__*` prefixes to match: the permission strings embed

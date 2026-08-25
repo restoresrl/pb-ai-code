@@ -311,7 +311,7 @@ def _configure_mcp(
         reporter.block(
             report_mod.duplicate_server_warning(duplicate.name, duplicate.package, owned)
         )
-    mcp_mod.write_config(inputs.path, result.text)
+    mcp_mod.write_config(inputs.path, result.text, existing=inputs.existing)
     outcomes = report_mod.join_outcomes(result.outcomes)
     reporter.line(report_mod.mcp_installed(rel, outcomes))
     return _McpResult(
@@ -478,11 +478,13 @@ def _write_agents_md(reporter: Reporter, target: Path, pb_version: str | None) -
     time.
     """
     is_git = gitignore_mod.check(target, ".").is_repo
+    protection = gitignore_mod.source_protection(target)
     facts = agentsmd_mod.survey(
         target,
         pb_version=pb_version,
         is_git=is_git,
-        sources_protected=gitignore_mod.sources_protected(target),
+        is_svn=(target / ".svn").is_dir(),
+        source_protection=protection.status,
     )
     rel = agentsmd_mod.FILE_NAME
     recorded_pb_version = agentsmd_mod.read_version(target)

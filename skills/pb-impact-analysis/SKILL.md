@@ -2,7 +2,7 @@
 name: pb-impact-analysis
 description: Use this before a non-trivial PowerBuilder refactor when you need to know what can break if an entry, method, event, DataWindow contract, or inherited API changes. Produces a read-only blast-radius report from the target's library list. Uses ORCA for outgoing references and exact caller confirmation, source search for candidate callers and dynamic uses, and hierarchy inversion for descendants. Reports partial coverage instead of treating an incomplete scan as proof that an object is unused.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # PowerBuilder impact analysis before a refactor
@@ -190,11 +190,13 @@ source `confidence: low` until a person or test confirms them.
 
 Search only the source trees that belong to the resolved library list.
 
-- On a `ws_objects` library, search its existing projection.
+- On a `ws_objects` library, search its existing PowerBuilder-managed
+  projection. It is a candidate surface, not authority over the `.pbl`.
 - On a `pbl_only` library, offer `pb_library_export_sources` with a
   `dest_dir` outside the project. This creates scratch files but does not
   change the `.pbl` or create a project projection.
-- Never bulk-export a vendored library into the project source tree.
+- Never bulk-export a vendored library into the project source tree, and
+  never create `ws_objects/` on behalf of the IDE.
 
 Use a case-insensitive, word-boundary search for the entry or member name.
 PowerBuilder identifiers ignore case, and its naming conventions make

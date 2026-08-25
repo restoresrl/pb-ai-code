@@ -159,8 +159,13 @@ a CHANGELOG entry that outlive the session → apply the fixes one at a
 time, each with a visible diff and a compile check.
 
 Two properties it is built around: **it stops before spending your
-budget**, and **its output persists**. A plan file can be edited by
-hand, committed, and resumed by a different assistant days later.
+budget**, and **its output persists**. A plan file can be edited by hand,
+committed, and resumed by a different assistant days later.
+
+PowerBuilder remains in charge of source synchronization. The kit changes an
+object in its `.pbl` through ORCA, then checks that PowerBuilder updated the
+managed `ws_objects/` projection. It may read and search that projection, but
+it never creates, edits, or deletes projected files by hand.
 
 For a narrower pre-flight, `pb-impact-analysis` reports callers,
 descendants, dynamic uses and coverage gaps for one proposed change. It

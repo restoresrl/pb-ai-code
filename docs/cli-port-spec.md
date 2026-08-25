@@ -72,7 +72,13 @@ Format: `N. <contract-id>`: behaviour. **Port:** KEEP / KEEP+FIX / DIVERGE / DRO
 
 **26. `no-pruning-of-the-bundle` / `install-is-additive-never-prunes`**: deletion is scoped to the destinations about to be written. A stale skill, a stale doc tree, a user's own skill, a loose user file at the docs root and a user command all **survive** a re-install (verified, five shapes). **Port: KEEP.** **Risk: medium.** **Assert:** planted `skills/pb-obsolete/` and `skills/my-own-skill/` both survive and neither appears in the marker's Contents.
 
-**27. `copies-are-byte-exact`**, no newline translation, no re-encoding, no BOM introduction. The tree legitimately mixes line endings (`docs/wiki-notes.md` is CRLF in the working tree, the skills are LF) and the bundle reproduces that mix. **Port: KEEP, binary copies only** (`shutil.copy2`), and the rewrite reads/writes **bytes**. Python's default text mode would CRLF-ify exactly the 5 rewritten `SKILL.md` files on Windows and leave the other 2 LF. **Risk: high.** **Assert:** every installed file byte-identical to its payload source except the rewritten `SKILL.md`s, which differ only by the substitution.
+**27. `copies-are-byte-exact`**, no newline translation, re-encoding, or BOM
+introduction. A developer checkout can retain CRLF files from before its LF
+attributes took effect, so a local payload is not allowed to change those
+bytes during installation. **Port: KEEP, binary copies only**
+(`shutil.copy2`); the rewrite reads and writes **bytes**. **Risk: high.**
+**Assert:** every installed file is byte-identical to its payload source
+except rewritten `SKILL.md` files, which differ only by the substitution.
 
 ### D. The link rewrite
 
@@ -114,7 +120,15 @@ Format: `N. <contract-id>`: behaviour. **Port:** KEEP / KEEP+FIX / DIVERGE / DRO
 
 **45. `owned-key-is-clobbered-silently`**: a foreign server sitting on one of our keys is replaced with no warning; only `(updated)` shows. The duplicate scan cannot fire because it walks `kept` only. **Port: KEEP.** **Risk: low.** Note the asymmetry in the docs: a copy under a *different* key earns five lines and survives; a foreign server under *our* key is destroyed in silence.
 
-**46. `write-mechanics`**, 2-space indent, CRLF, UTF-8 no BOM, trailing newline, arrays exploded one element per line, parent directory created on demand, serializer depth capped at 10 (ps1:258-265). The depth cap silently truncates a deeply nested preserved server to a type-name string. **Port: KEEP the bytes, DROP the depth cap.** `json.dumps(doc, indent=2)`, then `"\r\n".join(...)` + trailing `\r\n`, encoded UTF-8 without BOM. **Risk: medium.** **Assert:** byte-compare a written `.mcp.json` (no BOM, CRLF, trailing newline, 2-space indent); plant a 12-level-deep unrelated server and assert it survives verbatim. That case fails today.
+**46. `write-mechanics`**, 2-space indent, CRLF, UTF-8 no BOM,
+trailing newline, arrays exploded one element per line, parent directory
+created on demand, serializer depth capped at 10 (ps1:258-265). The depth
+cap silently truncates a deeply nested preserved server to a type-name
+string. **Port: DROP the depth cap and preserve an existing project's newline
+style.** New files use CRLF; an LF file stays LF after the merge. Output is
+UTF-8 without BOM with one trailing newline. **Risk: medium.** **Assert:**
+byte-check new and existing `.mcp.json` files; plant a 12-level-deep unrelated
+server and assert it survives semantically.
 
 **47. `generic-harness-prints-the-block`**: no known on-disk location → the block is printed to stdout, preceded by two cyan lines (`MCP config: add these servers to your client's MCP configuration.` / `Same JSON for every MCP client; only the file it goes in differs.`), and the outcome becomes `printed (location is client-specific)` (ps1:289-306, 411-416, 526-535). **Port: KEEP.** Correct the second sentence's claim in the docs (see §8, contradiction 5) but keep the printed string for now. **Risk: medium.** **Assert:** `--harness generic --skills-dir .agent/skills` writes no `.mcp.json` anywhere and the marker records the printed outcome.
 
@@ -618,7 +632,7 @@ For `claude-code` every derived path is byte-identical to today (`parent(".claud
 | `test_strict_json` | 36, 38: trailing comma, `//`, `/* */`, `NaN` all refuse-and-print; BOM'd valid file merges and comes back BOM-free |
 | `test_mcpservers_non_object` | 39: `{"mcpServers":"oops","other":1}` left byte-identical |
 | `test_outcome_vocabulary` | 40, 41: added / already current / updated / `kept:`; reordered keys report `already current` |
-| `test_write_mechanics` | 46: no BOM, CRLF, trailing newline, 2-space indent; 12-level-deep foreign server survives |
+| `test_write_mechanics` | 46: no BOM, one trailing newline, 2-space indent; new files use CRLF, existing LF stays LF; 12-level-deep foreign server survives |
 | `test_duplicate_scan_extended` | 42, 44: case-insensitivity, bare-path shape, `pb_appeon_index` shape, the `$ourPackages` self-check, duplicate still under `kept:` |
 | `test_skip_mcp_config` | 48, 33, 53: file byte-identical, four suppressions, missing payload file no longer aborts, `# Appeon: not evaluated` |
 | `test_generic_prints_block` | 47: no `.mcp.json` anywhere, block on stdout, marker records the outcome |

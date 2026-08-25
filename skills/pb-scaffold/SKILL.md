@@ -2,7 +2,7 @@
 name: pb-scaffold
 description: Use this when you need to create a new PowerBuilder object from scratch — a window, userobject, function, datawindow, menu, or structure — and want a minimal body that the ORCA compiler accepts on the first try. Provides validated inline templates plus the rules for the one entry type the API cannot bootstrap (`application`). Pairs with pb-src-format (variants observed in real codebases) and pb-format (surface style).
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Scaffolding new PowerBuilder objects
@@ -435,10 +435,10 @@ One thing worth checking on a new object: some workspaces keep a
 not manage it. If the project has one, adding an entry may mean
 updating it.
 
-If the workspace has no projection yet and you want one,
-`pb_library_export_sources(lib_path)` writes every entry in the library
-out as text in a single call — that is the bootstrap from a
-binary-only project to a reviewable one.
+If the workspace has no projection, do not create `ws_objects/` with a bulk
+export. The developer enables Git or SVN in the PowerBuilder IDE, and the IDE
+creates the managed projection. Until then, export only to an explicit scratch
+`dest_dir` outside the project.
 
 ## Boundary with `pb-src-format`
 

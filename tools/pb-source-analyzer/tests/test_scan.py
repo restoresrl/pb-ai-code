@@ -47,6 +47,26 @@ def test_decode_file_recognizes_utf8_bom(tmp_path: Path) -> None:
     assert text.startswith("$PBExportHeader$a.sru")
 
 
+def test_decode_file_checks_line_endings_across_the_complete_file(tmp_path: Path) -> None:
+    f = tmp_path / "late-lf.sru"
+    body = "$PBExportHeader$late-lf.sru\r\n" + ("x\r\n" * 1200) + "late\n"
+    f.write_bytes(b"\xef\xbb\xbf" + body.encode("utf-8"))
+
+    _, _, crlf_ok = decode_file(f)
+
+    assert crlf_ok is False
+
+
+def test_decode_file_rejects_a_bare_cr_terminator(tmp_path: Path) -> None:
+    f = tmp_path / "bare-cr.sru"
+    body = "$PBExportHeader$bare-cr.sru\r\none\rtwo\r\n"
+    f.write_bytes(b"\xef\xbb\xbf" + body.encode("utf-8"))
+
+    _, _, crlf_ok = decode_file(f)
+
+    assert crlf_ok is False
+
+
 def test_decode_file_flags_unknown_for_truly_invalid_bytes(tmp_path: Path) -> None:
     f = tmp_path / "a.sru"
     f.write_bytes(b"\x80\x81\x82\x83")  # Not a valid BOM, not valid UTF-8

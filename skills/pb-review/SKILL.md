@@ -2,7 +2,7 @@
 name: pb-review
 description: Use this to run a structured code review on a PowerBuilder target — an entry, a .pbl, a .pbt, or a free-form description of a block of code. Frames the work with the user, builds a scoped context pack, validates understanding before reviewing, then produces two persistent artefacts (a plan file with one YAML-tagged finding per fix, and a CHANGELOG entry) and hands off to pb-apply-plan for the edit loop. Never edits PowerBuilder sources; it does write three files — the plan, the CHANGELOG entry, and a one-line pointer into the project's own backlog if it has one.
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Structured code review on a PowerBuilder target
@@ -161,10 +161,10 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    this review could not read it is exactly the kind of gap
    `## Skipped` exists to make visible.
 
-   **Also read `source_protection`.** `unprotected` means git rewrites
-   the `.sr*` line endings, so the index and the working tree differ by
-   exactly the bytes ORCA writes — an applied fix can leave
-   `git status` clean and surface as drift on someone else's checkout.
+   **Also read `source_protection`.** `unprotected` means Git can rewrite
+   `.sr*` line endings between the index and working tree. A line-ending-only
+   change can have an empty diff and disappear after staging, then surface as
+   drift on another checkout.
    A review is read-only and safe either way, but it ends by handing
    off to `pb-apply-plan`, which is not.
 
@@ -187,21 +187,23 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    the content agrees and every line ending will flip the moment the
    apply loop writes the file back. Report the number of line endings
    involved — it is the size of the invisible change. Measured on a real
-   library: ORCA held 663 of 704 line breaks as bare LF while the
-   working tree had all 704 as CRLF, so an apply loop would have
-   rewritten 663 of them with `git status` clean throughout.
+   library: ORCA held 663 of 704 line breaks as bare LF while the working
+   tree had CRLF throughout. An apply loop would have rewritten 663 of them
+   while Git's normalized diff hid the byte change.
 
    `git ls-files --eol <projection dir>` is a useful **secondary**
    reading — how far the normalization has already spread across the
    tree — but it is a fact about git, not about ORCA, and on its own it
    does not establish the danger.
 
-   Either way, say it has to be fixed — `*.sr* -text` (and `*.pbl`,
-   `*.pbd` as `binary`) plus `git add --renormalize -- '*.sr*' '*.pbl' '*.pbd'`, its own commit —
-   **before** the apply loop runs, not after. Use `-text`, not `binary`:
-   both stop the translation, but `binary` implies `-diff`, so git
-   answers "Binary files differ" and the change cannot be read, which is
-   what the projection is for.
+   Either way, say it must be resolved before the apply loop. Check the
+   effective `text` and `diff` attributes on the real projected files, not a
+   synthetic path. The usual Git repair is `*.sr* -text`, with `.pbl` and
+   `.pbd` as `binary`, followed by `git add --renormalize` scoped to the
+   projection. It requires explicit approval, unchanged working-file hashes,
+   and a separate commit. Do not apply Git advice to an SVN checkout. Use
+   `-text`, not `binary`: `binary` preserves bytes but disables the source
+   diff.
 2. **Resolve which target owns the library**, before opening anything.
    An entry triple does not name a library list, and the workspace's
    default target is frequently the wrong one: in a real project the
@@ -254,8 +256,10 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    bring-up* for the one-line check.
 
    **On a `ws_objects` project you may skip the session and read the
-   projection instead** — it is cheaper and a review writes nothing.
-   Two conditions, and they are not optional:
+   projection instead** because a review writes nothing. Treat it as a
+   PowerBuilder-managed search surface, not as authority over the `.pbl`.
+   Read [`authority-and-sync.md`](../../docs/pb-source-format/authority-and-sync.md).
+   Two conditions are mandatory:
 
    - Say you are doing it, and say what it costs. Without a session
      there is no `pb_object_query_hierarchy` and no
@@ -264,21 +268,22 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
      across a whole workspace; state which you did.
    - **Never claim the projection matches the `.pbl` because git is
      clean.** It does not follow, and least of all here: an unprotected
-     workspace is one where `git status` stays clean *by construction*.
-     Git compares the working tree to the index, and the `.pbl` is
-     opaque to it. Only an ORCA export compared against the file settles
-     it — the procedure is below. If that matters to a finding and you
-     do not run it, write down that you assumed it.
+     workspace can hide byte-only changes behind an empty normalized diff.
+     Git compares the working tree to the index, and the `.pbl` is opaque to
+     it. Only an ORCA export compared against the file settles the question.
+     If that matters to a finding and you do not run it, record the
+     assumption.
 
    **This measurement needs an ORCA session**, so it happens after
    step 2 even though it belongs to this one. Do the reading here, bring
    the session up, then come back and measure before any other work.
 
    **Export to a scratch directory, never in place.**
-   `pb_object_export_file` writes into the projection directory when you
-   omit `dest_dir` — it refreshes the source of truth — so calling it to
-   "check" the projection overwrites the file you were about to compare
-   and then reports a match. Pass a `dest_dir` outside the project.
+   `pb_object_export_file` can write into the managed projection when you
+   omit `dest_dir`, so calling it to "check" the projection overwrites the
+   file you were about to compare and then reports a match. Pass a `dest_dir`
+   outside the project. A mismatch does not establish which side is current;
+   report it instead of refreshing or importing either side during review.
 
    **For this measurement, `pb_library_entry_export` is not a
    substitute**, even though it writes nothing. It returns the object
@@ -935,6 +940,12 @@ actually landed, when it differs from **Suggested fix** — which stays
 as written, because the difference between what was proposed and what
 was needed is worth keeping.)*
 ````
+
+A finding that removes or renames an entire object must name the ORCA library
+operation and the required projection sync result. Never propose deleting or
+renaming its `.sr*` file. If `pb-orca-mcp` does not expose the operation with
+sync reporting, mark the finding as not mechanically applicable and name the
+server gap.
 
 Required YAML fields: `id`, `entry`, `kind` (bug-risk | refactor |
 style | …), `priority` (high | medium | low — **severity if it happens, not

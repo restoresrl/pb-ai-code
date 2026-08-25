@@ -1,15 +1,16 @@
 ---
 name: encoding
 status: populated
-description: PB source files on disk are encoded per the workspace .pbw DefaultExportEncode directive (UTF-8 BOM / UTF-16BOM / ANSI), always CRLF, always starting with $PBExportHeader$. PB 2022 default is UTF-8 BOM. PB itself detects via BOM on read but writes with the configured value, so a mismatch triggers a Refresh cascade.
+description: PowerBuilder writes its ws_objects projection with the workspace DefaultExportEncode setting, a $PBExportHeader$ envelope, and normally CRLF. Imports can preserve noncanonical line endings inside a PBL, so an agent must edit scratch exports without translation and let PowerBuilder synchronize the projection.
 ---
 
 # Encoding and file header
 
-Every PB source file (`.sra`, `.srw`, `.sru`, `.srf`, `.srd`, `.srm`,
-`.srs`, `.srq`, `.srj`) is bound by three rules. Violating any of them
-produces a file that PB silently rejects, imports as garbage, or
-re-exports on the next Refresh (a "phantom" diff).
+PowerBuilder's projected source files (`.sra`, `.srw`, `.sru`, `.srf`,
+`.srd`, `.srm`, `.srs`, `.srq`, `.srj`) have three normal properties.
+Breaking the encoding or envelope can make an import fail. Changing only
+line endings may still compile, but it creates drift that appears on a later
+IDE refresh or export.
 
 ## Rule 1: Encoding follows the workspace `DefaultExportEncode`
 
@@ -47,10 +48,18 @@ configured encoding: producing a phantom diff against whatever the
 agent wrote, and triggering an import + compile + regenerate cascade
 on other entries in the same library.
 
-## Rule 2: CRLF line endings
+## Rule 2: the IDE projection uses CRLF
 
-Every line is terminated with `0D 0A` (CRLF), regardless of which of
-the three encodings is in use. LF-only files are not accepted.
+PowerBuilder normally writes each projected line with `0D 0A` (CRLF),
+regardless of encoding. Treat that as the canonical `ws_objects/` form.
+
+Do not confuse canonical with required for every import. Real libraries have
+accepted and retained bare LF in entry source, including one measured entry
+with 663 bare-LF breaks out of 704. The result compiled, but its next
+PowerBuilder-managed projection update produced a whole-file line-ending
+diff. The safe rule is therefore to preserve a scratch export during an
+ordinary edit and perform any normalization as an explicit maintenance
+operation through the `.pbl`.
 
 ## Rule 3: `$PBExportHeader$` as the first line
 
@@ -94,10 +103,11 @@ next Refresh and trigger a regenerate cascade.
 
 ## Why standard text-editing tools can still break PB files
 
-The breakage path that originally motivated this page: an existing
-file is saved by a tool that rewrites it as **UTF-8 without BOM**, or
-strips the original BOM, or flips line endings to LF only. PB then
-rejects the file silently.
+The breakage path that originally motivated this page starts when a tool
+rewrites an existing file as **UTF-8 without BOM**, strips its original BOM,
+or flips its line endings. A bad encoding or BOM can make PB reject the file.
+An LF-only import can instead succeed and leave noncanonical source inside
+the `.pbl`, which is quieter and produces a later whole-file diff.
 
 A subtler trap when the workspace setting is `UTF-16BOM`: most
 editors default to UTF-8, so on save they replace the original
@@ -120,12 +130,11 @@ header, invisible without a hex check.
 The rules above describe bytes going *out*. There is a matching rule
 for bytes coming *in*: read a `.sr*` **without newline translation**.
 
-A reader that helpfully converts CRLF to LF, the default in a lot of
-languages and editors, hands you a body whose every line differs from
-what is in the library. Import that and the `.pbl` now holds LF, which
-means the next export differs from the last commit on every single
-line: a whole-file phantom diff produced by a one-line fix. The
-breakage is silent, because the text looks identical on screen.
+A reader that helpfully converts CRLF to LF, the default in many languages
+and editors, hands you a body whose every line differs from what is in the
+library. Importing it can leave LF inside the `.pbl`, so the next
+PowerBuilder-managed projection update differs from the last commit on every
+line. The problem is silent because the text looks identical on screen.
 
 The same goes for writing: preserve the BOM and the CRLF you found.
 
@@ -137,14 +146,15 @@ file that is 100% LF gets misread as 100% CRLF. Count bytes in binary
 mode: `open(path, 'rb')`, then compare occurrences of `\r\n` against
 occurrences of `\n`. The difference is your bare-LF count.
 
-The same caution applies to git. With `core.autocrlf = true` and no
-`.gitattributes`, git normalizes these files on the way into the index and
-converts back on checkout, so **a line-ending change produces no diff and
-`git status` stays clean**. `git ls-files --eol` shows the truth
-(`i/lf w/crlf` means the index and the working tree disagree by
-normalization), and `git add --renormalize <dir>` brings the index onto
-the real bytes. A `.gitattributes` rule stops the normalization for good,
-which is what makes drift visible in the first place.
+The same caution applies to Git. With `core.autocrlf = true` and no
+`.gitattributes`, Git normalizes these files on the way into the index and
+converts them on checkout. A line-ending-only edit can produce an empty
+`git diff`; after staging, the repository can return to clean without ever
+recording the working bytes. `git ls-files --eol` shows the two forms
+(`i/lf w/crlf` means the index and working tree disagree by normalization).
+A `.gitattributes` rule stops the conversion. Renormalization then updates
+the index and must leave the PowerBuilder-managed working files byte
+identical.
 
 Use **`*.sr* -text`**, not `*.sr* binary`. Both stop the translation, but
 `binary` is a macro for `-diff -merge -text`, so git then answers
@@ -161,20 +171,24 @@ which really are opaque:
 
 ## Who writes these files and why it should not be you
 
-**ORCA writes them.** `pb-orca-mcp` exposes the export in
-write-to-file mode (`PBORCA_ConfigureSession` +
-`PBORCA_LibraryEntryExportEx`), so the bytes come from the same engine
-the IDE uses: correct BOM for the workspace encoding, CRLF throughout,
-canonical `$PBExportHeader$` / `$PBExportComments$` block. The edit loop
-is therefore:
+**PowerBuilder owns `ws_objects/`.** The IDE creates it when source control
+is enabled and maintains it as objects change in the `.pbl`. `pb-ai-code`
+uses ORCA to change the library and checks the synchronization result; it
+never maintains the projection as a second copy. Read
+[PBL authority and synchronization](authority-and-sync.md) before any write
+workflow.
+
+`pb-orca-mcp` exposes file export through the same PowerBuilder engine. An
+export to a scratch directory carries the workspace encoding, the source
+currently held by the `.pbl`, and the canonical `$PBExportHeader$` /
+`$PBExportComments$` block. The edit loop is therefore:
 
 ```text
 pb_object_export_file(lib, entry, type)   -> ORCA writes the file
    ... edit the file with ordinary text tools ...
-pb_object_import_file(path, lib)          -> compiles and, when the
-                                             project keeps a text
-                                             projection, updates it in
-                                             the same call
+pb_object_import_file(path, lib)          -> changes the .pbl; PowerBuilder
+                                             updates its projection and the
+                                             caller checks sync
 ```
 
 Nothing in that loop asks you for an encoding, and nothing asks you to
@@ -195,36 +209,25 @@ Two consequences worth knowing:
   belief that it was came from a `C0114` that turned out to be a size
   argument counted in characters instead of bytes.)
 
-## Restoring encoding after a host-tool edit (last-resort fallback)
+## Repairing a mangled export
 
-You should not need this. It is here for the case where a `.sr*` has
-already been mangled by a tool that stripped the BOM or flipped the
-line endings, and you want to repair the file rather than re-export it.
-Re-exporting is almost always the better answer.
+Do not repair a file in `ws_objects/` with `Get-Content`, `WriteAllText`, or
+an editor. Those approaches bypass PowerBuilder, and the old snippets on this
+page changed the BOM without reliably converting LF to CRLF.
 
-Pick the snippet that matches the workspace `DefaultExportEncode`:
+Re-export the entry from the `.pbl` to a scratch directory whenever possible.
+If the source held by the library itself needs explicit normalization:
 
-```pwsh
-# UTF-8 BOM (the PB 2022 default)
-$content = Get-Content -Raw -Encoding UTF8 path\to\file.sru
-[System.IO.File]::WriteAllText('path\to\file.sru', $content, [System.Text.UTF8Encoding]::new($true))
-```
+1. export it to scratch through ORCA;
+2. normalize the scratch file while preserving the workspace encoding and
+   header;
+3. show the byte and content diff;
+4. import the scratch file into the `.pbl` through ORCA;
+5. require `sync: "ok"` and confirm the projected file named in
+   `synced_files` now matches a fresh scratch export.
 
-```pwsh
-# UTF-16 LE BOM
-$content = Get-Content -Raw -Encoding UTF8 path\to\file.sru
-[System.IO.File]::WriteAllText('path\to\file.sru', $content, [System.Text.Encoding]::Unicode)
-```
-
-```pwsh
-# ANSI (no BOM, system codepage)
-$content = Get-Content -Raw -Encoding UTF8 path\to\file.sru
-[System.IO.File]::WriteAllText('path\to\file.sru', $content, [System.Text.Encoding]::Default)
-```
-
-After the write, the first few bytes should match the BOM of the
-target encoding (`EF BB BF` for UTF-8 BOM, `FF FE` for UTF-16 LE
-BOM, no BOM for ANSI).
+Keep this maintenance operation separate from functional changes. Never pick
+the checked-out projection as the winner merely because it has CRLF.
 
 This page is the *what and why*.
 [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp) is the
@@ -294,6 +297,8 @@ through a conversation as a tool argument.
 ## Cross-references
 
 - [[index]]: wiki entry point.
+- [PBL authority and synchronization](authority-and-sync.md): who owns
+  `ws_objects/` and how every object operation reaches it.
 - [[style-conventions]]: indent, keyword case, operator spacing: what
   the body looks like inside this envelope.
 - [`pb-orca-mcp`](https://github.com/restoresrl/pb-orca-mcp): the

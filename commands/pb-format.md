@@ -48,10 +48,10 @@ version, `pb_set_library_list`, `pb_set_current_application`).
    `pb_library_directory` over it. A `.pbt` → every library on the
    target's list. Drop `.srd` (DataWindow) entries — the formatter skips
    them by design — and report how many you dropped.
-2. **Get the sources on disk.** `pb_object_export_file` per entry, or
-   `pb_library_export_sources(lib_path)` for a whole library in one
-   call. On a `pbl_only` project the bulk form *creates* a source
-   projection that did not exist; say so before running it.
+2. **Export to scratch.** Pass a `dest_dir` outside the project to
+   `pb_object_export_file` for one entry or `pb_library_export_sources` for
+   a library. Never create or format `ws_objects/`; PowerBuilder owns that
+   projection.
 3. **Size the change honestly.** `pb-format check <paths>` reports which
    files would change without writing, and exits non-zero if any would.
    Present the count and the config that will be applied:
@@ -70,9 +70,9 @@ version, `pb_set_library_list`, `pb_set_current_application`).
    lib_path)`. Read the response: `"error" in response` is a tool or
    state failure; `success: false` with an `errors` array is compile
    diagnostics. **A formatter that produces a compile error is a bug in
-   the formatter** — stop the sweep, report it, and do not keep going
-   through the queue. On success the text projection is updated in the
-   same call (`sync` / `synced_files`).
+   the formatter**: stop the sweep, report it, and do not continue through
+   the queue. On success, require `sync: "ok"` and check `synced_files` to
+   confirm that PowerBuilder updated its projection.
 6. **Summarize**: formatted N, skipped M (by user choice / by error),
    `.srd` skipped by design L, and the total line delta.
 
@@ -88,6 +88,9 @@ optional.
 - **Never rewrites identifiers.** Variable, function and type names are
   preserved verbatim.
 - **Never touches `.srd`** bodies.
+- **Never writes directly under `ws_objects/`.** All formatting happens in
+  scratch and reaches the projection only through an ORCA import into the
+  `.pbl`.
 - **Never touches the entry's comment metadata.** It rides in the
   `$PBExportComments$` line, which the formatter preserves.
 - **Never commits.** A re-format can produce a very large diff; the user

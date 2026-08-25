@@ -412,6 +412,19 @@ def test_ledger46_write_mechanics_are_bytes_not_preferences(tmp_path: Path) -> N
         assert f'\r\n        "{arg}"' in text
 
 
+def test_an_existing_lf_config_keeps_lf_when_merged(tmp_path: Path) -> None:
+    existing = b'{\n  "mcpServers": {\n    "postgres": {"command": "node"}\n  }\n}\n'
+    result = mcpconfig.merge(existing, OWNED)
+    assert result.text is not None
+    path = tmp_path / ".mcp.json"
+
+    mcpconfig.write_config(path, result.text, existing=existing)
+
+    raw = path.read_bytes()
+    assert b"\r" not in raw
+    assert raw.endswith(b"\n") and not raw.endswith(b"\n\n")
+
+
 def test_ledger46_a_deeply_nested_preserved_server_survives_verbatim() -> None:
     """Ledger 46: the PowerShell serializer capped at depth 10 and truncated.
 
