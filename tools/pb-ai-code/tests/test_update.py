@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 
@@ -114,6 +115,7 @@ def test_update_reuses_the_installed_project_layout(
         lambda version, refresh: update.CheckResult(version, latest, True, False),
     )
     calls: list[list[str]] = []
+    monkeypatch.setattr(cli, "_windows_self_update", lambda: False)
     monkeypatch.setattr(update, "run", lambda command: calls.append(command) or 0)
 
     assert cli.main(["update", "--target", str(target), "--yes"]) == 0
@@ -136,6 +138,26 @@ def test_update_reuses_the_installed_project_layout(
         ],
     )
     assert "Project bundle updated." in capsys.readouterr().out
+
+
+def test_windows_update_is_scheduled_after_the_running_tool_exits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scheduled: list[list[str]] = []
+    monkeypatch.setattr(update.os, "name", "nt")
+    monkeypatch.setattr(update.subprocess, "Popen", lambda command: scheduled.append(command))
+
+    update.schedule_after_exit(
+        ["uv", "tool", "install", "--force", "git+https://example.invalid/repo@v0.11.3"],
+        ["uvx", "--from", "git+https://example.invalid/repo@v0.11.3", "pb-ai-code", "install"],
+    )
+
+    assert scheduled[0][:3] == ["powershell", "-NoProfile", "-EncodedCommand"]
+    script = base64.b64decode(scheduled[0][3]).decode("utf-16-le")
+    assert "Wait-Process -Id" in script
+    assert "Start-Sleep -Milliseconds 750" in script
+    assert "& 'uv' @('tool', 'install', '--force'" in script
+    assert "& 'uvx' @('--from', 'git+https://example.invalid/repo@v0.11.3'" in script
 
 
 def test_project_update_command_can_read_a_marker_with_the_pb_version() -> None:

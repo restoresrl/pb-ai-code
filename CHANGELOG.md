@@ -13,6 +13,13 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-08-25
+
+### Fixed
+
+- Deferred Windows self-updates until `pb-ai-code` exits, avoiding the file
+  lock that prevented `uv` from replacing the running tool.
+
 ## [0.11.3] - 2026-08-25
 
 ### Fixed

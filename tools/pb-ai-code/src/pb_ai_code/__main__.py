@@ -638,6 +638,11 @@ def _update_check_payload(
     }
 
 
+def _windows_self_update() -> bool:
+    """Whether replacing the running console launcher needs deferred work."""
+    return os.name == "nt"
+
+
 def _confirm_update() -> bool:
     """Ask before changing a global tool or a consumer project."""
     if not sys.stdin.isatty():
@@ -700,6 +705,24 @@ def _cmd_update(args: argparse.Namespace) -> int:
         print("Update cancelled.")
         return EXIT_OK
 
+    project_command = (
+        update_mod.project_install_command(
+            checked.latest,
+            _update_install_args(target, fields),
+        )
+        if fields is not None and (checked.update_available or project_needs_update)
+        else None
+    )
+    if checked.update_available and _windows_self_update():
+        update_mod.schedule_after_exit(
+            update_mod.global_install_command(checked.latest),
+            project_command,
+        )
+        print("Update scheduled. Keep this terminal open until uv finishes its output.")
+        if project_command is not None:
+            print("The project bundle will refresh after the persistent tool is updated.")
+        return EXIT_OK
+
     if checked.update_available:
         print(f"Updating the persistent tool to {checked.latest.tag}...")
         result = update_mod.run(update_mod.global_install_command(checked.latest))
@@ -708,13 +731,9 @@ def _cmd_update(args: argparse.Namespace) -> int:
                 f"uv could not install {checked.latest.tag} (exit {result})"
             )
 
-    if fields is not None and (checked.update_available or project_needs_update):
+    if project_command is not None:
         print(f"Updating the project bundle to {checked.latest.tag}...")
-        command = update_mod.project_install_command(
-            checked.latest,
-            _update_install_args(target, fields),
-        )
-        result = update_mod.run(command)
+        result = update_mod.run(project_command)
         if result != 0:
             raise update_mod.UpdateCheckError(
                 f"the project bundle update to {checked.latest.tag} failed (exit {result})"

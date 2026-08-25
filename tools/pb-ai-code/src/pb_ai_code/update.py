@@ -11,6 +11,7 @@ availability into a prerequisite for ordinary PowerBuilder work.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -33,6 +34,7 @@ __all__ = [
     "global_install_command",
     "project_install_command",
     "run",
+    "schedule_after_exit",
 ]
 
 CACHE_SECONDS = 24 * 60 * 60
@@ -190,3 +192,51 @@ def run(command: list[str]) -> int:
         return subprocess.run(command, check=False).returncode
     except OSError as exc:
         raise UpdateCheckError(f"cannot run {command[0]}: {exc}") from exc
+
+
+def _powershell_literal(value: str) -> str:
+    """A single-quoted PowerShell string, including paths with apostrophes."""
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _powershell_call(command: list[str]) -> str:
+    """Render one external command with an array of literal arguments."""
+    executable, *args = command
+    values = ", ".join(_powershell_literal(arg) for arg in args)
+    return f"& {_powershell_literal(executable)} @({values})"
+
+
+def schedule_after_exit(global_command: list[str], project_command: list[str] | None) -> None:
+    """Run the update after the Windows console launcher releases its files.
+
+    ``uv tool install --force`` replaces the persistent tool's ``Scripts``
+    directory. Windows keeps the currently executing ``pb-ai-code.exe`` open,
+    so running uv as a child fails with access denied. A PowerShell child waits
+    for this process to leave, then runs the global update and, only after it
+    succeeds, the pinned project install. It inherits the terminal so uv's
+    output remains visible.
+    """
+    if os.name != "nt":
+        raise UpdateCheckError("deferred updates are only needed on Windows")
+    commands = [_powershell_call(global_command)]
+    if project_command is not None:
+        commands += [
+            "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+            _powershell_call(project_command),
+        ]
+    commands.append("exit $LASTEXITCODE")
+    script = "\n".join(
+        [
+            "$ErrorActionPreference = 'Stop'",
+            f"Wait-Process -Id {os.getpid()}",
+            "Start-Sleep -Milliseconds 750",
+            *commands,
+        ]
+    )
+    encoded = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
+    try:
+        subprocess.Popen(
+            ["powershell", "-NoProfile", "-EncodedCommand", encoded],
+        )
+    except OSError as exc:
+        raise UpdateCheckError(f"cannot schedule the Windows update: {exc}") from exc
