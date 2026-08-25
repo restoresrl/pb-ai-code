@@ -79,7 +79,7 @@ The full list of slugs Appeon currently publishes (verified
 For a normal installation, install the kit as a persistent tool:
 
 ```pwsh
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.2
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.3
 ```
 
 Then build the shared machine-local database:
@@ -147,7 +147,7 @@ and it records the absolute path of the shared database:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/restoresrl/pb-ai-code@v0.11.2",
+        "git+https://github.com/restoresrl/pb-ai-code@v0.11.3",
         "pb-appeon-index",
         "serve-mcp"
       ],

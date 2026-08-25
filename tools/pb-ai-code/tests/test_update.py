@@ -100,8 +100,8 @@ def test_update_reuses_the_installed_project_layout(
                 "# PB:        22.0",
                 f"# MCP:       {report.MCP_MARKER_SKIPPED}",
                 "# Contents:",
-                "#   .agents/skills",
-                "#   .agents/commands",
+                "#   .agents/skills/pb-review",
+                "#   .agents/commands/pb-review.md",
             ]
         ),
         encoding="utf-8",

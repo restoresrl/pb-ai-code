@@ -13,6 +13,13 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-08-25
+
+### Fixed
+
+- Preserved custom generic skill and command directories when `pb-ai-code
+  update` refreshes a project bundle.
+
 ## [0.11.2] - 2026-08-25
 
 ### Added

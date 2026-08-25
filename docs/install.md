@@ -38,10 +38,10 @@ uv --version
 Install a release as a persistent `uv` tool:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.2
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.3
 ```
 
-The `@v0.11.2` part is a Git tag, not a decoration. It makes the install
+The `@v0.11.3` part is a Git tag, not a decoration. It makes the install
 repeatable: every machine gets the same released code. If you leave the tag
 off, `uv` installs the repository's default branch, which may be newer than the
 latest GitHub release.
@@ -230,11 +230,11 @@ To install a specific release instead of the latest published release, use its
 tag explicitly and then install it in each project:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.2
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.3
 pb-ai-code install --target C:\Projects\MyApp
 ```
 
-Replace `v0.11.2` with the release tag you chose. Do not omit the tag unless
+Replace `v0.11.3` with the release tag you chose. Do not omit the tag unless
 you deliberately want the current default branch instead of a released version.
 Re-run the last command for every project that should receive that release. The
 marker file records the installed source and `pb-ai-code status` displays it.
@@ -256,7 +256,7 @@ if it has the server open.
 Use `uvx` if you cannot or do not want to install persistent commands:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.2 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.3 `
   pb-ai-code install --target C:\Projects\MyApp --pb-version 22.0
 ```
 
@@ -264,7 +264,7 @@ This installs the project bundle but does not make `pb-ai-code` available in
 future terminals. Build PB Search with the same one-off form if required:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.2 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.3 `
   pb-appeon-index update --all
 ```
 

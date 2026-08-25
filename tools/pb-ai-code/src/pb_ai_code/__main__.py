@@ -582,16 +582,29 @@ def _update_install_args(target: Path, fields: marker_mod.MarkerFields) -> list[
     args = ["--target", str(target), "--harness", fields.harness]
     if fields.harness == "generic":
 
-        def is_layout_entry(entry: str, name: str) -> bool:
+        def layout_root(entry: str, name: str) -> str | None:
             normalised = entry.replace("\\", "/")
-            return normalised == name or normalised.endswith(f"/{name}")
+            marker = f"/{name}/"
+            if marker in normalised:
+                return normalised.split(marker, maxsplit=1)[0] + f"/{name}"
+            if normalised == name or normalised.endswith(f"/{name}"):
+                return normalised
+            return None
 
         skills = next(
-            (entry for entry in fields.contents if is_layout_entry(entry, "skills")),
+            (
+                root
+                for entry in fields.contents
+                if (root := layout_root(entry, "skills")) is not None
+            ),
             None,
         )
         commands = next(
-            (entry for entry in fields.contents if is_layout_entry(entry, "commands")),
+            (
+                root
+                for entry in fields.contents
+                if (root := layout_root(entry, "commands")) is not None
+            ),
             None,
         )
         if skills is not None:
