@@ -30,8 +30,10 @@ Collect these before starting:
 3. The member, event, control, DataWindow column, or other sub-entry symbol,
    if the change is narrower than the entry.
 4. A concrete description of the proposed change.
-5. The PowerBuilder version, stated by the user or recorded in the project's
-   instructions. Do not infer it from `appruntimeversion` in an export.
+5. The exact PowerBuilder release slug recorded in the project's instructions,
+   such as `pb2022r3`. Use its derived ORCA token (`22.0` for this example)
+   when opening a session. Do not infer the release from `appruntimeversion` in
+   an export.
 
 If the request names an object but not the change, ask what will change. If it
 names a method but not its owning entry, resolve the owner before continuing.

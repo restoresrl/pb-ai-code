@@ -54,20 +54,14 @@ ahead of related pages like `SetLeftMargin`.
 
 ## Multi-version
 
-A single SQLite DB holds every indexed version; rows are
-distinguished by the `version` column. Maintainers add a new version with a
-TOML edit:
+A single SQLite DB holds every indexed release; rows are distinguished by the
+`version` slug. The packaged catalog contains the Appeon releases supported by
+the kit. Normal setup does not require a TOML edit: `pb-ai-code search setup`
+detects installed products and indexes their matching slugs.
 
-```toml
-# tools/pb-appeon-index/config.toml
-[[versions]]
-slug = "pb2025"
-base_url = "https://docs.appeon.com/pb2025/"
-sections = ["powerscript_reference"]
-priority = 2
-```
-
-…then `pb-appeon-index update --version pb2025`.
+A project records one exact slug, for example `pb2022r3`. That same slug filters
+every documentation query. ORCA's `22.0` is derived from the slug and is not a
+documentation version: it cannot distinguish PB 2022, 2022 R2, and 2022 R3.
 
 The full list of slugs Appeon currently publishes (verified
 2026-05-15): `pb2017`, `pb2017r2`, `pb2017r3`, `pb2019`, `pb2019r2`,
@@ -79,20 +73,26 @@ The full list of slugs Appeon currently publishes (verified
 For a normal installation, install the kit as a persistent tool:
 
 ```pwsh
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.4
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.0
 ```
 
-Then build the shared machine-local database:
+Then set up the shared machine-local database:
 
 ```pwsh
-# One-shot: scrape, parse, and index the default version
-pb-appeon-index update
+# Detect installed releases, show their slugs, and ask before downloading.
+pb-ai-code search setup
 
-# Rebuild a specific configured version
+# Inspect detected releases and indexed documentation.
+pb-ai-code search status
+
+# Refresh documentation for releases installed on this machine.
+pb-ai-code search update
+```
+
+For diagnostics or a deliberate override, the lower-level command remains:
+
+```pwsh
 pb-appeon-index update --version pb2022r3
-
-# Re-index every configured version
-pb-appeon-index update --all
 ```
 
 These commands use the default shared database at
@@ -147,7 +147,7 @@ and it records the absolute path of the shared database:
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/restoresrl/pb-ai-code@v0.11.4",
+        "git+https://github.com/restoresrl/pb-ai-code@v0.12.0",
         "pb-appeon-index",
         "serve-mcp"
       ],
@@ -173,11 +173,12 @@ ordinary MCP tools.
 
 Steps the day a new PB release lands on `docs.appeon.com`:
 
-1. Add a `[[versions]]` entry in `config.toml` with the new slug when
+1. Add the new slug and its ORCA mapping to the bundled release catalog when
    contributing to this repository.
 2. `pb-appeon-index update --version <new-slug>` fetches only the new pages
    and leaves existing versions untouched.
-3. Each developer rebuilds the local database. It is not committed or
+3. Each developer runs `pb-ai-code search update` to rebuild documentation for
+   releases installed on their machine. The database is not committed or
    redistributed.
 
 To refresh an existing version (e.g. Appeon edited a function page),

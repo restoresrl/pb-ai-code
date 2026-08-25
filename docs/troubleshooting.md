@@ -16,7 +16,7 @@ new `PATH`; restart it before continuing.
 Install the persistent tool:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.4
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.0
 ```
 
 Open a new terminal. If the commands are still unavailable, locate the tool
@@ -86,7 +86,7 @@ which entry should remain before removing anything.
 Build the shared database:
 
 ```powershell
-pb-appeon-index update --all
+pb-ai-code search setup
 ```
 
 Then rerun the project install and restart the assistant:
@@ -106,7 +106,7 @@ Check that this file exists for the current Windows user:
 %USERPROFILE%\.pb-appeon-index\index.db
 ```
 
-Rebuild it with `pb-appeon-index update --all`. If the project uses a custom
+Rebuild it with `pb-ai-code search update`. If the project uses a custom
 location, set `PB_APPEON_INDEX_DB` before reinstalling the project so the MCP
 entry records that path.
 

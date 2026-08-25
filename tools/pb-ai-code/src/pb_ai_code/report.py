@@ -35,8 +35,6 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Literal, TextIO
 
-from . import REPO_URL
-
 # --- The line primitive ------------------------------------------------------
 
 Style = Literal["plain", "cyan", "yellow", "green"]
@@ -544,7 +542,7 @@ APPEON_NOTE_SKIPPED = "not evaluated (--skip-mcp-config)"
 _APPEON_REFERENCED = (
     "                  referenced, not copied - rebuilding it once updates every project"
 )
-_APPEON_RECIPE = f"        uvx --from git+{REPO_URL} pb-appeon-index update --all"
+_APPEON_RECIPE = "        pb-ai-code search setup"
 
 
 def appeon_configured_note(db: str) -> str:
@@ -690,9 +688,9 @@ def agents_md_written(rel: str, pb_version: str | None) -> list[Line]:
         # release it was last saved under - so an unstated version is a
         # gap somebody has to close, not a default to fall back on.
         lines.append(
-            Line("          PowerBuilder version not stated - fill it in there, or", "yellow")
+            Line("          PowerBuilder release not stated - fill it in there, or", "yellow")
         )
-        lines.append(Line("          re-run with --pb-version 22.0"))
+        lines.append(Line("          re-run with --pb-version pb2022r3"))
     return lines
 
 
@@ -720,8 +718,8 @@ def agents_md_exists(
     ):
         lines += [
             Line(
-                f"      It records PowerBuilder {recorded_pb_version}, but this install uses "
-                f"{pb_version}.",
+                f"      It records PowerBuilder release {recorded_pb_version}, but this "
+                f"install uses {pb_version}.",
                 "yellow",
             ),
             Line("      Update AGENTS.md before the next install. Without --pb-version,"),
@@ -729,7 +727,7 @@ def agents_md_exists(
         ]
     elif pb_version is not None:
         lines.append(
-            Line(f"      It should record that this project uses PowerBuilder {pb_version}")
+            Line(f"      It should record that this project uses PowerBuilder release {pb_version}")
         )
         lines.append(Line("      and that a migration invalidates that line. Suggested section:"))
     else:

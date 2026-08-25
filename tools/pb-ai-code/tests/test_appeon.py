@@ -29,7 +29,7 @@ from typing import Any
 import pytest
 
 import pb_ai_code
-from pb_ai_code import REPO_URL, VCS_URL, appeon, kit, marker, mcpconfig, report
+from pb_ai_code import VCS_URL, appeon, kit, marker, mcpconfig, report
 from pb_ai_code import plan as plan_mod
 
 CLAUDE_MARKER = (".claude", "_installed-from-pb-ai-code.txt")
@@ -356,9 +356,8 @@ def test_ledger51_the_missing_database_branch_prints_a_recipe(tmp_path: Path) ->
 
     assert "Note: pb-appeon-index NOT configured - missing the index database" in result.stdout
     assert "To build the index" in result.stdout
-    # One command, and no clone: building an index used to require one, which
-    # is why machines that had the tool did not have an index.
-    assert f"uvx --from git+{REPO_URL} pb-appeon-index update --all" in result.stdout
+    # One command, no clone, and no hand-written version configuration.
+    assert "pb-ai-code search setup" in result.stdout
     assert "git clone" not in result.stdout
     assert "Then re-run this installer and the server is configured." in result.stdout
 

@@ -6,6 +6,7 @@ Subcommands::
             [--skills-dir REL] [--commands-dir REL]
             [--skip-mcp-config] [--dry-run]
     status  [--target PATH] [--json]
+    search  {setup,status,update} [--db PATH]
     update  [--target PATH] [--check] [--json] [--refresh] [--yes]
 
 Long options only — the house rule is that not one short flag exists in
@@ -449,9 +450,9 @@ def _resolve_pb_version(args: argparse.Namespace, target: Path) -> str | None:
     """The flag, else the person, else what a previous install recorded.
 
     Never the sources. An object carries the release it was last saved
-    under rather than the release of the IDE working on it, so a 2022
-    project can hold release 6 DataWindows and a sniffed answer is
-    plausible, specific and sometimes four majors wrong.
+    under rather than the release of the IDE working on it, so a PB 2022 R3
+    project can hold release 6 DataWindows and a sniffed answer is plausible,
+    specific, and sometimes four majors wrong.
     """
     if args.pb_version:
         try:
@@ -537,6 +538,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
             "branch": fields.branch,
             "dirty": fields.dirty,
             "harness": fields.harness,
+            "pb_release": fields.pb_version,
             "mcp": fields.mcp,
             "appeon": fields.appeon,
             "contents": list(fields.contents),
@@ -560,6 +562,86 @@ def _cmd_status(args: argparse.Namespace) -> int:
             contents_count=len(fields.contents),
             up_to_date=up_to_date,
         )
+    )
+    return EXIT_OK
+
+
+# --- PB Search ---------------------------------------------------------------
+
+
+def _search_installed_releases() -> tuple[pbversion_mod.PbVersion, ...]:
+    """The machine's exact PB releases, suitable for matching docs."""
+    return pbversion_mod.discover_installed()
+
+
+def _search_indexed_versions(db: Path) -> set[str]:
+    """Read indexed slugs without turning a missing optional DB into an error."""
+    if not db.is_file():
+        return set()
+    from pb_appeon_index import index as index_mod
+
+    try:
+        connection = index_mod.connect(db, read_only=True)
+    except OSError:
+        return set()
+    try:
+        return {str(row["version"]) for row in index_mod.list_versions(connection)}
+    finally:
+        connection.close()
+
+
+def _print_search_status(releases: tuple[pbversion_mod.PbVersion, ...], indexed: set[str]) -> None:
+    if not releases:
+        print("No supported PowerBuilder IDE release was found on this machine.")
+        return
+    print("PowerBuilder releases detected on this machine:")
+    for release in releases:
+        state = "indexed" if release.value in indexed else "not indexed"
+        print(f"  {release.label}  |  {release.value}  |  {state}")
+
+
+def _cmd_search(args: argparse.Namespace) -> int:
+    """Set up or refresh documentation for releases installed on this machine."""
+    from pb_appeon_index import __main__ as index_cli
+
+    db = Path(args.db) if args.db else index_cli._default_db()
+    releases = _search_installed_releases()
+    indexed = _search_indexed_versions(db)
+    _print_search_status(releases, indexed)
+    if args.search_cmd == "status":
+        return EXIT_OK
+    missing = tuple(release for release in releases if release.value not in indexed)
+    selected = missing if args.search_cmd == "setup" else releases
+    if not selected:
+        print("PB Search is already indexed for every detected release.")
+        return EXIT_OK
+    print("Documentation to index:")
+    for release in selected:
+        print(f"  {release.label} ({release.value})")
+    if args.dry_run:
+        return EXIT_OK
+    if args.search_cmd == "setup" and not args.yes:
+        if not sys.stdin.isatty():
+            raise UsageError(
+                "search setup needs --yes when it is run without an interactive terminal"
+            )
+        try:
+            if input("Download and index this documentation? [y/N] ").strip().lower() not in {
+                "y",
+                "yes",
+            }:
+                print("PB Search setup cancelled.")
+                return EXIT_OK
+        except EOFError:
+            print("PB Search setup cancelled.")
+            return EXIT_OK
+    for release in selected:
+        result = index_cli.main(["update", "--version", release.value, "--db", str(db)])
+        if result != 0:
+            raise PbAiCodeError(f"PB Search update failed for {release.value} (exit {result})")
+    print(
+        "PB Search setup complete. Reinstall a project only if its MCP server is not "
+        "configured yet."
     )
     return EXIT_OK
 
@@ -612,7 +694,14 @@ def _update_install_args(target: Path, fields: marker_mod.MarkerFields) -> list[
         if commands is not None:
             args += ["--commands-dir", commands]
     if fields.pb_version and fields.pb_version != "not stated - see AGENTS.md":
-        args += ["--pb-version", fields.pb_version]
+        try:
+            release = pbversion_mod.parse(fields.pb_version)
+        except pbversion_mod.InvalidPbVersion as exc:
+            raise UsageError(
+                "the project records a legacy numeric PB version. Re-run install with an exact "
+                "release slug such as --pb-version pb2022r3."
+            ) from exc
+        args += ["--pb-version", release.value]
     if fields.mcp == report_mod.MCP_MARKER_SKIPPED:
         args.append("--skip-mcp-config")
     return args
@@ -790,7 +879,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--pb-version",
         default=None,
         help=(
-            "PowerBuilder version this project is developed with (e.g. 22.0). "
+            "exact PowerBuilder release slug for this project (e.g. pb2022r3). "
             "Asked interactively when omitted and there is a terminal; never "
             "deduced from the sources"
         ),
@@ -847,6 +936,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="perform the update without asking for confirmation",
     )
     p_update.set_defaults(func=_cmd_update)
+
+    p_search = sub.add_parser(
+        "search",
+        help="set up and refresh Appeon documentation for installed PowerBuilder releases",
+    )
+    search_sub = p_search.add_subparsers(dest="search_cmd", required=True)
+    for name, help_text in (
+        ("setup", "index documentation missing for releases installed on this machine"),
+        ("update", "refresh documentation for releases installed on this machine"),
+        ("status", "show detected releases and their index status"),
+    ):
+        command = search_sub.add_parser(name, help=help_text)
+        command.add_argument("--db", default=None, help="shared PB Search database path")
+        if name == "setup":
+            command.add_argument("--yes", action="store_true", help="download without asking")
+        if name in {"setup", "update"}:
+            command.add_argument(
+                "--dry-run", action="store_true", help="show selected releases only"
+            )
+        command.set_defaults(func=_cmd_search)
     return parser
 
 

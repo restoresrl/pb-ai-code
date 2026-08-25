@@ -1,4 +1,4 @@
-"""The PowerBuilder version is stated, and `AGENTS.md` is not ours to rewrite.
+"""The PowerBuilder release is stated, and `AGENTS.md` is not ours to rewrite.
 
 Two behaviours, and both exist because of the same fact: **an object keeps the
 release it was last saved under**, not the release of the IDE working on it.
@@ -78,31 +78,24 @@ def run_install(target: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 @pytest.mark.parametrize(
-    ("raw", "expected"),
-    [("22", "22.0"), ("22.0", "22.0"), ("19.2", "19.2"), ("25.0", "25.0"), ("  22 ", "22.0")],
+    ("raw", "slug", "orca"),
+    [
+        ("pb2022r3", "pb2022r3", "22.0"),
+        (" PB2022R3 ", "pb2022r3", "22.0"),
+        ("pb2019r3", "pb2019r3", "19.0"),
+        ("pb2025r2", "pb2025r2", "25.0"),
+    ],
 )
-def test_a_bare_major_is_what_a_person_says_and_normalises(raw: str, expected: str) -> None:
-    """`22` is the answer someone gives; `22.0` is what every tool consumes."""
-    assert pbversion.parse(raw).value == expected
+def test_an_exact_release_slug_derives_the_orca_token(raw: str, slug: str, orca: str) -> None:
+    release = pbversion.parse(raw)
+    assert release.value == slug
+    assert release.orca_version == orca
 
 
-@pytest.mark.parametrize("raw", ["PB 22", "2022", "22.0.1", "", "twenty-two", "v22"])
-def test_anything_that_is_not_a_version_is_refused(raw: str) -> None:
-    """Strict about shape, because the shape is the interface to ORCA."""
+@pytest.mark.parametrize("raw", ["PB 22", "2022", "22.0", "", "twenty-two", "v22"])
+def test_an_orca_token_cannot_replace_an_exact_release_slug(raw: str) -> None:
     with pytest.raises(pbversion.InvalidPbVersion):
         pbversion.parse(raw)
-
-
-def test_an_unknown_major_is_accepted_rather_than_refused() -> None:
-    """The list of releases grows without this file being edited.
-
-    A release that ships after this code was written must not stop an
-    install; it is flagged as unrecognised and used.
-    """
-    parsed = pbversion.parse("33.0")
-    assert parsed.value == "33.0"
-    assert parsed.recognised is False
-    assert pbversion.parse("22.0").recognised is True
 
 
 # --- the flag ----------------------------------------------------------------
@@ -113,23 +106,23 @@ def test_the_version_reaches_both_agents_md_and_the_marker(tmp_path: Path) -> No
     target = tmp_path / "target"
     target.mkdir()
 
-    result = run_install(target, "--pb-version", "22")
+    result = run_install(target, "--pb-version", "pb2022r3")
     assert result.returncode == 0, result.stderr
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
-    assert "PowerBuilder version: 22.0" in written
+    assert "PowerBuilder release: `pb2022r3`" in written
     assert "install-time snapshot" in written
     assert "migrated to another" in written
 
     marker = (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
-    assert "# PB:        22.0" in marker
+    assert "# PB:        pb2022r3" in marker
 
 
 def test_created_agents_md_is_utf8_without_bom_and_crlf(tmp_path: Path) -> None:
     target = tmp_path / "target"
     target.mkdir()
 
-    assert run_install(target, "--pb-version", "22.0").returncode == 0
+    assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     raw = (target / "AGENTS.md").read_bytes()
     assert not raw.startswith(b"\xef\xbb\xbf")
@@ -169,10 +162,10 @@ def test_without_a_version_the_file_says_so_rather_than_guessing(tmp_path: Path)
     assert result.returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
-    assert "PowerBuilder version: **not stated**" in written
-    assert "**PowerBuilder version: **" not in written
+    assert "PowerBuilder release: **not stated**" in written
+    assert "**PowerBuilder release: **" not in written
     assert "Ask before opening an ORCA session" in written
-    assert "PowerBuilder version not stated" in result.stdout
+    assert "PowerBuilder release not stated" in result.stdout
 
     marker = (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
     assert "not stated - see AGENTS.md" in marker
@@ -186,13 +179,13 @@ def test_a_reinstall_keeps_the_version_without_being_asked_again(tmp_path: Path)
     """
     target = tmp_path / "target"
     target.mkdir()
-    assert run_install(target, "--pb-version", "19.2").returncode == 0
+    assert run_install(target, "--pb-version", "pb2019r3").returncode == 0
 
-    assert agentsmd.read_version(target) == "19.2"
+    assert agentsmd.read_version(target) == "pb2019r3"
 
     result = run_install(target)
     assert result.returncode == 0
-    assert "# PB:        19.2" in (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
+    assert "# PB:        pb2019r3" in (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
 
 
 # --- the file is theirs ------------------------------------------------------
@@ -211,32 +204,32 @@ def test_an_existing_agents_md_is_never_touched(tmp_path: Path) -> None:
     original = "# my project\n\nDo not touch this.\n"
     (target / "AGENTS.md").write_text(original, encoding="utf-8")
 
-    result = run_install(target, "--pb-version", "22.0")
+    result = run_install(target, "--pb-version", "pb2022r3")
     assert result.returncode == 0
 
     assert (target / "AGENTS.md").read_text(encoding="utf-8") == original
     assert "already exists, so it was left alone" in result.stdout
     # And the section it should carry is printed for the user to place.
     assert agentsmd.SECTION_HEADING in result.stdout
-    assert "PowerBuilder version: 22.0" in result.stdout
+    assert "PowerBuilder release: `pb2022r3`" in result.stdout
 
 
 def test_an_existing_agents_md_reports_a_conflicting_version(tmp_path: Path) -> None:
     """The command-line version wins, but a stale project file cannot stay silent."""
     target = tmp_path / "target"
     target.mkdir()
-    original = "# app\n\n- PowerBuilder version: 19.2\n"
+    original = "# app\n\n- PowerBuilder release: `pb2019r3`\n"
     (target / "AGENTS.md").write_text(original, encoding="utf-8")
 
-    result = run_install(target, "--pb-version", "22.0")
+    result = run_install(target, "--pb-version", "pb2022r3")
 
     assert result.returncode == 0
     assert (target / "AGENTS.md").read_text(encoding="utf-8") == original
-    assert "records PowerBuilder 19.2, but this install uses 22.0" in result.stdout
+    assert "records PowerBuilder release pb2019r3, but this install uses pb2022r3" in result.stdout
     assert "Without --pb-version" in result.stdout
-    assert "will reuse 19.2" in result.stdout
+    assert "will reuse pb2019r3" in result.stdout
     marker = (target / ".claude" / MARKER_NAME).read_text(encoding="utf-8")
-    assert "# PB:        22.0" in marker
+    assert "# PB:        pb2022r3" in marker
 
 
 def test_the_written_file_records_the_workspace_not_loose_target_files(tmp_path: Path) -> None:
@@ -251,7 +244,7 @@ def test_the_written_file_records_the_workspace_not_loose_target_files(tmp_path:
     (target / "src" / "app.pbw").write_text("", encoding="utf-8")
     (target / "src" / "orphaned.pbt").write_text("", encoding="utf-8")
 
-    assert run_install(target, "--pb-version", "22.0").returncode == 0
+    assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     assert "`src/app.pbw`" in written
@@ -265,7 +258,7 @@ def test_an_svn_workspace_is_not_reported_as_unversioned(tmp_path: Path) -> None
     target = tmp_path / "target"
     (target / ".svn").mkdir(parents=True)
 
-    assert run_install(target, "--pb-version", "22.0").returncode == 0
+    assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     assert "Version control: Subversion working copy" in written
@@ -277,7 +270,7 @@ def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) 
     target = tmp_path / "target"
     target.mkdir()
 
-    assert run_install(target, "--pb-version", "22.0").returncode == 0
+    assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     assert "## PowerBuilder workflow" in written
@@ -286,7 +279,7 @@ def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) 
     assert "Never edit or delete files under `ws_objects/`" in written
     assert "Never edit or replace a `.pbl` file directly" in written
     assert "pb-apply-plan" not in written
-    assert len(written.splitlines()) < 30
+    assert len(written.splitlines()) <= 30
 
 
 def test_a_workspace_with_projection_and_git_records_both_facts(tmp_path: Path) -> None:
@@ -297,7 +290,7 @@ def test_a_workspace_with_projection_and_git_records_both_facts(tmp_path: Path) 
     (projection / "sample.srw").write_bytes(b"$PBExportHeader$sample.srw\r\n")
     subprocess.run(["git", "init", "-q", str(target)], check=True, capture_output=True)
 
-    assert run_install(target, "--pb-version", "22.0").returncode == 0
+    assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     assert "Text projection: `ws_objects/` found" in written
@@ -314,7 +307,7 @@ def test_agents_md_distinguishes_byte_protection_from_diffability(tmp_path: Path
     (target / ".gitattributes").write_text("*.sr* binary\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q", str(target)], check=True, capture_output=True)
 
-    assert run_install(target, "--pb-version", "22.0").returncode == 0
+    assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     assert "Source diffs: **some `.sr*` files are binary to Git**" in written
@@ -330,7 +323,7 @@ def test_the_kits_own_agents_md_is_never_the_one_installed(tmp_path: Path) -> No
     """
     target = tmp_path / "target"
     target.mkdir()
-    assert run_install(target, "--pb-version", "22.0").returncode == 0
+    assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
     ours = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
@@ -346,7 +339,7 @@ def test_a_target_that_cannot_take_the_file_still_installs(tmp_path: Path) -> No
     # the run has to survive that.
     (target / "AGENTS.md").mkdir()
 
-    result = run_install(target, "--pb-version", "22.0")
+    result = run_install(target, "--pb-version", "pb2022r3")
 
     assert result.returncode == 0
     assert (target / ".claude" / MARKER_NAME).is_file()
@@ -377,10 +370,10 @@ def test_read_version_is_forgiving_about_a_file_people_edit(tmp_path: Path) -> N
     root = tmp_path / "proj"
     root.mkdir()
     (root / "AGENTS.md").write_text(
-        "# app\n\nnotes\n\n- PowerBuilder version: 25.0 (migrated in June)\n",
+        "# app\n\nnotes\n\n- PowerBuilder release: pb2025r2 (migrated in June)\n",
         encoding="utf-8",
     )
-    assert agentsmd.read_version(root) == "25.0"
+    assert agentsmd.read_version(root) == "pb2025r2"
 
     (root / "AGENTS.md").write_text("# app\n\nnothing about PB here\n", encoding="utf-8")
     assert agentsmd.read_version(root) is None

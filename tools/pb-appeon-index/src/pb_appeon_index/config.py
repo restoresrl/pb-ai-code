@@ -6,8 +6,6 @@ Schema:
     slug = "pb2022r3"
     base_url = "https://docs.appeon.com/pb2022r3/"
     sections = ["powerscript_reference"]
-    priority = 1
-
     [scraper]
     request_delay_ms = 200
     max_pages_per_run = 5000
@@ -34,7 +32,6 @@ class VersionConfig:
     slug: str
     base_url: str
     sections: tuple[str, ...]
-    priority: int = 100
 
 
 @dataclass(frozen=True)
@@ -55,12 +52,6 @@ class Config:
                 return v
         return None
 
-    def default_version(self) -> VersionConfig:
-        """Lowest-priority-number version. Raises if no versions are configured."""
-        if not self.versions:
-            raise ValueError("config has no [[versions]] entries")
-        return min(self.versions, key=lambda v: v.priority)
-
 
 def load_config(path: Path) -> Config:
     # No version guard here: the import above falls back to `tomli` on 3.10,
@@ -77,7 +68,6 @@ def load_config(path: Path) -> Config:
             slug=v["slug"],
             base_url=v["base_url"].rstrip("/") + "/",
             sections=tuple(v.get("sections", [])),
-            priority=int(v.get("priority", 100)),
         )
         for v in versions_raw
     )

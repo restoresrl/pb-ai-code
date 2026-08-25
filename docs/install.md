@@ -38,10 +38,10 @@ uv --version
 Install a release as a persistent `uv` tool:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.4
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.0
 ```
 
-The `@v0.11.4` part is a Git tag, not a decoration. It makes the install
+The `@v0.12.0` part is a Git tag, not a decoration. It makes the install
 repeatable: every machine gets the same released code. If you leave the tag
 off, `uv` installs the repository's default branch, which may be newer than the
 latest GitHub release.
@@ -63,14 +63,19 @@ If either command is not found, open a new PowerShell or Command Prompt. If it
 is still not found, run `uv tool dir --bin` to find the executable directory
 and add that directory to the user's `PATH`.
 
-### Build the optional PB Search database
+### Set up the optional PB Search database
 
 PB Search is the local Appeon documentation index used by the `appeon-query`
-skill. Build it once per Windows user:
+skill. Set it up once per Windows user:
 
 ```powershell
-pb-appeon-index update --all
+pb-ai-code search setup
 ```
+
+The command reads installed PowerBuilder product releases, shows their matching
+Appeon slugs, and asks before downloading documentation. For example,
+PowerBuilder 2022 R3 selects `pb2022r3`; ORCA receives the derived token
+`22.0`. The project stores only the exact slug.
 
 The default database location is:
 
@@ -109,22 +114,24 @@ uvx --from git+https://github.com/restoresrl/pb-orca-mcp@v0.2.8 `
 
 ## 2. Install into a PowerBuilder project
 
-Ask which PowerBuilder version the project is developed with. Do not infer it
-from exported source: an object records the version that last saved that
-object, not necessarily the IDE that maintains the project.
+Ask which exact PowerBuilder release maintains the project, using an Appeon
+slug such as `pb2022r3`. Do not infer it from exported source: an object
+records the release that last saved that object, not necessarily the IDE that
+maintains the project. `22.0` is not enough because it cannot distinguish PB
+2022, 2022 R2, and 2022 R3.
 
 From the project root:
 
 ```powershell
 cd C:\Projects\MyApp
-pb-ai-code install --pb-version 22.0
+pb-ai-code install --pb-version pb2022r3
 pb-ai-code status --json
 ```
 
 Or use an explicit target from another directory:
 
 ```powershell
-pb-ai-code install --target C:\Projects\MyApp --pb-version 22.0
+pb-ai-code install --target C:\Projects\MyApp --pb-version pb2022r3
 ```
 
 The target must already exist. The installer does not create it.
@@ -150,7 +157,7 @@ committed.
 Use Claude Code only when you want its specific layout and permission file:
 
 ```powershell
-pb-ai-code install --harness claude-code --pb-version 22.0
+pb-ai-code install --harness claude-code --pb-version pb2022r3
 ```
 
 It writes `.claude/` and the same root `.mcp.json`. Do not run both layouts in
@@ -232,21 +239,27 @@ To install a specific release instead of the latest published release, use its
 tag explicitly and then install it in each project:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.4
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.12.0
 pb-ai-code install --target C:\Projects\MyApp
 ```
 
-Replace `v0.11.4` with the release tag you chose. Do not omit the tag unless
+Replace `v0.12.0` with the release tag you chose. Do not omit the tag unless
 you deliberately want the current default branch instead of a released version.
 Re-run the last command for every project that should receive that release. The
 marker file records the installed source and `pb-ai-code status` displays it.
 
 ### Update PB Search
 
-Refresh the shared database separately:
+Refresh documentation for releases installed on this machine:
 
 ```powershell
-pb-appeon-index update --all
+pb-ai-code search update
+```
+
+Check the selected releases and index state without downloading:
+
+```powershell
+pb-ai-code search status
 ```
 
 No project reinstall is needed after a database refresh because each MCP entry
@@ -258,16 +271,16 @@ if it has the server open.
 Use `uvx` if you cannot or do not want to install persistent commands:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.4 `
-  pb-ai-code install --target C:\Projects\MyApp --pb-version 22.0
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.0 `
+  pb-ai-code install --target C:\Projects\MyApp --pb-version pb2022r3
 ```
 
 This installs the project bundle but does not make `pb-ai-code` available in
 future terminals. Build PB Search with the same one-off form if required:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.4 `
-  pb-appeon-index update --all
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.0 `
+  pb-ai-code search setup
 ```
 
 For normal development, prefer the persistent installation in step 1.

@@ -23,7 +23,6 @@ def test_load_config_single_version(tmp_path: Path) -> None:
 slug = "pb2022r3"
 base_url = "https://docs.appeon.com/pb2022r3"
 sections = ["powerscript_reference"]
-priority = 1
 """,
     )
     cfg = load_config(cfg_path)
@@ -32,10 +31,9 @@ priority = 1
     assert v.slug == "pb2022r3"
     assert v.base_url.endswith("/")
     assert v.sections == ("powerscript_reference",)
-    assert v.priority == 1
 
 
-def test_load_config_multiple_versions_default_is_lowest_priority(tmp_path: Path) -> None:
+def test_load_config_multiple_versions_finds_each_slug(tmp_path: Path) -> None:
     cfg_path = _write_toml(
         tmp_path,
         """
@@ -43,17 +41,15 @@ def test_load_config_multiple_versions_default_is_lowest_priority(tmp_path: Path
 slug = "pb2022r3"
 base_url = "https://docs.appeon.com/pb2022r3/"
 sections = ["powerscript_reference"]
-priority = 1
 
 [[versions]]
 slug = "pb2025"
 base_url = "https://docs.appeon.com/pb2025/"
 sections = ["powerscript_reference"]
-priority = 2
 """,
     )
     cfg = load_config(cfg_path)
-    assert cfg.default_version().slug == "pb2022r3"
+    assert cfg.find_version("pb2022r3") is not None
     assert cfg.find_version("pb2025") is not None
     assert cfg.find_version("nope") is None
 

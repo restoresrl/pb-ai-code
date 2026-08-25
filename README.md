@@ -22,28 +22,29 @@ Open a new terminal, then install this release and check that both commands
 are available:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.4
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.0
 pb-ai-code --version
 pb-appeon-index --help
 ```
 
-The `@v0.11.4` suffix pins the install to that release. If you omit it, `uv`
+The `@v0.12.0` suffix pins the install to that release. If you omit it, `uv`
 installs the repository's default branch, not GitHub's latest release. The two
 checks do not change anything: `pb-ai-code --version` prints the installed kit
 version, and `pb-appeon-index --help` verifies the optional PB Search command
 without downloading documentation.
 
-Build the optional PB Search database once. It is shared by every project for
-this Windows user:
+Set up the optional PB Search database once. It detects the exact
+PowerBuilder releases installed on this machine and indexes their matching
+Appeon documentation:
 
 ```powershell
-pb-appeon-index update --all
+pb-ai-code search setup
 ```
 
 The database is created at `%USERPROFILE%\.pb-appeon-index\index.db`. Building
-it downloads Appeon documentation and can take several minutes. Skip this step
-if language-reference search is not needed yet; run it later and reinstall the
-project bundle.
+it downloads documentation and can take several minutes. Skip this step if
+language-reference search is not needed yet; run it later. A database refresh
+does not require a project reinstall.
 
 ### Set up a PowerBuilder project
 
@@ -51,9 +52,14 @@ Run these commands from the project root, or provide `--target`:
 
 ```powershell
 cd C:\Projects\MyPowerBuilderApp
-pb-ai-code install --pb-version 22.0
+pb-ai-code install --pb-version pb2022r3
 pb-ai-code status --json
 ```
+
+`pb2022r3` is the project's exact Appeon release slug. It selects the
+matching documentation and derives ORCA's `22.0` token automatically; do not
+pass `22.0` to `pb-ai-code install`, because it cannot distinguish PB 2022,
+2022 R2, and 2022 R3.
 
 The default generic layout writes `.agents/skills`, `.agents/commands`, and
 `.mcp.json` at the project root. Add the generated paths to `.gitignore` when
@@ -63,7 +69,7 @@ skills and MCP servers.
 For Claude Code, use its explicit layout instead:
 
 ```powershell
-pb-ai-code install --harness claude-code --pb-version 22.0
+pb-ai-code install --harness claude-code --pb-version pb2022r3
 ```
 
 The project directory must already exist. The installer does not create it.
@@ -105,15 +111,15 @@ To select a particular release instead, install its tag explicitly and then
 refresh each project that should receive it:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.4
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.12.0
 pb-ai-code install --target C:\Projects\MyPowerBuilderApp
 ```
 
 Keep the tag unless you intentionally want the current default branch instead
-of a release. Refresh PB Search separately when needed:
+of a release. Refresh documentation for the releases installed on this machine when needed:
 
 ```powershell
-pb-appeon-index update --all
+pb-ai-code search update
 ```
 
 The complete procedures, including one-off `uvx` use, are in

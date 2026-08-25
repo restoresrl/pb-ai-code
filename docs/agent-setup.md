@@ -13,8 +13,9 @@ when the project does not already have one.
 Confirm all of the following before changing files:
 
 1. The project directory to configure.
-2. The PowerBuilder IDE version used to maintain the project, such as `22.0`.
-   Do not infer it from exported source.
+2. The exact PowerBuilder release used to maintain the project, such as
+   `pb2022r3`. Do not infer it from exported source; `22.0` cannot distinguish
+   PB 2022, 2022 R2, and 2022 R3.
 3. The assistant layout: use `generic` unless the user explicitly wants Claude
    Code.
 4. Whether the user authorizes machine-level changes. Installing `uv` or a
@@ -49,7 +50,7 @@ If `uv` exists but either persistent command is missing, ask before installing
 this release for the current user:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.4
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.0
 ```
 
 Open a new terminal if needed, then verify:
@@ -65,22 +66,16 @@ shown in step 4. Explain that it configures the project but does not leave
 
 ## 3. Build PB Search only with approval
 
-If the user requested PB Search and `~/.pb-appeon-index/index.db` does not
-exist, build it once:
+If the user requested PB Search, inspect and set up the shared index once:
 
 ```powershell
-pb-appeon-index update --all
+pb-ai-code search setup
 ```
 
-If the persistent command is unavailable by the user's choice, use:
-
-```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.4 `
-  pb-appeon-index update --all
-```
-
-Do not copy the resulting database into a project. The installer finds the
-shared database and writes its absolute path to the project MCP configuration.
+It detects exact installed PowerBuilder releases and indexes the matching
+Appeon documentation after confirmation. Do not copy the resulting database
+into a project. The installer finds the shared database and writes its absolute
+path to the project MCP configuration.
 
 ## 4. Install the project bundle
 
@@ -88,27 +83,27 @@ Make sure the target directory already exists. Start with a dry run when the
 user wants to inspect the changes:
 
 ```powershell
-pb-ai-code install --target C:\Projects\MyApp --pb-version 22.0 --dry-run
+pb-ai-code install --target C:\Projects\MyApp --pb-version pb2022r3 --dry-run
 ```
 
 Install the generic layout:
 
 ```powershell
-pb-ai-code install --target C:\Projects\MyApp --pb-version 22.0
+pb-ai-code install --target C:\Projects\MyApp --pb-version pb2022r3
 ```
 
 For Claude Code:
 
 ```powershell
 pb-ai-code install --target C:\Projects\MyApp `
-  --harness claude-code --pb-version 22.0
+  --harness claude-code --pb-version pb2022r3
 ```
 
 If the persistent command is unavailable, replace the command in either example
 with:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.4 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.0 `
   pb-ai-code install
 ```
 
@@ -125,7 +120,7 @@ pb-ai-code status --target C:\Projects\MyApp --json
 For a one-off install:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.4 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.0 `
   pb-ai-code status --target C:\Projects\MyApp --json
 ```
 

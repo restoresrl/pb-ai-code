@@ -30,7 +30,7 @@ pb-ai-code install [--target PATH]
 | `--harness claude-code` | Claude Code layout and its generated settings file. |
 | `--skills-dir REL` | Generic only. Defaults to `.agents/skills`; must be target-relative and end with `skills`. |
 | `--commands-dir REL` | Generic only. Defaults to `.agents/commands`; must be a sibling of the skills directory. |
-| `--pb-version VERSION` | Project's PowerBuilder IDE version, for example `22.0`. |
+| `--pb-version SLUG` | Exact project release, for example `pb2022r3`. ORCA's `22.0` token is derived from it. |
 | `--skip-mcp-config` | Leave `.mcp.json` unchanged. |
 | `--dry-run` | Show the planned writes and MCP merge without writing files. |
 
@@ -61,19 +61,20 @@ and the project bundle; elsewhere, it updates only the persistent tool.
 | `--refresh` | Ignore the successful 24-hour local release-check cache. |
 | `--yes` | Skip the confirmation prompt for an approved update. |
 
-### `pb-appeon-index`
+### `pb-ai-code search`
 
-The usual command is:
-
-```powershell
-pb-appeon-index update --all
+```text
+pb-ai-code search {setup,status,update} [--db PATH]
 ```
 
-It updates the shared database at
-`%USERPROFILE%\.pb-appeon-index\index.db`. Use `--version <slug>` to refresh
-one configured Appeon version and `--db PATH` to use a non-default database.
-See [`appeon-index/README.md`](appeon-index/README.md) for the index format and
-version list.
+`setup` detects exact PowerBuilder releases installed on the machine and asks
+before indexing their matching Appeon documentation. `status` lists the detected
+releases and whether they are present in the shared database. `update` refreshes
+documentation for those detected releases.
+
+`pb-appeon-index update --version <slug>` remains a lower-level command for a
+specific known slug. The shared database is
+`%USERPROFILE%\.pb-appeon-index\index.db`.
 
 ## Generated project files
 

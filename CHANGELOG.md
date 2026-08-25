@@ -13,6 +13,18 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-25
+
+### Changed
+
+- Projects now record one exact PowerBuilder release slug, such as
+  `pb2022r3`. The kit derives the ORCA token and always filters Appeon
+  documentation queries with that slug.
+- Replaced the manual, single-version PB Search setup with machine-driven
+  `pb-ai-code search setup`, `search status`, and `search update` commands.
+- Removed the unused PB Search cross-version priority setting and its implicit
+  documentation fallback.
+
 ## [0.11.4] - 2026-08-25
 
 ### Fixed

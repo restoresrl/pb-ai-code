@@ -98,7 +98,7 @@ def test_update_reuses_the_installed_project_layout(
             [
                 "# Version:   0.11.1",
                 "# Harness:   generic",
-                "# PB:        22.0",
+                "# PB:        pb2022r3",
                 f"# MCP:       {report.MCP_MARKER_SKIPPED}",
                 "# Contents:",
                 "#   .agents/skills/pb-review",
@@ -133,7 +133,7 @@ def test_update_reuses_the_installed_project_layout(
             "--commands-dir",
             ".agents/commands",
             "--pb-version",
-            "22.0",
+            "pb2022r3",
             "--skip-mcp-config",
         ],
     )

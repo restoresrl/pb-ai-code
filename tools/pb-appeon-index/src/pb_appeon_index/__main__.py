@@ -92,7 +92,8 @@ def _resolve_versions(cfg: Config, slug: str | None, all_flag: bool) -> list[Ver
             print(f"unknown version slug: {slug}", file=sys.stderr)
             sys.exit(2)
         return [v]
-    return [cfg.default_version()]
+    print("choose --version <slug>, or use pb-ai-code search setup", file=sys.stderr)
+    sys.exit(2)
 
 
 def _cmd_scrape(args: argparse.Namespace) -> int:

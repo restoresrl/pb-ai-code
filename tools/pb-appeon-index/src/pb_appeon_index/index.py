@@ -239,9 +239,11 @@ def get_by_name(
     name: str,
     version: str | None = None,
 ) -> dict[str, Any] | None:
-    """Exact-name lookup (case-insensitive). With ``version=None``, picks
-    the lowest-priority slug — currently lexicographically smallest, which
-    happens to favor older slugs; callers that care should pass version."""
+    """Exact-name lookup (case-insensitive).
+
+    Callers serving a project must pass ``version``. Without it SQLite may
+    return any matching release, which is only useful for diagnostics.
+    """
     sql = """
         SELECT version, url, category, kind, name, description, syntax,
                arguments, return_value, examples, see_also, scraped_at

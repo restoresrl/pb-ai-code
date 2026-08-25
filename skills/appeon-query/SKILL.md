@@ -34,11 +34,18 @@ anything about file layout on disk.
 | `appeon_list_topics(version?)` | Discover what categories and entry kinds are indexed (e.g. `powerscript_reference / function`, `powerscript_reference / event`). Useful when a `appeon_search` returns nothing. |
 | `appeon_list_versions()` | List the PB versions present in the index with page counts. Useful at the start of a session to know what's covered. |
 
-## Default flow
+## Project release and default flow
 
-1. Start with `appeon_search(query)`. If the top hit's `name` matches
-   what you were looking for and the `description` excerpt confirms,
-   call `appeon_get(name)` for the full structured content.
+Read the project's `PowerBuilder release` from `AGENTS.md`. It is an exact
+Appeon slug such as `pb2022r3`; use that same slug in every documentation
+call. The generated line also states the derived ORCA token, but do not use
+that token for documentation: `22.0` cannot distinguish 2022, 2022 R2, and
+2022 R3.
+
+1. Start with `appeon_search(query, version="<project slug>")`. If the top
+   hit's `name` matches what you were looking for and the `description` excerpt
+   confirms, call `appeon_get(name, version="<project slug>")` for the full
+   structured content.
 2. If the top hit looks off (wrong topic, low relevance to the query),
    inspect the next 2-3 hits before falling back. Often the right
    page is at rank 2-3 because of how the underlying docs phrase
@@ -50,11 +57,11 @@ anything about file layout on disk.
 
 ## Versioning
 
-The index can hold multiple PB versions simultaneously. The default
-(`pb2022r3`) is the lowest-priority slug in `config.toml`. If you
-need to compare versions or pin to a specific one, pass the
-`version` argument. To find out what's available, call
-`appeon_list_versions()`.
+The index can hold multiple releases simultaneously. There is no default
+release for project work and no fallback to a nearby release. If the project's
+slug is absent from `appeon_list_versions()`, tell the user and offer
+`pb-ai-code search setup`; do not search another version. Use an unfiltered
+query only when the user explicitly asks to compare releases.
 
 ## Cost expectations
 
@@ -134,18 +141,13 @@ adds it when it finds a database. If the index is absent, ask the user whether
 they want to download and build it once for their Windows user:
 
 ```pwsh
-pb-appeon-index update --all
+pb-ai-code search setup
 ```
 
-If the command is not installed persistently, the user can run:
-
-```pwsh
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.4 `
-  pb-appeon-index update --all
-```
-
-Then rerun `pb-ai-code install` for the project and restart the assistant so
-the four `appeon_*` tools appear.
+The command detects installed PowerBuilder releases and asks before downloading
+their matching documentation. Then rerun `pb-ai-code install` for the project
+only if its MCP server was not configured, and restart the assistant so the
+four `appeon_*` tools appear.
 
 **The database is referenced, never copied.** Every project points at the one
 machine-local file, so rebuilding it updates every configured project without
