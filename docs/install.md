@@ -323,25 +323,21 @@ and served as four MCP tools. It makes a language lookup cost ~400
 tokens instead of a few thousand. Without it, the `appeon-query` skill
 tells you it is not built rather than guessing.
 
-You build it once; the installer wires it up for you. Only the first
-half is yours to do, in this repository:
+You build it once per machine; the installer wires it up for every project.
+Install the kit as a persistent command rather than cloning this repository:
 
 ```pwsh
-# 1. A Python environment with this repository's tools installed
-uv venv
-uv pip install -e ".[dev]"
-
-# 2. Scrape and index (idempotent — re-run it to pick up doc changes)
-.venv\Scripts\pb-appeon-index update
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.9.2
+pb-appeon-index update --all --db "$HOME\.pb-appeon-index\index.db"
 ```
 
-Then re-run `scripts\install-skills.ps1` for your project. The installer
-runs *from this checkout*, so it knows the absolute path to that
-interpreter and to the database, and it writes them into the target's
-`.mcp.json`, which is generated per machine and gitignored, and is
-therefore the one place absolute paths belong. `harness/mcp-servers.json`
-is committed and shared, so it could never carry them; that is the whole
-reason this used to be a manual step.
+The database is created at `~/.pb-appeon-index/index.db` and is shared by all
+projects on that machine. If you prefer a checkout for developing the index,
+`uv venv` plus `uv pip install -e ".[dev]"` is still supported. Re-run the
+installer after the database exists; it writes the absolute database path into
+the project's `.mcp.json`, which is generated per machine and gitignored.
+`harness/mcp-servers.json` is committed and shared, so it cannot carry that
+machine-specific path.
 
 The installer says which way it went, on both paths. On stdout:
 
@@ -356,9 +352,9 @@ words - `# Appeon:    pb-appeon-index configured -> <db>` - so a session that
 finds the tools absent can read why without re-running anything.
 
 **The database is referenced, never copied.** Every project points at the
-one file in this checkout, so `pb-appeon-index update`, a new PB release,
-say, reaches every configured project at once, with no re-install.
-Re-run the installer for changed *skills*, not for a changed index.
+one machine-local file, so `pb-appeon-index update`, a new PB release, say,
+reaches every configured project at once, with no re-install. Re-run the
+installer for changed *skills*, not for a changed index.
 
 It is also never redistributed: each developer builds it locally from the
 live site, which is why it cannot simply ship in the repository and why

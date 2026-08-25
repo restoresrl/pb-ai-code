@@ -76,19 +76,27 @@ The full list of slugs Appeon currently publishes (verified
 
 ## How to build the index
 
-Prereq: this repo's Python env (editable install of `pb-ai-code` in
-a venv): `pip install -e ".[dev]"`.
+For a normal installation, install the kit as a persistent tool:
+
+```pwsh
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.9.2
+```
+
+Then build the shared machine-local database:
 
 ```pwsh
 # One-shot: scrape + parse + index for the default version
-pb-appeon-index update
+pb-appeon-index update --db "$HOME\.pb-appeon-index\index.db"
 
 # Rebuild a specific version (idempotent — safe to re-run)
-pb-appeon-index update --version pb2022r3
+pb-appeon-index update --version pb2022r3 --db "$HOME\.pb-appeon-index\index.db"
 
 # Re-index every configured version
-pb-appeon-index update --all
+pb-appeon-index update --all --db "$HOME\.pb-appeon-index\index.db"
 ```
+
+When developing this repository itself, an editable environment also works:
+`uv venv` followed by `uv pip install -e ".[dev]"`.
 
 The first run scrapes from `docs.appeon.com` with a polite 200ms
 delay between requests (configurable in `[scraper]`). Subsequent
@@ -103,7 +111,7 @@ Inputs and outputs:
 | `tools/pb-appeon-index/config.toml` | version list + scraper settings | no: committed |
 | `.appeon-cache/<slug>/...html` | raw HTML mirror, one file per page | **yes** |
 | `.appeon-cache/<slug>/.etag.json` | per-URL ETag/Last-Modified cache | **yes** |
-| `docs/appeon-index/index.db` | SQLite FTS5 database | **yes** |
+| `~/.pb-appeon-index/index.db` | SQLite FTS5 database | outside the repository |
 | `docs/appeon-index/README.md` | this file | no: committed |
 
 ## Wiring up the MCP server
@@ -116,8 +124,7 @@ Inputs and outputs:
 > nothing changes until it is answered.
 
 **The installer configures this server for you** once the index exists.
-`scripts/install-skills.ps1` runs from this checkout, so it can resolve
-the interpreter and the database to absolute paths and write them into
+It resolves the machine-local database to an absolute path and writes it into
 the target's `.mcp.json`: a generated, gitignored, per-machine file.
 The committed `harness/mcp-servers.json` cannot carry those paths, which
 is why the entry is not in it and why this was once a manual step.

@@ -14,6 +14,83 @@ skills are plain Markdown in the [Agent Skills](https://agentskills.io)
 `SKILL.md` format. They name MCP tools rather than client features, and an
 installer materializes them into whatever directory your assistant reads. Nothing here assumes a particular vendor.
 
+## Quick start for a developer
+
+There are two steps: install the commands once on the machine, then install
+the skills and MCP configuration into each PowerBuilder project.
+
+### 1. Install the commands on the machine
+
+Install `uv` once, then open a new PowerShell or Command Prompt:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Install the kit globally. This exposes both `pb-ai-code` and
+`pb-appeon-index` as commands:
+
+```powershell
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.9.2
+pb-ai-code --version
+pb-appeon-index --help
+```
+
+Build the optional PB Search database once for the machine:
+
+```powershell
+pb-appeon-index update --all --db "$HOME\.pb-appeon-index\index.db"
+```
+
+The database is shared by all projects on that machine. It is not copied
+into any project.
+
+### 2. Set up each PowerBuilder project
+
+From any directory, install the kit into the project:
+
+```powershell
+pb-ai-code install --target C:\Projects\MyPowerBuilderApp --pb-version 22.0
+pb-ai-code status --target C:\\Projects\\MyPowerBuilderApp --json
+```
+
+Repeat the install command for every project. It creates the generic bundle
+under `.agents/`, the root `.mcp.json`, and the project marker. Restart the
+assistant after installation so it reloads skills and MCP servers.
+
+For Claude Code, opt in explicitly:
+
+```powershell
+pb-ai-code install --target C:\Projects\MyPowerBuilderApp `
+  --harness claude-code --pb-version 22.0
+```
+
+`pb-ai-code install` does not create the project directory. The target must
+already exist.
+
+### Updating the kit
+
+Update the global commands to a new release, then re-run the install for each
+project:
+
+```powershell
+# Sostituisci v0.9.2 con il nuovo tag della release.
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.9.2
+pb-ai-code install --target C:\\Projects\\MyPowerBuilderApp
+```
+
+To refresh the local PB Search database without changing the project
+installation:
+
+```powershell
+pb-appeon-index update --all --db "$HOME\.pb-appeon-index\index.db"
+```
+
+The root `.mcp.json` points to that database; no project copy is needed.
+
+For one-off use without a global installation, prefix the commands with
+`uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.9.2`.
+
 ## Agents: setting this up in a PowerBuilder project
 
 **If you are an AI coding agent and someone has asked you to set this kit up
@@ -154,9 +231,9 @@ audience is people maintaining decades-old monolithic applications.
 The main flow, `/pb-review`, goes: frame the scope with you → build a
 *budgeted* context pack from the PBLs (you cannot read a monolith all
 at once) → state its understanding and wait for you to confirm it →
-review against a catalog of PB-specific hazards → write a plan file and
-a CHANGELOG entry that outlive the session → apply the fixes one at a
-time, each with a visible diff and a compile check.
+review against a catalog of PB-specific hazards → write a plan file that
+outlives the session → apply the fixes one at a time, each with a visible diff
+and a compile check.
 
 Two properties it is built around: **it stops before spending your
 budget**, and **its output persists**. A plan file can be edited by hand,
