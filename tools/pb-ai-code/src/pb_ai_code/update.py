@@ -228,7 +228,7 @@ def schedule_after_exit(global_command: list[str], project_command: list[str] | 
     script = "\n".join(
         [
             "$ErrorActionPreference = 'Stop'",
-            f"Wait-Process -Id {os.getpid()}",
+            f"Wait-Process -Id {os.getpid()} -ErrorAction SilentlyContinue",
             "Start-Sleep -Milliseconds 750",
             *commands,
         ]

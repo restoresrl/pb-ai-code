@@ -13,6 +13,13 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-08-25
+
+### Fixed
+
+- Allowed the deferred Windows updater to continue when the originating
+  `pb-ai-code` process has already exited before PowerShell starts waiting.
+
 ## [0.12.0] - 2026-08-25
 
 ### Changed

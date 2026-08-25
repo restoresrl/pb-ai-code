@@ -155,6 +155,7 @@ def test_windows_update_is_scheduled_after_the_running_tool_exits(
     assert scheduled[0][:3] == ["powershell", "-NoProfile", "-EncodedCommand"]
     script = base64.b64decode(scheduled[0][3]).decode("utf-16-le")
     assert "Wait-Process -Id" in script
+    assert "-ErrorAction SilentlyContinue" in script
     assert "Start-Sleep -Milliseconds 750" in script
     assert "& 'uv' @('tool', 'install', '--force'" in script
     assert "& 'uvx' @('--from', 'git+https://example.invalid/repo@v0.11.3'" in script

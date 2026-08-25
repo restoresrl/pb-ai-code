@@ -50,7 +50,7 @@ If `uv` exists but either persistent command is missing, ask before installing
 this release for the current user:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.0
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.1
 ```
 
 Open a new terminal if needed, then verify:
@@ -103,7 +103,7 @@ If the persistent command is unavailable, replace the command in either example
 with:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.0 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.1 `
   pb-ai-code install
 ```
 
@@ -120,7 +120,7 @@ pb-ai-code status --target C:\Projects\MyApp --json
 For a one-off install:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.0 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.1 `
   pb-ai-code status --target C:\Projects\MyApp --json
 ```
 
