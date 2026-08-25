@@ -65,8 +65,8 @@ class PbAiCodeError(Exception):
 class UsageError(PbAiCodeError):
     """The invocation itself is wrong — exit 2.
 
-    Target missing or not a directory, ``generic`` without ``--skills-dir``,
-    an absolute or escaping ``--skills-dir``/``--commands-dir``, a
+    Target missing or not a directory, an absolute or escaping
+    ``--skills-dir``/``--commands-dir``, a
     ``--commands-dir`` that is not a sibling of ``--skills-dir``, a skills
     directory passed to ``claude-code``, an unknown harness.
     """

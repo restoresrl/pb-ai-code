@@ -105,11 +105,12 @@ def run_cli(
 def install(
     target: Path, *args: str, kit: Path | None = None, home: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
+    command = ["install", "--target", str(target)]
+    if "--harness" not in args:
+        command += ["--harness", "claude-code"]
+    command += list(args)
     result = run_cli(
-        "install",
-        "--target",
-        str(target),
-        *args,
+        *command,
         env=kit_env(home if home is not None else target.parent / "home", kit),
     )
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
@@ -201,7 +202,7 @@ def only_match(pattern: re.Pattern[str], text: str, what: str) -> str:
     ("args", "marker_rel"),
     [
         ((), ".claude"),
-        (("--harness", "generic", "--skills-dir", ".agent/skills"), ".agent"),
+        (("--harness", "generic", "--skills-dir", ".agents/skills"), ".agents"),
     ],
 )
 def test_ledger61_marker_bytes_are_ascii_utf8_nobom_and_crlf(
@@ -448,15 +449,17 @@ def test_ledger58_53_marker_mcp_line_skipped(tmp_path: Path) -> None:
     assert value_of(lines, "Appeon") == "not evaluated (--skip-mcp-config)"
 
 
-def test_ledger58_marker_mcp_line_printed(tmp_path: Path) -> None:
-    """Ledger 58: a harness with no known config location records the print."""
+def test_ledger58_marker_mcp_line_generic(tmp_path: Path) -> None:
+    """Generic installs record the neutral MCP file in the marker."""
     target = tmp_path / "target"
     target.mkdir()
 
-    install(target, "--harness", "generic", "--skills-dir", ".agent/skills", home=tmp_path / "home")
+    install(
+        target, "--harness", "generic", "--skills-dir", ".agents/skills", home=tmp_path / "home"
+    )
 
-    lines = marker_lines(target / ".agent" / MARKER_NAME)
-    assert value_of(lines, "MCP") == "printed (location is client-specific)"
+    lines = marker_lines(target / ".agents" / MARKER_NAME)
+    assert value_of(lines, "MCP").startswith(".agents\\mcp.json  [")
 
 
 def test_ledger58_marker_mcp_line_not_written(tmp_path: Path) -> None:
@@ -552,7 +555,7 @@ def test_ledger60_snapshot_block_and_update_recipe(tmp_path: Path) -> None:
     )
     recipe = lines[lines.index("# To update: from inside this project, run") + 1]
     assert recipe.startswith("#   uvx --from git+https://github.com/restoresrl/pb-ai-code")
-    assert recipe.endswith(" pb-ai-code install")
+    assert recipe.endswith(" pb-ai-code install --harness claude-code")
     assert lines[-1] == "# Make changes in pb-ai-code, not here."
     assert "install-skills.ps1" not in text and "-Target" not in text
     version = value_of(lines, "Version")
@@ -571,11 +574,11 @@ def test_ledger60_the_recipe_reproduces_this_layout_and_not_another(tmp_path: Pa
     *claude-code* layout beside it - ``.claude/`` appears, ``.mcp.json``
     is written, and the bundle the marker describes goes stale - and it
     does so silently, where the PowerShell recipe at least failed loudly,
-    since ``-Harness generic`` without ``-SkillsDir`` throws.
+    since generic now supplies its conventional directories when the flags
+    are omitted.
 
-    ``claude-code`` stays byte-identical: it is the default harness and it
-    *refuses* the directory flags, so naming either would be a recipe that
-    exits 2.
+    ``claude-code`` stays fixed: it refuses the directory flags, so naming
+    either would be a recipe that exits 2.
 
     The last assertion is the point of the item: follow the recipe, and
     the target must still hold the one bundle it described.
@@ -585,13 +588,13 @@ def test_ledger60_the_recipe_reproduces_this_layout_and_not_another(tmp_path: Pa
     claude_target.mkdir()
     install(claude_target, home=home)
     claude_recipe = recipe_of(marker_lines(claude_target / ".claude" / MARKER_NAME))
-    assert claude_recipe.endswith(" pb-ai-code install"), claude_recipe
+    assert claude_recipe.endswith(" pb-ai-code install --harness claude-code"), claude_recipe
 
     bare_target = tmp_path / "bare"
     bare_target.mkdir()
-    install(bare_target, "--harness", "generic", "--skills-dir", ".agent/skills", home=home)
-    bare_recipe = recipe_of(marker_lines(bare_target / ".agent" / MARKER_NAME))
-    assert bare_recipe.endswith(" pb-ai-code install --harness generic --skills-dir .agent/skills")
+    install(bare_target, "--harness", "generic", "--skills-dir", ".agents/skills", home=home)
+    bare_recipe = recipe_of(marker_lines(bare_target / ".agents" / MARKER_NAME))
+    assert bare_recipe.endswith(" pb-ai-code install")
 
     target = tmp_path / "generic"
     target.mkdir()
@@ -600,16 +603,13 @@ def test_ledger60_the_recipe_reproduces_this_layout_and_not_another(tmp_path: Pa
         "--harness",
         "generic",
         "--skills-dir",
-        ".agent/skills",
+        ".agents/skills",
         "--commands-dir",
-        ".agent/commands",
+        ".agents/commands",
         home=home,
     )
-    recipe = recipe_of(marker_lines(target / ".agent" / MARKER_NAME))
-    assert recipe.endswith(
-        " pb-ai-code install"
-        " --harness generic --skills-dir .agent/skills --commands-dir .agent/commands"
-    ), recipe
+    recipe = recipe_of(marker_lines(target / ".agents" / MARKER_NAME))
+    assert recipe.endswith(" pb-ai-code install"), recipe
 
     # Now do what the marker says. `uvx --from <url> pb-ai-code` is this
     # interpreter running the package that is already here.
@@ -621,7 +621,7 @@ def test_ledger60_the_recipe_reproduces_this_layout_and_not_another(tmp_path: Pa
     assert sorted(path.name for path in target.iterdir()) == before, (
         "following the update recipe installed a second, different layout"
     )
-    assert before == [".agent", "AGENTS.md"]
+    assert before == [".agents", "AGENTS.md"]
 
 
 def test_ledger60_a_directory_with_a_space_stays_pasteable() -> None:
@@ -630,11 +630,11 @@ def test_ledger60_a_directory_with_a_space_stays_pasteable() -> None:
     ``--skills-dir`` is whatever the caller typed, and a Windows developer
     types directories with spaces in them. The last segment has to be
     ``skills``, but nothing constrains the ones above it: unquoted, this
-    recipe would install into ``.agent/my`` - a third layout, in a third
+    recipe would install into ``.agents/my`` - a third layout, in a third
     place. ``claude-code`` names no flags at all, because it is the
-    default harness and it refuses both directory flags.
+    explicit fixed-layout harness and it refuses both directory flags.
     """
-    adapter = harness.build_generic(".agent/my kit/skills", ".agent/my kit/commands")
+    adapter = harness.build_generic(".agents/my kit/skills", ".agents/my kit/commands")
 
     flags = marker.install_flags(adapter)
 
@@ -642,9 +642,9 @@ def test_ledger60_a_directory_with_a_space_stays_pasteable() -> None:
         "--harness",
         "generic",
         "--skills-dir",
-        '".agent/my kit/skills"',
+        '".agents/my kit/skills"',
         "--commands-dir",
-        '".agent/my kit/commands"',
+        '".agents/my kit/commands"',
     )
-    assert shlex.split(" ".join(flags))[3] == ".agent/my kit/skills"
-    assert marker.install_flags(harness.CLAUDE_CODE) == ()
+    assert shlex.split(" ".join(flags))[3] == ".agents/my kit/skills"
+    assert marker.install_flags(harness.CLAUDE_CODE) == ("--harness", "claude-code")

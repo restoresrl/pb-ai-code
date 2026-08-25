@@ -116,13 +116,11 @@ def install(
 ) -> subprocess.CompletedProcess[str]:
     environ = kit_env(home if home is not None else target.parent / "home", kit)
     environ.update(env or {})
-    result = run_cli(
-        "install",
-        "--target",
-        str(target),
-        *args,
-        env=environ,
-    )
+    command = ["install", "--target", str(target)]
+    if "--harness" not in args:
+        command += ["--harness", "claude-code"]
+    command += list(args)
+    result = run_cli(*command, env=environ)
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
     return result
 
@@ -255,7 +253,9 @@ APPEON_MISSING = [
 #: rule here; what it missed is that `git init` on any later day sweeps the
 #: generated bundle - and an .mcp.json holding absolute paths - into the
 #: first commit with nothing in the way.
-def not_a_repo_note(bundle_root: str, *, mcp: bool = True) -> list[str]:
+def not_a_repo_note(
+    bundle_root: str, *, mcp: bool = True, mcp_path: str | None = None
+) -> list[str]:
     lines = [
         "",
         f"Note: this project is not a git repository, so nothing ignores {bundle_root}.",
@@ -263,8 +263,10 @@ def not_a_repo_note(bundle_root: str, *, mcp: bool = True) -> list[str]:
         "      and does not want committing - these are the lines:",
         f"        {bundle_root}/",
     ]
-    if mcp:
-        lines.append("        .mcp.json          # carries absolute paths for this machine")
+    if mcp or mcp_path is not None:
+        lines.append(
+            f"        {mcp_path or '.mcp.json'}          # carries absolute paths for this machine"
+        )
     return lines
 
 
@@ -326,14 +328,7 @@ def test_ledger64_68_stdout_golden_claude_code(
 def test_ledger12_47_stdout_golden_generic(
     tmp_path: Path, staged_kit: Path, running_version: str
 ) -> None:
-    """Ledger 12 and 47: the generic report, with the block printed inline.
-
-    No commands directory is a notice and not an error, and the fallback
-    sentence is part of it. There is no known on-disk location for the MCP
-    config, so the block is printed and the marker records that - which
-    beats writing it somewhere invented, where it would look like it
-    worked.
-    """
+    """Ledger 12 and 47: the generic report writes the neutral MCP file."""
     target = tmp_path / "target"
     target.mkdir()
 
@@ -342,12 +337,13 @@ def test_ledger12_47_stdout_golden_generic(
         "--harness",
         "generic",
         "--skills-dir",
-        ".agent/skills",
+        ".agents/skills",
         kit=staged_kit,
         home=tmp_path / "home",
     )
 
-    lines, block = collapse_json_block(report_lines(result, target, running_version))
+    lines = report_lines(result, target, running_version)
+    block = ""
     assert result.stderr == ""
     assert lines == [
         "",
@@ -355,34 +351,25 @@ def test_ledger12_47_stdout_golden_generic(
         "Target:  <target>",
         "Harness: generic",
         "",
-        "Note: no commands directory for this harness; skipping 3 command file(s).",
-        "      Every flow is also reachable as a skill of the same name.",
-        "",
-        *plan_rows(".agent", commands=False),
-        "mcp       <src>\\harness\\mcp-servers.json -> printed below (location is client-specific)",
-        f"marker    <dst>\\.agent\\{MARKER_NAME}",
+        *plan_rows(".agents", commands=True),
+        "mcp       <src>\\harness\\mcp-servers.json -> <dst>\\.agents\\mcp.json"
+        "  (merged; other servers preserved)",
+        f"marker    <dst>\\.agents\\{MARKER_NAME}",
         "rewrite   ../../docs/ -> ../../pb-ai-code-docs/  in the installed skills",
         "",
-        *installed_rows(commands=False, settings=False),
+        *installed_rows(commands=True, settings=False),
         "Rewrote knowledge-base links in 5 skill file(s).",
-        "",
-        "MCP config: add these servers to your client's MCP configuration.",
-        "Same JSON for every MCP client; only the file it goes in differs.",
-        "<mcp-json-block>",
-        "",
+        "Installed mcp       .agents\\mcp.json  [pb-orca (added)]",
         *APPEON_MISSING,
         "agents    AGENTS.md  (created; the project's own file, never rewritten)",
         "          PowerBuilder version not stated - fill it in there, or",
         "          re-run with --pb-version 22.0",
         "",
         "Done.",
-        # No .mcp.json line: the generic harness prints the block instead of
-        # writing a file, so there is no MCP file to keep out of a commit.
-        *not_a_repo_note(".agent", mcp=False),
+        *not_a_repo_note(".agents", mcp_path=".agents/mcp.json"),
     ]
-    # No restart hint: the generic harness has no client to restart.
-    assert "pb-orca" in json.loads(block)["mcpServers"]
-    assert not list(target.rglob(".mcp.json")), "the generic harness writes no MCP file"
+    assert "pb-orca" in json.loads((target / ".agents" / "mcp.json").read_text())["mcpServers"]
+    assert block == ""
 
 
 def test_ledger48_stdout_golden_skip_mcp_config(
@@ -509,7 +496,7 @@ def test_ledger50_51_appeon_index_is_referenced_not_copied(
         "                  referenced, not copied - rebuilding it once updates every project"
     )
     assert not [p for p in target.rglob("*") if p.suffix == ".db"]
-    written = json.loads((target / ".mcp.json").read_text(encoding="utf-8"))
+    written = json.loads((target / ".agents" / "mcp.json").read_text(encoding="utf-8"))
     assert written["mcpServers"]["pb-appeon-index"]["env"]["PB_APPEON_INDEX_DB"] == str(db)
 
 

@@ -125,8 +125,8 @@ def test_canonical_tree_has_no_dead_links() -> None:
         # siblings: the commands link into the skills as `../skills/<name>/`.
         (
             "generic",
-            ["--skills-dir", ".agent/skills", "--commands-dir", ".agent/commands"],
-            ".agent",
+            ["--skills-dir", ".agents/skills", "--commands-dir", ".agents/commands"],
+            ".agents",
         ),
     ],
 )

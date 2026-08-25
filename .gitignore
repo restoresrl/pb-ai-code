@@ -49,6 +49,7 @@ Thumbs.db
 # a committed copy of the server pin drifts from the canonical one the moment
 # the tag moves. Run the installer to get it.
 .claude/
+.agents/
 .cursor/
 .codex/
 .mcp.json

@@ -81,8 +81,8 @@ CONTENTS_HEADER = "# Contents:"
 
 #: ``#`` plus three spaces, then the destination relative to the target,
 #: backslash-separated on Windows, in plan order. Trees are listed as
-#: directories; ``.mcp.json``, the marker itself and the per-file contents
-#: of a tree are not listed.
+#: directories; the MCP file, the marker itself and the per-file contents of
+#: a tree are not listed.
 CONTENTS_INDENT = "#   "
 
 SNAPSHOT_LINES: tuple[str, ...] = (
@@ -105,9 +105,8 @@ FOOTER_TAIL = "# Make changes in pb-ai-code, not here."
 
 #: The harness ``--harness`` defaults to, and so the one the recipe names
 #: by saying nothing. Duplicated from ``__main__._DEFAULT_HARNESS`` on
-#: purpose: this module decides what the recipe *prints*, and the
-#: claude-code line has to stay byte-identical to the spec's text.
-DEFAULT_HARNESS_ID = "claude-code"
+#: purpose: this module decides what the recipe *prints*.
+DEFAULT_HARNESS_ID = "generic"
 
 #: The one harness whose layout comes from the two directory flags rather
 #: than from a fixed table.
@@ -166,8 +165,8 @@ def _flag_value(value: str) -> str:
 
     ``--skills-dir`` is whatever the caller typed, and a directory with a
     space in it is a Windows habit. The recipe is meant to be copied and
-    run, so an unquoted ``.agent/my skills`` would be a recipe that
-    installs into ``.agent/my``.
+    run, so an unquoted ``.agents/my skills`` would be a recipe that
+    installs into ``.agents/my``.
     """
     return f'"{value}"' if any(char.isspace() for char in value) else value
 
@@ -175,19 +174,15 @@ def _flag_value(value: str) -> str:
 def install_flags(adapter: Adapter) -> tuple[str, ...]:
     """The flags that reproduce *this* layout, for the update recipe.
 
-    The script's recipe named ``-Harness $Harness`` (ps1:583); a recipe
-    with no flags at all tells the reader of a ``generic`` bundle to run
-    the command that installs the *claude-code* layout beside it —
-    silently, where the PowerShell recipe at least failed loudly, since
-    ``-Harness generic`` without ``-SkillsDir`` throws.
-
-    Only flags :func:`pb_ai_code.harness.resolve_adapter` accepts for this
-    harness: ``claude-code`` *refuses* the two directory flags, so naming
-    them would print a recipe that exits 2, and it is the default harness,
-    so it names nothing at all and its line stays byte-identical.
+    The default generic layout needs no flags: the resolver supplies
+    ``.agents/skills`` and ``.agents/commands``. A custom generic layout is
+    recorded with its directory flags. Explicit ``claude-code`` installs
+    record ``--harness claude-code`` because it is no longer the default.
     """
-    if adapter.id == DEFAULT_HARNESS_ID:
-        return ()
+    if adapter.id == DEFAULT_HARNESS_ID and adapter.roots:
+        root = adapter.roots[0]
+        if root.skills_rel == ".agents/skills" and root.commands_rel == ".agents/commands":
+            return ()
     flags = ["--harness", adapter.id]
     if adapter.id == _CONFIGURABLE_HARNESS_ID and adapter.roots:
         # One root today; a future dual-bundle adapter would not take its

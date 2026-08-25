@@ -28,7 +28,7 @@ Format: `N. <contract-id>`: behaviour. **Port:** KEEP / KEEP+FIX / DIVERGE / DRO
 
 ### B. Parameters, preconditions, refusals
 
-**6. `param-set-and-binding`**: six parameters; `Target` positional; `Harness` validated set, case-insensitive, default `claude-code`. **Port: KEEP shape, DIVERGE on case.** `--harness` is normalised with `type=str.lower`; the marker records the normalised spelling, not the user's. **Risk: medium.** **Assert:** `--harness CLAUDE-CODE` succeeds; marker says `claude-code`; unknown value exits 2 naming the legal set.
+**6. `param-set-and-binding`**: six parameters; `Target` positional; `Harness` validated set, case-insensitive, default `generic`. **Port: KEEP shape, DIVERGE on case.** `--harness` is normalised with `type=str.lower`; the marker records the normalised spelling, not the user's. **Risk: medium.** **Assert:** `--harness CLAUDE-CODE` succeeds; marker says `claude-code`; unknown value exits 2 naming the legal set.
 
 **7. `missing-target-means-self-install`**: absent/blank `-Target` = install into the source (ps1:273-283). **Port: DIVERGE.** `--target` defaults to **cwd**. The self-install concept disappears (§4). **Risk: high.** **Assert:** run with no `--target` inside a scratch dir → the bundle lands there.
 
@@ -36,11 +36,11 @@ Format: `N. <contract-id>`: behaviour. **Port:** KEEP / KEEP+FIX / DIVERGE / DRO
 
 **9. `harness-claude-code-layout`**, five fixed destinations: `.claude/skills`, `.claude/commands`, `.claude/settings.json`, `.mcp.json`, `.claude/_installed-from-pb-ai-code.txt` (ps1:290-297). `--skills-dir`/`--commands-dir` are ignored for this harness. **Port: KEEP, DIVERGE on silence**, passing them with `claude-code` now exits 2 rather than being silently ignored. **Risk: low.** **Assert:** exactly those six paths exist after an install and nothing else at the target root.
 
-**10. `generic-requires-skillsdir`**: `-Harness generic` without `-SkillsDir` throws before anything is read (ps1:299-301). **Port: KEEP**, exit 2, same message text. **Risk: low.**
+**10. `generic-default-directories`**: `-Harness generic` without directory flags uses `.agents\skills` and `.agents\commands`. **Port: CHANGE**, with explicit paths still validated as target-relative sibling directories. **Risk: medium.**
 
 **11. `skillsdir-absolute-is-documented-but-broken`**: help says absolute is allowed (ps1:68-72); `Join-Path` produces `C:\tgt\D:\abs\skills`. **Port: KEEP+FIX → refuse.** `--skills-dir` / `--commands-dir` must be target-relative; absolute paths, drive-qualified paths and any value that resolves outside the target exit 2. **Risk: high** (Python's `Path` join would silently "fix" this into installing outside the target). **Assert:** `--skills-dir C:\tmp\x` exits 2; `--skills-dir ../../x` exits 2.
 
-**12. `commandsdir-optional-with-a-notice`**: no commands dir → two yellow lines naming the count, not an error (ps1:348-350, 371-375). **Port: KEEP verbatim**, including `Every flow is also reachable as a skill of the same name.` **Risk: low.**
+**12. `commandsdir-defaults-under-agents`**: generic installs use `.agents\commands` when no commands directory is supplied; explicit command paths remain optional for clients that do not consume the wrappers. **Port: CHANGE.** **Risk: low.**
 
 **13. `skillsdir-commandsdir-overrides`**: `--skills-dir` drives four derived paths (skills dest, docs dest, marker, gitignore bundle root); forward and back slashes both accepted. **Port: KEEP.** **Risk: medium.**
 
@@ -130,9 +130,9 @@ UTF-8 without BOM with one trailing newline. **Risk: medium.** **Assert:**
 byte-check new and existing `.mcp.json` files; plant a 12-level-deep unrelated
 server and assert it survives semantically.
 
-**47. `generic-harness-prints-the-block`**: no known on-disk location → the block is printed to stdout, preceded by two cyan lines (`MCP config: add these servers to your client's MCP configuration.` / `Same JSON for every MCP client; only the file it goes in differs.`), and the outcome becomes `printed (location is client-specific)` (ps1:289-306, 411-416, 526-535). **Port: KEEP.** Correct the second sentence's claim in the docs (see §8, contradiction 5) but keep the printed string for now. **Risk: medium.** **Assert:** `--harness generic --skills-dir .agent/skills` writes no `.mcp.json` anywhere and the marker records the printed outcome.
+**47. `generic-harness-writes-neutral-mcp`**: generic installs write the neutral JSON block to `<target>/.agents/mcp.json`; existing keys are preserved and the marker records the merged path. **Port: CHANGE.** Native Codex, OpenCode and other client dialects remain outside this adapter; translate the neutral block when needed. **Risk: medium.** **Assert:** `--harness generic --skills-dir .agents/skills` writes `.agents/mcp.json` and records it in the marker.
 
-**48. `skip-mcp-config`**: five gates: preflight, plan line (`mcp       skipped (-SkipMcpConfig)`), the merge (prints `Skipped MCP config (-SkipMcpConfig). The skills expect the pb_* tools to be reachable.`, outcome `skipped (-SkipMcpConfig)`), the whole Appeon report, the `/mcp` restart hint, and the `.mcp.json` line in the gitignore hint (ps1:398, 408-410, 511-514, 538, 594, 630). **Port: KEEP**, with the flag renamed `--skip-mcp-config` and the plan/outcome strings updated to that spelling. **Risk: high.** Entirely untested today. **Assert:** an existing target `.mcp.json` is byte-identical afterwards; the four suppressions hold.
+**48. `skip-mcp-config`**: five gates: preflight, plan line (`mcp       skipped (-SkipMcpConfig)`), the merge (prints `Skipped MCP config (-SkipMcpConfig). The skills expect the pb_* tools to be reachable.`, outcome `skipped (-SkipMcpConfig)`), the whole Appeon report, the `/mcp` restart hint, and the MCP line in the gitignore hint (ps1:398, 408-410, 511-514, 538, 594, 630). **Port: KEEP**, with the flag renamed `--skip-mcp-config` and the plan/outcome strings updated to that spelling. **Risk: high.** **Assert:** an existing selected MCP file is byte-identical afterwards; the four suppressions hold.
 
 ### F. The Appeon index
 
@@ -157,7 +157,7 @@ server and assert it survives semantically.
 
 ### G. The marker file
 
-**54. `marker-path-per-harness`**, `.claude/_installed-from-pb-ai-code.txt` for claude-code (beside the skills), `<SkillsDir>/_installed-from-pb-ai-code.txt` for generic (**inside** the skills directory) (ps1:296, 304). Both `skills/pb-review/SKILL.md:771-773` and `docs/wiki-notes.md:77` tell the reader it is in the bundle directory, which the generic branch contradicts. **Port: DIVERGE → one rule: `parent(skills_rel)/_installed-from-pb-ai-code.txt`.** For claude-code this is byte-identical to today; for generic it moves to the bundle root, which is what both consuming documents already promise, and it stops a stray `.txt` sitting where a skill loader enumerates skills. **Risk: medium.** **Assert:** claude-code marker at `.claude/…` unchanged; `--skills-dir .agent/skills` → `.agent/_installed-from-pb-ai-code.txt`.
+**54. `marker-path-per-harness`**, `.claude/_installed-from-pb-ai-code.txt` for claude-code (beside the skills), `<SkillsDir>/_installed-from-pb-ai-code.txt` for generic (**inside** the skills directory) (ps1:296, 304). Both `skills/pb-review/SKILL.md:771-773` and `docs/wiki-notes.md:77` tell the reader it is in the bundle directory, which the generic branch contradicts. **Port: DIVERGE → one rule: `parent(skills_rel)/_installed-from-pb-ai-code.txt`.** For claude-code this is byte-identical to today; for generic it moves to the bundle root, which is what both consuming documents already promise, and it stops a stray `.txt` sitting where a skill loader enumerates skills. **Risk: medium.** **Assert:** claude-code marker at `.claude/…` unchanged; `--skills-dir .agents/skills` → `.agents/_installed-from-pb-ai-code.txt`.
 
 **55. `marker-fixed-header-and-key-alignment`**: `#`-comment file, values aligned at column 14, all ASCII, hyphens never em dashes (ps1:555-565). **Port: KEEP the alignment and the ASCII rule.** **Risk: medium.**
 
@@ -202,7 +202,7 @@ Use the recorded release tag; for a development build, print the command without
 
 **69. `gitignore-hint-check-form`**: `git check-ignore -q -- <bundleRoot>` with **no trailing slash**, run from inside the target, **after** the copy (ps1:598-634). The no-slash form is only correct because the directory now exists. **Port: KEEP, run `git -C <target>`** rather than changing process CWD. **Risk: high.**
 
-**70. `gitignore-hint-trailing-slash-bug`**, the recorded bug: `git check-ignore -q -- '.agent/'` matches a **blank line** in a CRLF `.gitignore` and reports the path ignored, so the hint silently never fired (commit 2a365a7, reproduced on git 2.40.1). CRLF `.gitignore` files are the norm on the Windows PB repos this kit targets. **Port: KEEP the corrected form.** **Risk: high.** **Assert:** regression test, a git repo whose `.gitignore` is CRLF with a blank line and no rule for the bundle must still print `is not ignored`.
+**70. `gitignore-hint-trailing-slash-bug`**, the recorded bug: `git check-ignore -q -- '.agents/'` matches a **blank line** in a CRLF `.gitignore` and reports the path ignored, so the hint silently never fired (commit 2a365a7, reproduced on git 2.40.1). CRLF `.gitignore` files are the norm on the Windows PB repos this kit targets. **Port: KEEP the corrected form.** **Risk: high.** **Assert:** regression test, a git repo whose `.gitignore` is CRLF with a blank line and no rule for the bundle must still print `is not ignored`.
 
 **71. `gitignore-hint-output-text`**: five or six lines, only the `Note:` line coloured, continuation indented 6, suggested rules indented 8, and the suggested rule printed **with** a trailing slash (`.claude/`) while the check queries without one; the `.mcp.json` line only for claude-code without `--skip-mcp-config` (ps1:624-633). **Port: KEEP verbatim.** **Risk: medium.**
 
@@ -507,7 +507,7 @@ Up to date: yes
 | code | `install` | `status` |
 |---|---|---|
 | 0 | success: **including** every warning path: duplicate ORCA server, unparseable target `.mcp.json`, missing Appeon index, no commands directory, bundle not gitignored, dirty source | marker found and parsed |
-| 2 | usage error: target missing or not a directory, `generic` without `--skills-dir`, absolute/escaping `--skills-dir`/`--commands-dir`, non-sibling `--commands-dir`, `--skills-dir` with `claude-code`, unknown harness, argparse errors | usage error |
+| 2 | usage error: target missing or not a directory, absolute/escaping `--skills-dir`/`--commands-dir`, non-sibling `--commands-dir`, `--skills-dir` with `claude-code`, unknown harness, argparse errors | usage error |
 | 3 | none | no marker at this target (documented deviation: agents branch on "installed?" without parsing) |
 | 1 | unexpected: payload not found, copy failure, permission error. Anticipated failures print one line `pb-ai-code: <message>` on stderr with **no traceback**; unanticipated exceptions keep the traceback (house rule) | same |
 

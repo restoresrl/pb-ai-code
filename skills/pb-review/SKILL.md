@@ -737,7 +737,7 @@ See the antipattern catalog entry `pb-antipatterns/isnull-on-numeric`
 What you must **not** write is a Markdown link that points at the
 installed knowledge base — `../<bundle-dir>/pb-ai-code-docs/pb-antipatterns/<slug>.md`,
 where `<bundle-dir>` is whatever this harness uses: `.claude/`,
-`.agent/`, or whatever `-SkillsDir` was given. That is where the file
+`.agents/`, or whatever `-SkillsDir` was given. That is where the file
 genuinely sits on your machine, and it is exactly the trap. The rule is
 about the *installed bundle*, not about any one assistant, so do not
 read it as applying only to the directory name you happen to see.
@@ -836,7 +836,7 @@ fields are not decoration: they are what makes it collectable.
   | `new page`
 - **observed-against**: `pb-ai-code @ <version>` — from the installer's
   marker file, `_installed-from-pb-ai-code.txt`, inside whatever
-  directory this harness installed into (`.claude/`, `.agent/`, …), the
+  directory this harness installed into (`.claude/`, `.agents/`, …), the
   `# Version:` line
 - **evidence**: `compiled clean` (and how — the tool call and its
   result) | `observed only`

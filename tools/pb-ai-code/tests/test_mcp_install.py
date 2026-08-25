@@ -86,7 +86,11 @@ def _stage_wheel_payload(root: Path) -> tuple[Path, dict[str, str]]:
 
 def _install(target: Path, *extra: str) -> subprocess.CompletedProcess[str]:
     """Install into ``target``; every warning path still has to exit 0."""
-    result = _run("install", "--target", str(target), *extra)
+    command = ["install", "--target", str(target)]
+    if "--harness" not in extra:
+        command += ["--harness", "claude-code"]
+    command += list(extra)
+    result = _run(*command)
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
     return result
 
@@ -343,7 +347,7 @@ def test_ledger33_an_install_that_skips_the_config_never_reads_the_file(tmp_path
     skipped.mkdir()
     result = _run("install", "--target", str(skipped), "--skip-mcp-config", env=env)
     assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
-    assert (skipped / ".claude" / "_installed-from-pb-ai-code.txt").is_file(), (
+    assert (skipped / ".agents" / "_installed-from-pb-ai-code.txt").is_file(), (
         "the marker is the last write; without it nothing records what landed here"
     )
 
@@ -375,24 +379,20 @@ def _staged_kit(root: Path) -> kit.Kit:
 # --- The generic harness (ledger 47) -----------------------------------------
 
 
-def test_ledger47_the_generic_harness_prints_the_block_and_writes_no_file(tmp_path: Path) -> None:
-    """Ledger 47: no known on-disk location, so the block goes to stdout.
+def test_ledger47_the_generic_harness_writes_the_neutral_mcp_file(tmp_path: Path) -> None:
+    """Generic installs always write the neutral project MCP configuration."""
+    result = _install(tmp_path, "--harness", "generic", "--skills-dir", ".agents/skills")
 
-    Writing it somewhere invented would look like it worked. The marker says
-    which of the four things happened, so `status` can tell a printed block
-    from a merged one months later.
-    """
-    result = _install(tmp_path, "--harness", "generic", "--skills-dir", ".agent/skills")
-
-    assert list(tmp_path.rglob(".mcp.json")) == [], "the generic harness wrote an MCP config"
-    assert report.MCP_PRINT_INTRO_1 in result.stdout
-    assert report.MCP_PRINT_INTRO_2 in result.stdout
-    assert "printed below (location is client-specific)" in result.stdout
-    assert '"pb-orca"' in result.stdout
+    config = tmp_path / ".agents" / "mcp.json"
+    assert config.is_file()
+    assert '"pb-orca"' in config.read_text(encoding="utf-8")
+    assert report.MCP_PRINT_INTRO_1 not in result.stdout
+    assert report.MCP_PRINT_INTRO_2 not in result.stdout
+    assert "Installed mcp       .agents\\mcp.json" in result.stdout
     assert report.RESTART_HINT not in result.stdout
 
-    fields = _marker(tmp_path, ".agent", "_installed-from-pb-ai-code.txt")
-    assert fields.mcp == report.MCP_MARKER_PRINTED
+    fields = _marker(tmp_path, ".agents", "_installed-from-pb-ai-code.txt")
+    assert fields.mcp.startswith(".agents\\mcp.json  [")
     assert fields.harness == "generic"
 
 

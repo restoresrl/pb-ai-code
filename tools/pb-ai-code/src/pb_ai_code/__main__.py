@@ -69,7 +69,7 @@ from .report import Reporter
 PROG = "pb-ai-code"
 
 _DEFAULT_TARGET = "."
-_DEFAULT_HARNESS = "claude-code"
+_DEFAULT_HARNESS = "generic"
 _DEFAULT_JSON = False
 
 #: What ``status`` prints for a marker value that is not there. Every
@@ -77,12 +77,6 @@ _DEFAULT_JSON = False
 #: missing value is a fact worth showing rather than a reason to fail.
 #: ``--json`` reports the same absence as ``null``.
 _UNKNOWN = "unknown"
-
-#: The one MCP file :func:`pb_ai_code.report.gitignore_note` can name in
-#: its suggested rules. A harness whose config lives elsewhere gets the
-#: note about its bundle root and no second rule, rather than advice about
-#: a path it does not use.
-_GITIGNORED_MCP_FILE = ".mcp.json"
 
 
 def _native(rel: str) -> str:
@@ -332,7 +326,7 @@ def _write_markers(
     """The last write of the run: one marker per root, each atomic.
 
     Contents is the plan destinations relative to the target, in plan
-    order. ``.mcp.json`` and the marker itself are not plan rows, so they
+    order. The MCP file and the marker itself are not plan rows, so they
     cannot appear there.
     """
     contents = tuple(str(dst.relative_to(plan.target)) for dst in plan.destinations())
@@ -365,23 +359,24 @@ def _gitignore_hint(
     avoids the blank-line bug relies on the directory existing.
     """
     mcp = adapter.mcp
-    include_mcp_json = (
-        not skip_mcp_config and mcp is not None and mcp.rel_path == _GITIGNORED_MCP_FILE
-    )
-    seen: set[str] = set()
+    mcp_rel = None if skip_mcp_config or mcp is None else mcp.rel_path
+    roots_to_check: list[str] = []
     for root in adapter.roots:
-        bundle_root = root.bundle_root
-        if bundle_root in seen:
-            continue
-        seen.add(bundle_root)
+        if root.bundle_root not in roots_to_check:
+            roots_to_check.append(root.bundle_root)
+    if (
+        mcp_rel is not None
+        and mcp_rel.split("/")[0] not in roots_to_check
+        and mcp_rel.split("/")[0] != ".mcp.json"
+    ):
+        roots_to_check.append(mcp_rel.split("/")[0])
+    for bundle_root in roots_to_check:
         status = gitignore_mod.check(target, bundle_root)
         if not status.is_repo:
             # Git present and this is not a repository: say so once. Git
             # absent: say nothing, because nothing is known.
             if status.git_available:
-                reporter.block(
-                    report_mod.not_a_repository_note(bundle_root, include_mcp_json=include_mcp_json)
-                )
+                reporter.block(report_mod.not_a_repository_note(bundle_root, mcp_path=mcp_rel))
             continue
         if status.ignored:
             continue
@@ -389,7 +384,7 @@ def _gitignore_hint(
             report_mod.gitignore_note(
                 bundle_root,
                 enclosing_repo=str(status.repo_root) if status.encloses_target else None,
-                include_mcp_json=include_mcp_json,
+                mcp_path=mcp_rel,
             )
         )
 
@@ -596,12 +591,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=str.lower,
         choices=harness_mod.HARNESS_IDS,
         default=_DEFAULT_HARNESS,
-        help="assistant whose layout to write (default: claude-code)",
+        help="assistant whose layout to write (default: generic)",
     )
     p_install.add_argument(
         "--skills-dir",
         default=None,
-        help="target-relative skills directory; required by --harness generic",
+        help="target-relative skills directory; defaults to .agents/skills for generic",
     )
     p_install.add_argument(
         "--commands-dir",

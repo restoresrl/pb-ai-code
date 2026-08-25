@@ -91,7 +91,9 @@ def _run(
 def _install(
     target: Path, *extra: str, env: dict[str, str] | None = None, cwd: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
-    result = _run("install", "--target", str(target), *extra, env=env, cwd=cwd)
+    command = ["install", "--target", str(target), "--harness", "claude-code"]
+    command += list(extra)
+    result = _run(*command, env=env, cwd=cwd)
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
     return result
 

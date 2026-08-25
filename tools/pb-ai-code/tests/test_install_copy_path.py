@@ -126,11 +126,16 @@ def install(
     target: Path, *args: str, kit: Path | None = None, home: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
     """One successful install into ``target``; fails the test if it is not."""
+    command = ["install", "--target", str(target)]
+    if "--harness" not in args:
+        command += ["--harness", "claude-code"]
+    elif "generic" in args and "--commands-dir" not in args and "--skills-dir" in args:
+        skills = args[args.index("--skills-dir") + 1].replace("\\", "/")
+        parent = skills.rsplit("/", 1)[0] if "/" in skills else ""
+        command += ["--commands-dir", f"{parent + '/' if parent else ''}commands"]
+    command += list(args)
     result = run_cli(
-        "install",
-        "--target",
-        str(target),
-        *args,
+        *command,
         env=kit_env(home if home is not None else target.parent / "home", kit),
     )
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
@@ -274,10 +279,10 @@ def test_ledger18_19_both_doc_trees_and_the_loose_doc_file_are_installed(
 @pytest.mark.parametrize(
     ("skills_dir", "bundle_rel"),
     [
-        (".agent/skills", ".agent"),
+        (".agents/skills", ".agents"),
         ("a/b/skills", "a/b"),
         ("skills", ""),
-        (".agent\\skills", ".agent"),
+        (".agents\\skills", ".agents"),
     ],
 )
 def test_ledger13_20_54_docs_and_marker_follow_the_skills_directory_parent(
@@ -429,7 +434,7 @@ def test_ledger22_generic_harness_writes_no_settings_file(tmp_path: Path) -> Non
     target.mkdir()
 
     result = install(
-        target, "--harness", "generic", "--skills-dir", ".agent/skills", home=tmp_path / "home"
+        target, "--harness", "generic", "--skills-dir", ".agents/skills", home=tmp_path / "home"
     )
 
     assert not [name for name in files_under(target) if name.endswith("settings.json")]
@@ -489,7 +494,14 @@ def test_ledger25_readonly_destinations_are_replaced(tmp_path: Path) -> None:
         path.write_bytes(b"clobbered\n")
         os.chmod(path, stat.S_IREAD)
 
-    result = run_cli("install", "--target", str(target), env=kit_env(tmp_path / "home"))
+    result = run_cli(
+        "install",
+        "--target",
+        str(target),
+        "--harness",
+        "claude-code",
+        env=kit_env(tmp_path / "home"),
+    )
 
     assert result.returncode == 0, f"read-only target broke the install:\n{result.stderr}"
     for path in readonly:
@@ -597,9 +609,9 @@ def test_ledger29_self_install_copies_the_docs_and_rewrites_the_links(tmp_path: 
     result = run_cli("install", cwd=kit, env=kit_env(tmp_path / "home", kit))
 
     assert result.returncode == 0, f"self-install failed:\n{result.stdout}\n{result.stderr}"
-    assert (kit / ".claude" / "pb-ai-code-docs" / "pb-antipatterns" / "index.md").is_file()
-    assert (kit / ".claude" / "pb-ai-code-docs" / "wiki-notes.md").is_file()
-    installed = (kit / ".claude" / "skills" / "pb-src-format" / "SKILL.md").read_bytes()
+    assert (kit / ".agents" / "pb-ai-code-docs" / "pb-antipatterns" / "index.md").is_file()
+    assert (kit / ".agents" / "pb-ai-code-docs" / "wiki-notes.md").is_file()
+    installed = (kit / ".agents" / "skills" / "pb-src-format" / "SKILL.md").read_bytes()
     assert installed.count(b"../../pb-ai-code-docs/") == 13
     assert b"../../docs/" not in installed
     # The canonical copy is the source of truth and is not touched.
@@ -633,7 +645,13 @@ def test_ledger14_a_missing_payload_input_stops_before_the_first_copy(
     target.mkdir()
 
     result = run_cli(
-        "install", "--target", str(target), *extra, env=kit_env(tmp_path / "home", kit)
+        "install",
+        "--target",
+        str(target),
+        "--harness",
+        "claude-code",
+        *extra,
+        env=kit_env(tmp_path / "home", kit),
     )
 
     assert result.returncode != 0

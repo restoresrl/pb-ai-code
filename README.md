@@ -36,19 +36,19 @@ sources is a valid target whether or not a `.pbw` is where you expect it.
 
 | You are | Use |
 | --- | --- |
-| Claude Code | nothing: it is the default |
-| anything else (Codex CLI, OpenCode, Cursor, Windsurf, Continue, Aider, …) | `--harness generic --skills-dir <dir> --commands-dir <dir>` |
+| Codex CLI, pi and other clients | nothing: generic is the default and uses `.agents/skills` plus `.agents/commands` |
+| Claude Code | `--harness claude-code` |
 
 Be straight with the user about what that second row means today: only Claude
-Code's on-disk contract is verified here, so `generic` writes the skills and
-the knowledge base where you say, and **prints** the MCP server block instead
-of guessing which file your client reads. You place that block. Inventing a
-path for a client nobody has tested would look like it worked.
+Code's native on-disk contract is verified here. The generic adapter writes
+skills under the path you choose and always writes the neutral MCP block to
+`.agents/mcp.json`. Codex and other clients may need that block translated into
+their own MCP format; the installer does not guess their native format.
 
 The two directories must be siblings and the skills one must be named
 `skills`: the knowledge base contains links that spell that segment out, and
 the installer refuses rather than writing a bundle whose cross-links are dead.
-`.agent/skills` and `.agent/commands` are the conventional answer.
+`.agents/skills` and `.agents/commands` are the default generic paths.
 
 ### 3. Ask the user which PowerBuilder version this project uses
 

@@ -83,7 +83,16 @@ def install_bytes(target: Path, home: Path) -> subprocess.CompletedProcess[bytes
     env["HOME"] = str(home)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     return subprocess.run(
-        [sys.executable, "-m", "pb_ai_code", "install", "--target", str(target)],
+        [
+            sys.executable,
+            "-m",
+            "pb_ai_code",
+            "install",
+            "--target",
+            str(target),
+            "--harness",
+            "claude-code",
+        ],
         capture_output=True,
         env=env,
     )

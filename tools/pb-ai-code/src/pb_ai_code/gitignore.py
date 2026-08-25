@@ -8,7 +8,7 @@ added a rule for yet.
 
 Two details are load-bearing:
 
-**No trailing slash on the query.** ``git check-ignore -q -- '.agent/'``
+**No trailing slash on the query.** ``git check-ignore -q -- '.agents/'``
 can match a **blank line** in a ``.gitignore`` and report the path
 ignored when it is not; verified against a real file, where it claimed
 line 45 while line 45 was empty and ``git status`` disagreed. CRLF
@@ -120,7 +120,7 @@ def check(target: Path, bundle_root: str) -> IgnoreStatus:
     top = toplevel[1].strip()
     repo_root = Path(top).resolve() if top else None
 
-    # No trailing slash. `git check-ignore -q -- '.agent/'` can match a
+    # No trailing slash. `git check-ignore -q -- '.agents/'` can match a
     # BLANK line in a CRLF .gitignore and report the path ignored when it
     # is not, which is how this hint silently stopped firing. Without the
     # slash git answers correctly - and it can only be asked after the

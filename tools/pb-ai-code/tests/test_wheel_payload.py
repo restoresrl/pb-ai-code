@@ -195,17 +195,16 @@ def test_the_wheel_installs_with_no_checkout_in_reach(wheel: Path, tmp_path: Pat
     )
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
 
-    claude = target / ".claude"
-    installed_skills = sorted(p.name for p in (claude / "skills").iterdir())
+    bundle = target / ".agents"
+    installed_skills = sorted(p.name for p in (bundle / "skills").iterdir())
     assert "pb-review" in installed_skills
-    assert (claude / "skills" / "pb-review" / "SKILL.md").is_file()
-    assert (claude / "commands" / "pb-review.md").is_file()
-    assert (claude / "pb-ai-code-docs" / "pb-antipatterns" / "index.md").is_file()
-    assert (claude / "pb-ai-code-docs" / "wiki-notes.md").is_file()
-    assert (claude / "settings.json").is_file()
-    assert (target / ".mcp.json").is_file()
+    assert (bundle / "skills" / "pb-review" / "SKILL.md").is_file()
+    assert (bundle / "commands" / "pb-review.md").is_file()
+    assert (bundle / "pb-ai-code-docs" / "pb-antipatterns" / "index.md").is_file()
+    assert (bundle / "pb-ai-code-docs" / "wiki-notes.md").is_file()
+    assert (target / ".agents" / "mcp.json").is_file()
 
-    marker_text = (claude / "_installed-from-pb-ai-code.txt").read_text(encoding="utf-8")
+    marker_text = (bundle / "_installed-from-pb-ai-code.txt").read_text(encoding="utf-8")
     assert "local checkout" not in marker_text, (
         "the run found a checkout after all, so this test proved nothing about the packaged payload"
     )

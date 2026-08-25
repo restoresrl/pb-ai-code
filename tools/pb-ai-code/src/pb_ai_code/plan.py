@@ -94,7 +94,7 @@ class Plan:
     def destinations(self) -> tuple[Path, ...]:
         """Row destinations in plan order — the marker's Contents list.
 
-        ``.mcp.json`` and the marker itself are not rows and never appear
+        The MCP file and the marker itself are not rows and never appear
         here; neither do the per-file contents of a tree.
         """
         return tuple(row.dst for row in self.rows)

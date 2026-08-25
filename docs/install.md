@@ -44,10 +44,11 @@ Steps 1 and 2 must print `Doctor OK` and `Check OK`. **If they do not, stop
 there**: nothing downstream can work around a PowerBuilder that is not
 reachable, and both commands tell you what is wrong.
 
-There is no fifth step. The installer writes the `pb-orca` server entry into
-your project's `.mcp.json`, so you do not create it by hand; any other MCP
-servers already in that file are left alone. Step 4 is optional and reads only
-the marker the install left behind.
+There is no fifth step. Claude Code installs the `pb-orca` server entry into
+your project's `.mcp.json`; generic installs put the neutral JSON block in
+`.agents/mcp.json`. Any other MCP servers already in the selected file are
+left alone. Step 4 is optional and reads only the marker the install left
+behind.
 
 Open your assistant **with your PowerBuilder project as the working
 directory**, not this repository, confirm the `pb_*` tools are listed (in
@@ -138,7 +139,7 @@ than configuration, which is the opposite of what it is for. Installed
 alongside the skills, the two are updated by the same command and cannot drift.
 
 The consequence is worth stating plainly: **a project using this kit commits
-nothing agentic**: no `.claude/`, no `.mcp.json`, no neutral stand-in file.
+nothing agentic**: no `.claude/`, `.agents/` bundle, or MCP configuration.
 Re-running the installer is the entire synchronization story. This repository
 follows its own rule, so its root `.mcp.json` is generated and gitignored, just
 like `.claude/`.
@@ -148,13 +149,14 @@ Where the installer puts it:
 | Client | Location |
 | --- | --- |
 | Claude Code | `.mcp.json` at the project root: written by `-Harness claude-code`. For a user-wide or machine-local entry instead, `claude mcp add` writes it for you; then use `-SkipMcpConfig`. |
+| Generic harnesses | `.agents/mcp.json`, written by `-Harness generic`; translate it if the client requires TOML or YAML |
 | Cursor | `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (user) |
-| Codex CLI, Gemini CLI, Copilot, others | that client's MCP config file, in that client's own shape: **not** the same JSON; see below |
+| Codex CLI, Gemini CLI, Copilot, others | use the generic `.agents/mcp.json` as the source block and translate it into that client's own shape |
 
-Only Claude Code's location is written automatically, because it is the one
-whose on-disk contract this repository has actually verified. `--harness
-generic` prints the block and tells you it is yours to place: inventing a path
-for a client we have not tested would look like it worked.
+Claude Code and the generic neutral location are written automatically.
+The generic file is deliberately not claimed to be a native Codex, Gemini or
+other client configuration. Translate its values when the client requires a
+different format.
 
 **The location and file format both differ by client.** This page used to say
 the JSON shape was the same everywhere. That advice would send you to a file
@@ -162,18 +164,18 @@ your client cannot read. Claude Code and Cursor take the `mcpServers` object
 as written. Codex CLI wants TOML, `[mcp_servers.<name>]`. OpenCode fuses
 command and arguments into a single array and calls the environment key
 `environment` rather than `env`. Continue is YAML and carries a `name` field
-inside the entry. Aider has no MCP support. Treat the printed block as the
-content: it identifies the server, command and arguments. Translate those
-values into your client's format.
+inside the entry. Aider has no MCP support. Treat the generic file as the
+source content: it identifies the server, command and arguments. Translate
+those values into your client's format.
 
-Servers already in the target file are preserved. The installer writes only
-the `pb-orca` key. If another key already points to `pb-orca-mcp`, as older
-project configurations often do, the installer says so and leaves it alone. Two of them means two
-processes competing for a single-session ORCA library, duplicate tools under
-different prefixes, and only one prefix matching the permission allowlist.
-Removing it is your call. A target `.mcp.json` that does not parse is left untouched and the
-block is printed instead, because a project's MCP config may hold servers that
-have nothing to do with PowerBuilder.
+Servers already in the selected target file are preserved. The installer
+writes only the `pb-orca` key. If another key already points to `pb-orca-mcp`,
+as older project configurations often do, the installer says so and leaves it
+alone. Two of them means two processes competing for a single-session ORCA
+library, duplicate tools under different prefixes, and only one prefix
+matching the permission allowlist. Removing it is your call. If the selected
+file does not parse, it is left untouched and the block is printed for a hand
+merge.
 
 The optional Appeon index in step 3 is deliberately **not** in the canonical
 file: it needs a local Python environment and a database you build yourself, so
@@ -220,7 +222,7 @@ every tool:
 .\scripts\install-skills.ps1 -Target ..\my-pb-app
 
 # Anything else: point it at the directory your assistant reads
-.\scripts\install-skills.ps1 -Target ..\my-pb-app -Harness generic -SkillsDir .agent\skills
+.\scripts\install-skills.ps1 -Target ..\my-pb-app -Harness generic -SkillsDir .agents\skills
 
 # The MCP servers are managed elsewhere (e.g. `claude mcp add` at user scope):
 .\scripts\install-skills.ps1 -Target ..\my-pb-app -SkipMcpConfig
@@ -229,11 +231,11 @@ every tool:
 .\scripts\install-skills.ps1 -Target ..\my-pb-app -DryRun
 ```
 
-`-Harness claude-code` (the default) writes `<target>/.claude/skills/`,
+`-Harness claude-code` writes `<target>/.claude/skills/`,
 `<target>/.claude/commands/`, `<target>/.claude/settings.json` and
 `<target>/.mcp.json`. `-Harness generic` writes the skills wherever you point
-it, skips the assistant-specific settings file, and prints the MCP block
-rather than placing it.
+it, skips assistant-specific settings, and writes the neutral MCP file to
+`<target>/.agents/mcp.json`.
 
 **The install also vendors the knowledge base**, as `pb-ai-code-docs/` beside
 the skills, and rewrites the links inside the installed skills to point at it.
@@ -257,6 +259,23 @@ Every skill is installed, not a subset: a skill left out is a dangling
 cross-reference in the ones that ship, and the saving is a handful of
 Markdown files.
 
+### Installer options at a glance
+
+| Option | Effect |
+| --- | --- |
+| `--target PATH` | Project directory to modify. Defaults to the current directory. |
+| `--harness generic` | Client-neutral layout; default. Uses `.agents/skills`, `.agents/commands` and `.agents/mcp.json`. |
+| `--harness claude-code` | Fixed Claude Code layout; explicitly creates `.claude/`. |
+| `--skills-dir REL` | Optional with `generic`; defaults to `.agents/skills`. The final path segment must be `skills`. |
+| `--commands-dir REL` | Optional with `generic`; defaults to `.agents/commands` and must be a sibling of the skills directory. |
+| `--skip-mcp-config` | Do not create or merge any MCP file. |
+| `--pb-version X.Y` | Record the PowerBuilder version in `AGENTS.md`. If omitted, the installer asks interactively when possible. |
+| `--dry-run` | Print the planned writes without changing the project. |
+
+Use one harness layout per project. Do not run the default generic install and
+an explicit Claude Code install in the same project unless you deliberately
+want both `.agents/` and `.claude/` bundles.
+
 Two things the script does deliberately:
 
 - It writes a **marker file** recording the source commit and what it did
@@ -264,7 +283,7 @@ Two things the script does deliberately:
   repository is auditable. Make changes here and re-run; do not patch the
   installed copy.
 - **Everything it writes is build output, and belongs in the target's
-  `.gitignore`**: `.claude/`, `.mcp.json`, the vendored knowledge base.
+  `.gitignore`**: `.claude/`, `.agents/`, `.mcp.json`, the vendored knowledge base.
   A project that uses this kit commits nothing agentic; re-running the
   installer is what keeps a team on one version. The marker file records
   the source commit, so "are we all on the same toolchain" is answered by

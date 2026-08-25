@@ -75,21 +75,21 @@
         claude-code   <target>/.claude/{skills,commands,settings.json}
                       <target>/.mcp.json
         generic       paths you pass explicitly via -SkillsDir / -CommandsDir;
-                      the MCP block is printed rather than written, because
-                      where it goes depends on the client
+                      writes the neutral MCP file to .agents\mcp.json
 
     Only harnesses whose on-disk contract is known are named here. For anything
-    else use -Harness generic and point it at the right directory; see
-    docs/install.md.
+    else use -Harness generic; it writes skills to the chosen directory and
+    the neutral MCP file to .agents\mcp.json. See docs/install.md.
 
 .PARAMETER SkillsDir
     -Harness generic only: destination directory for skills, relative to
-    Target or absolute. Required in generic mode. The knowledge base lands in
-    its parent directory, which is what the rewritten links expect.
+    Target or absolute. Defaults to .agents\skills in generic mode. The
+    knowledge base lands in its parent directory, which is what the rewritten
+    links expect.
 
 .PARAMETER CommandsDir
-    -Harness generic only: destination directory for command files. Omit to
-    skip commands (every flow is also reachable as a skill).
+    -Harness generic only: destination directory for command files. Defaults
+    to .agents\commands; every flow is also reachable as a skill.
 
 .PARAMETER SkipMcpConfig
     Leave the target's MCP configuration alone. For a project whose servers are
@@ -102,21 +102,21 @@
 
 .EXAMPLE
     .\install-skills.ps1
-    Install into this repository's own .claude/ directory.
+    Install the generic bundle into this repository's own .agents/ directory.
 
 .EXAMPLE
     .\install-skills.ps1 -Target ..\my-pb-app
     Vendor the whole bundle into a PowerBuilder workspace.
 
 .EXAMPLE
-    .\install-skills.ps1 -Target ..\my-pb-app -Harness generic -SkillsDir .agent\skills
+    .\install-skills.ps1 -Target ..\my-pb-app -Harness generic -SkillsDir .agents\skills
 #>
 param(
     [Parameter(Position = 0)]
     [string]$Target,
 
     [ValidateSet('claude-code', 'generic')]
-    [string]$Harness = 'claude-code',
+    [string]$Harness = 'generic',
 
     [string]$SkillsDir,
 
@@ -316,11 +316,9 @@ switch ($Harness) {
         $markerRel = '.claude\_installed-from-pb-ai-code.txt'
     }
     'generic' {
-        if ([string]::IsNullOrWhiteSpace($SkillsDir)) {
-            throw "-Harness generic requires -SkillsDir (e.g. -SkillsDir .agent\skills)"
-        }
-        $skillsRel = $SkillsDir
-        $commandsRel = $CommandsDir
+        $skillsRel = if ([string]::IsNullOrWhiteSpace($SkillsDir)) { '.agents\skills' } else { $SkillsDir }
+        $commandsRel = if ([string]::IsNullOrWhiteSpace($CommandsDir)) { '.agents\commands' } else { $CommandsDir }
+        $mcpRel = '.agents\mcp.json'
         $markerRel = Join-Path $SkillsDir '_installed-from-pb-ai-code.txt'
     }
 }
@@ -629,7 +627,7 @@ if (-not $selfInstall -and -not $DryRun) {
         & git rev-parse --is-inside-work-tree 2>$null | Out-Null
         $isRepo = ($LASTEXITCODE -eq 0)
         if ($isRepo) {
-            # No trailing slash. `git check-ignore -- '.agent/'` can match a
+            # No trailing slash. `git check-ignore -- '.agents/'` can match a
             # BLANK line in .gitignore and report the path as ignored when it
             # is not - verified against a real .gitignore, where it claimed
             # line 45 while line 45 was empty and `git status` disagreed.
@@ -647,8 +645,8 @@ if (-not $selfInstall -and -not $DryRun) {
         Write-Host "      The bundle is generated - update it by re-running this script, not by"
         Write-Host "      editing it - so it does not want committing. Suggested .gitignore lines:"
         Write-Host "        $bundleRoot/"
-        if ($Harness -eq 'claude-code' -and -not $SkipMcpConfig) {
-            Write-Host "        .mcp.json"
+        if (-not $SkipMcpConfig) {
+            Write-Host "        $mcpRel"
         }
     }
 }

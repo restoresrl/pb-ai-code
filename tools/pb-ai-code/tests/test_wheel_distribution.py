@@ -116,7 +116,16 @@ def install_from_staged(root: Path, target: Path, home: Path) -> subprocess.Comp
         }
     )
     return subprocess.run(
-        [sys.executable, "-m", "pb_ai_code", "install", "--target", str(target)],
+        [
+            sys.executable,
+            "-m",
+            "pb_ai_code",
+            "install",
+            "--target",
+            str(target),
+            "--harness",
+            "claude-code",
+        ],
         capture_output=True,
         text=True,
         env=env,

@@ -7,7 +7,7 @@ same way it does for `skills/` and `commands/`.
 
 | File | Materialized as | Scope |
 | --- | --- | --- |
-| `mcp-servers.json` | `<target>/.mcp.json` (`--harness claude-code`) | Claude Code and Cursor take this JSON as written; other clients need it translated: see below |
+| `mcp-servers.json` | `<target>/.mcp.json` (`--harness claude-code`) or `<target>/.agents/mcp.json` (`--harness generic`) | Claude Code and Cursor take this JSON as written; other clients need it translated: see below |
 | `claude-code/settings.json` | `<target>/.claude/settings.json` | Claude Code only |
 
 `mcp-servers.json` sits at the top level, not under `claude-code/`, because it
@@ -24,11 +24,9 @@ it. Claude Code and Cursor take this object as written. Codex CLI wants TOML,
 and calls the environment key `environment`. Continue is YAML with a `name`
 field inside the entry. Aider has no MCP at all.
 
-Translating is the installer's job, per harness, and only the Claude Code
-translation is written and verified today. For anything else, `--harness
-generic` prints the block and says it is yours to place, because guessing both
-a path and a dialect for a client nobody has tested would look like it
-worked.
+The installer writes the neutral JSON form for both supported layouts. For
+`generic` it always uses `<target>/.agents/mcp.json`; clients that require a
+different dialect still need the values translated into their own config.
 
 ## Why the installer writes the MCP config at all
 
@@ -39,7 +37,7 @@ tag, every hand-made copy stays on the old one, and the pin becomes
 documentation instead of configuration.
 
 So a project using this kit commits **nothing** agentic: no `.claude/`, no
-`.mcp.json`, no neutral stand-in. Re-running the installer is the only
+`.agents/`, and no root `.mcp.json`. Re-running the installer is the only
 synchronization step, and it updates the skills and the server pin together,
 so the two cannot drift apart.
 

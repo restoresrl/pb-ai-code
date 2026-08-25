@@ -304,8 +304,8 @@ def build_generic(skills_dir: str, commands_dir: str | None) -> Adapter:
     spell ``skills`` out. Eleven of them are in the knowledge base and
     depend on ``--skills-dir`` alone (``../../skills/<name>/SKILL.md`` from
     a doc tree, ``../skills/<name>/SKILL.md`` from ``wiki-notes.md``), so
-    the sibling rule alone never covered them: ``--skills-dir .agent/kb
-    --commands-dir .agent/commands`` passed it and installed a bundle with
+    the sibling rule alone never covered them: ``--skills-dir .agents/kb
+    --commands-dir .agents/commands`` passed it and installed a bundle with
     13 dead links.
     """
     skills_rel = validate_relative_dir("--skills-dir", skills_dir)
@@ -326,7 +326,10 @@ def build_generic(skills_dir: str, commands_dir: str | None) -> Adapter:
     return Adapter(
         id="generic",
         roots=(SkillRoot(skills_rel, commands_rel),),
-        mcp=McpTarget(None, "mcp_json", "project", "print_only", note=None),
+        # Generic clients do not share a verified native MCP location, but
+        # the neutral project contract is always this file. Clients can
+        # translate its mcpServers object into their own format.
+        mcp=McpTarget(".agents/mcp.json", "mcp_json", "project", "merge", note=None),
         extra_files=(),
         restart_hint=None,
         gaps=(),
@@ -357,7 +360,10 @@ def resolve_adapter(
             raise UsageError(report_mod.err_dir_not_accepted("--commands-dir", harness_id))
         return CLAUDE_CODE
     if harness_id == "generic":
-        if skills_dir is None:
-            raise UsageError(report_mod.err_generic_requires_skills_dir())
+        # Generic is the safe default for Codex, pi and other clients. Keep
+        # both neutral directories together unless the caller chooses a
+        # different layout explicitly.
+        skills_dir = skills_dir or ".agents/skills"
+        commands_dir = commands_dir or ".agents/commands"
         return build_generic(skills_dir, commands_dir)
     raise UsageError(f"unknown harness: {harness_id} (choose from {', '.join(HARNESS_IDS)})")

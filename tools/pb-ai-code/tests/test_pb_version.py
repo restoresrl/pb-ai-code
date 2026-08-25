@@ -57,7 +57,17 @@ def run_install(target: Path, *args: str) -> subprocess.CompletedProcess[str]:
     environ = dict(os.environ)
     environ.update(kit_env(target.parent / "home"))
     return subprocess.run(
-        [sys.executable, "-m", "pb_ai_code", "install", "--target", str(target), *args],
+        [
+            sys.executable,
+            "-m",
+            "pb_ai_code",
+            "install",
+            "--target",
+            str(target),
+            "--harness",
+            "claude-code",
+            *args,
+        ],
         capture_output=True,
         text=True,
         env=environ,

@@ -13,7 +13,18 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-08-25
+## [0.9.1] - 2026-08-25
+
+### Changed
+
+- Generic installs now use `.agents/skills` in the documented Codex and pi
+  setup, and always write the neutral MCP configuration to
+  `.agents/mcp.json`.
+- The generic harness is now the installer's default. Without explicit
+  directory options it uses `.agents/skills` and `.agents/commands`.
+- The installer documentation now lists all install options and distinguishes
+  the Claude Code layout from the generic layout.
+- The repository's own ignore rules now cover the generic `.agents/` bundle.
 
 ### Changed
 

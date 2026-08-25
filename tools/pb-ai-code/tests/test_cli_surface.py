@@ -34,7 +34,7 @@ from pathlib import Path
 import pytest
 
 import pb_ai_code
-from pb_ai_code import harness, kit, marker, provenance, report
+from pb_ai_code import harness, marker, provenance, report
 
 CLAUDE_MARKER = (".claude", "_installed-from-pb-ai-code.txt")
 
@@ -49,7 +49,11 @@ def _run(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str
 
 
 def _install(target: Path, *extra: str) -> subprocess.CompletedProcess[str]:
-    result = _run("install", "--target", str(target), *extra)
+    command = ["install", "--target", str(target)]
+    if "--harness" not in extra:
+        command += ["--harness", "claude-code"]
+    command += list(extra)
+    result = _run(*command)
     assert result.returncode == 0, f"install failed:\n{result.stdout}\n{result.stderr}"
     return result
 
@@ -65,11 +69,6 @@ def _fields(target: Path, *rel: str) -> marker.MarkerFields:
 @pytest.mark.parametrize(
     ("extra", "message"),
     [
-        pytest.param(
-            ["--harness", "generic"],
-            report.err_generic_requires_skills_dir(),
-            id="generic-without-skills-dir",
-        ),
         pytest.param(
             ["--harness", "generic", "--skills-dir", "C:\\tmp\\x"],
             report.err_dir_must_be_target_relative("--skills-dir", "C:\\tmp\\x"),
@@ -105,11 +104,11 @@ def _fields(target: Path, *rel: str) -> marker.MarkerFields:
                 "--harness",
                 "generic",
                 "--skills-dir",
-                ".agent/kb",
+                ".agents/kb",
                 "--commands-dir",
-                ".agent/commands",
+                ".agents/commands",
             ],
-            harness.err_skills_dir_last_segment(".agent/kb"),
+            harness.err_skills_dir_last_segment(".agents/kb"),
             id="skills-dir-not-named-skills",
         ),
         pytest.param(
@@ -118,8 +117,8 @@ def _fields(target: Path, *rel: str) -> marker.MarkerFields:
             id="skills-dir-component-with-a-trailing-space",
         ),
         pytest.param(
-            ["--harness", "generic", "--skills-dir", ".agent/ /skills"],
-            harness.err_dir_component_has_whitespace("--skills-dir", ".agent/ /skills"),
+            ["--harness", "generic", "--skills-dir", ".agents/ /skills"],
+            harness.err_dir_component_has_whitespace("--skills-dir", ".agents/ /skills"),
             id="skills-dir-with-a-blank-component",
         ),
         pytest.param(
@@ -128,12 +127,12 @@ def _fields(target: Path, *rel: str) -> marker.MarkerFields:
             id="commands-dir-component-with-a-leading-space",
         ),
         pytest.param(
-            ["--skills-dir", ".agent/skills"],
+            ["--harness", "claude-code", "--skills-dir", ".agents/skills"],
             report.err_dir_not_accepted("--skills-dir", "claude-code"),
             id="skills-dir-with-a-fixed-layout",
         ),
         pytest.param(
-            ["--commands-dir", ".agent/commands"],
+            ["--harness", "claude-code", "--commands-dir", ".agents/commands"],
             report.err_dir_not_accepted("--commands-dir", "claude-code"),
             id="commands-dir-with-a-fixed-layout",
         ),
@@ -258,8 +257,8 @@ def test_ledger7_the_target_defaults_to_the_current_directory(tmp_path: Path) ->
     """
     result = _run("install", cwd=tmp_path)
     assert result.returncode == 0, result.stderr
-    assert (tmp_path / ".claude" / "skills").is_dir()
-    assert (tmp_path / ".claude" / "_installed-from-pb-ai-code.txt").is_file()
+    assert (tmp_path / ".agents" / "skills").is_dir()
+    assert (tmp_path / ".agents" / "_installed-from-pb-ai-code.txt").is_file()
 
 
 def test_ledger9_claude_code_writes_exactly_its_own_layout(tmp_path: Path) -> None:
@@ -287,56 +286,27 @@ def test_ledger9_claude_code_writes_exactly_its_own_layout(tmp_path: Path) -> No
     ]
 
 
-def test_ledger12_a_harness_without_a_commands_directory_says_so(tmp_path: Path) -> None:
-    """Ledger 12: a notice naming the count, and never an error.
-
-    Every flow is reachable as a skill of the same name, so the commands are
-    a convenience; dying over them would fail an install that is complete.
-    """
-    result = _install(tmp_path, "--harness", "generic", "--skills-dir", ".agent/skills")
-    expected = len(kit.load_kit().iter_command_files())
-    assert (
-        f"Note: no commands directory for this harness; skipping {expected} command file(s)."
-        in result.stdout
-    )
-    assert report.COMMANDS_FALLBACK_LINE in result.stdout
-    assert not (tmp_path / ".agent" / "commands").exists()
+def test_ledger12_generic_defaults_to_the_agents_commands_directory(tmp_path: Path) -> None:
+    """Generic installs use the conventional commands directory by default."""
+    result = _install(tmp_path, "--harness", "generic", "--skills-dir", ".agents/skills")
+    assert "no commands directory" not in result.stdout
+    assert (tmp_path / ".agents" / "commands").is_dir()
+    assert (tmp_path / ".agents" / "commands" / "pb-review.md").is_file()
 
 
-def test_ledger12_14_a_blank_commands_dir_is_no_commands_directory(tmp_path: Path) -> None:
-    """Ledger 12 and 14: `--commands-dir "  "` is the flag not given, and it installs.
-
-    ps1:348 gates the commands destination on `IsNullOrWhiteSpace`, so a
-    blank-but-not-empty value has always meant "no commands directory": the
-    notice prints and the run completes. Verified against the script itself
-    - `-CommandsDir "  "` exits 0 and leaves `skills/` and
-    `pb-ai-code-docs/` behind.
-
-    The port instead built a plan whose command destination was a directory
-    named `  `, copied every skill into place and died in `shutil.copy2`
-    with a traceback, exit 1, and a target holding skills and nothing else.
-    A root-level skills directory is the shape that reaches the copy step,
-    because a nested one dies earlier in the sibling check with a message
-    reading `   is not a sibling of .agent/skills`.
-    """
+def test_ledger12_14_blank_commands_dir_uses_the_generic_default(tmp_path: Path) -> None:
+    """A blank generic command flag follows the default neutral layout."""
     result = _install(
-        tmp_path, "--harness", "generic", "--skills-dir", "skills", "--commands-dir", "  "
+        tmp_path,
+        "--harness",
+        "generic",
+        "--skills-dir",
+        ".agents/skills",
+        "--commands-dir",
+        "  ",
     )
-
-    expected = len(kit.load_kit().iter_command_files())
-    assert (
-        f"Note: no commands directory for this harness; skipping {expected} command file(s)."
-        in result.stdout
-    )
-    assert report.COMMANDS_FALLBACK_LINE in result.stdout
-    assert "Traceback" not in result.stderr
-    # The whole install, not the half of it that runs before the crash.
-    assert sorted(path.name for path in tmp_path.iterdir()) == [
-        "AGENTS.md",
-        "_installed-from-pb-ai-code.txt",
-        "pb-ai-code-docs",
-        "skills",
-    ]
+    assert "no commands directory" not in result.stdout
+    assert (tmp_path / ".agents" / "commands" / "pb-review.md").is_file()
 
 
 def test_a_blank_directory_flag_is_the_flag_not_given_for_every_harness(tmp_path: Path) -> None:
@@ -431,13 +401,13 @@ def test_ledger54_77_status_finds_the_generic_marker_at_the_bundle_root(tmp_path
     both documents that tell a reader where to look already promise the
     bundle root.
     """
-    _install(tmp_path, "--harness", "generic", "--skills-dir", ".agent/skills")
-    assert (tmp_path / ".agent" / "_installed-from-pb-ai-code.txt").is_file()
-    assert not (tmp_path / ".agent" / "skills" / "_installed-from-pb-ai-code.txt").exists()
+    _install(tmp_path, "--harness", "generic", "--skills-dir", ".agents/skills")
+    assert (tmp_path / ".agents" / "_installed-from-pb-ai-code.txt").is_file()
+    assert not (tmp_path / ".agents" / "skills" / "_installed-from-pb-ai-code.txt").exists()
 
     result = _run("status", "--target", str(tmp_path))
     assert result.returncode == 0
-    assert f"Marker:    {Path('.agent') / '_installed-from-pb-ai-code.txt'}" in result.stdout
+    assert f"Marker:    {Path('.agents') / '_installed-from-pb-ai-code.txt'}" in result.stdout
     assert "Harness:   generic" in result.stdout
 
 

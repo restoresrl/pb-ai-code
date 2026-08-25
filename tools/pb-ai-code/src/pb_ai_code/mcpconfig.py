@@ -213,9 +213,8 @@ def _compact(value: Any) -> str:
 def render_block(servers: Mapping[str, Any], dialect: str = DIALECT_MCP_JSON) -> str:
     """The block as printed on stdout: ``{"mcpServers": …}``, indent 2.
 
-    Used by the ``generic`` harness's print-only path and by the
-    hand-merge instruction after a strict-parse refusal - both of which a
-    human copies off a console and pastes into a file of their own. It is
+    Used by the hand-merge instruction after a strict-parse refusal. A human
+    copies the block into the selected MCP file. It is
     the one caller that keeps ``ensure_ascii``, and the Appeon entry is why:
     it carries a database path, which on Windows is as likely as not to sit
     under an accented profile name, and ``\\u00f2`` survives a console

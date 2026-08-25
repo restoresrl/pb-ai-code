@@ -598,7 +598,16 @@ def _install_into(target: Path) -> subprocess.CompletedProcess[str]:
     home = target.parent / "home"
     home.mkdir(exist_ok=True)
     result = subprocess.run(
-        [sys.executable, "-m", "pb_ai_code", "install", "--target", str(target)],
+        [
+            sys.executable,
+            "-m",
+            "pb_ai_code",
+            "install",
+            "--target",
+            str(target),
+            "--harness",
+            "claude-code",
+        ],
         capture_output=True,
         text=True,
         env={

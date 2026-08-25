@@ -438,10 +438,10 @@ def mcp_unparseable(path: str, block: str) -> list[Line]:
 
 
 def mcp_printed_block(block: str) -> list[Line]:
-    """The ``generic`` harness has no known on-disk location for the config.
+    """Render the hand-merge block after an MCP file cannot be parsed.
 
-    Printing the block and saying so beats writing it somewhere invented,
-    which would look like it worked.
+    The generic harness has a neutral on-disk location; this is only the
+    refusal path for malformed or unsafe existing configuration.
     """
     return [
         BLANK,
@@ -616,6 +616,7 @@ def gitignore_note(
     *,
     enclosing_repo: str | None = None,
     include_mcp_json: bool = False,
+    mcp_path: str | None = None,
 ) -> list[Line]:
     """Five or six lines; only the ``Note:`` line is coloured.
 
@@ -642,12 +643,14 @@ def gitignore_note(
         Line(_GITIGNORE_BODY_2),
         Line(f"        {bundle_root}/"),
     ]
-    if include_mcp_json:
-        lines.append(Line("        .mcp.json"))
+    if include_mcp_json or mcp_path is not None:
+        lines.append(Line(f"        {mcp_path or '.mcp.json'}"))
     return lines
 
 
-def not_a_repository_note(bundle_root: str, *, include_mcp_json: bool = False) -> list[Line]:
+def not_a_repository_note(
+    bundle_root: str, *, include_mcp_json: bool = False, mcp_path: str | None = None
+) -> list[Line]:
     """The target is not under version control, and that is worth one line.
 
     Silence was the old behaviour and it was defensible: there is no
@@ -669,8 +672,9 @@ def not_a_repository_note(bundle_root: str, *, include_mcp_json: bool = False) -
         Line("      and does not want committing - these are the lines:"),
         Line(f"        {bundle_root}/"),
     ]
-    if include_mcp_json:
-        lines.append(Line("        .mcp.json          # carries absolute paths for this machine"))
+    if include_mcp_json or mcp_path is not None:
+        path = mcp_path or ".mcp.json"
+        lines.append(Line(f"        {path}          # carries absolute paths for this machine"))
     return lines
 
 
@@ -804,7 +808,7 @@ def err_target_not_a_directory(path: str) -> str:
 
 
 def err_generic_requires_skills_dir() -> str:
-    return "--harness generic requires --skills-dir (e.g. --skills-dir .agent/skills)"
+    return "--harness generic requires --skills-dir (e.g. --skills-dir .agents/skills)"
 
 
 def err_dir_must_be_target_relative(flag: str, value: str) -> str:
