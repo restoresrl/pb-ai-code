@@ -4,22 +4,19 @@
     configuration into the places an AI coding assistant actually reads.
 
 .DESCRIPTION
-    DEPRECATED as of v0.5.0, and kept for one release so an existing consumer
-    is not stranded mid-upgrade. The supported installer is the CLI, run from
+    LEGACY COMPATIBILITY TOOL. The supported installer is the CLI, run from
     inside the project being installed into and needing no clone of this
-    repository at all:
+    repository:
 
         uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install
 
-    That is not a repackaging of this script - it inverts its direction. This
-    one runs *from* a checkout and points at a target, which is why every
-    consumer needed a clone on the machine and a path to it. The CLI is
-    fetched, runs in the current directory, and reports the same things in the
-    same words. It will be deleted in the release after this one.
+    That is not a repackaging of this script. The CLI runs from the consumer
+    project, while this script runs from a checkout and points at a target.
+    This script remains for maintainer compatibility testing and is not a
+    supported consumer installation path.
 
-    The rest of this description is how this script works, for as long as it
-    is here. The canonical copies live in this repository, in agent-neutral
-    locations:
+    The rest of this description records how the legacy script works. The
+    canonical copies live in this repository, in agent-neutral locations:
 
         skills/<name>/SKILL.md      Agent Skills (agentskills.io) format
         commands/<name>.md          slash-command wrappers

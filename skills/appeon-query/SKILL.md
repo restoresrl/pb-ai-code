@@ -1,6 +1,8 @@
 ---
 name: appeon-query
 description: Use this whenever you need to look up PowerScript language syntax, runtime API, events, or DataWindow reference material. Drives the four MCP tools exposed by the local pb-appeon-index server (appeon_search / appeon_get / appeon_list_topics / appeon_list_versions). Replaces ad-hoc WebFetch against docs.appeon.com — those calls cost thousands of tokens per page; this skill keeps a typical lookup under ~400.
+metadata:
+  version: "1.1.0"
 ---
 
 # Querying the Appeon doc index
@@ -78,13 +80,11 @@ switch skills.
 Two different situations, and they need different things said.
 
 **The `appeon_*` tools are not listed at all.** The `pb-appeon-index`
-server is not in this project's MCP configuration, and there is exactly
-one reason for that: **the index has never been built on this machine.**
-The installer adds the server by itself wherever it finds one — it runs
-from the `pb-ai-code` checkout, so it knows the absolute paths — and
-where it does not find one it says so, in its output and in the marker
-file it leaves in the target. So this is a state with a cause and a
-two-command cure, not a configuration anybody chose.
+server is not in this project's MCP configuration. The usual reason is that
+the index has not been built for this Windows user. The installer adds the
+server when it finds the shared database. Otherwise it reports the missing
+database in its output and marker file. This is a setup gap, not a project
+configuration decision.
 
 **The tools are listed but `appeon_search` errors** with something like
 "database not found" — the server is wired up but the index has never
@@ -95,20 +95,16 @@ PowerScript semantic you did not verify is a guess, and a guess inside
 a finding is worse than an absent finding — it looks the same as a
 right one and arrives with a suggested edit attached.
 
-But "no MCP server" is not the same as "no index", and the difference
-is worth two minutes. Work down this ladder and stop at the first rung
-that answers:
+But "no MCP server" is not the same as "no index". Work down this ladder
+and stop at the first rung that answers:
 
-1. **The database itself, if a `pb-ai-code` checkout is on this
-   machine.** The MCP server is a thin wrapper over a SQLite file at
-   `docs/appeon-index/index.db`, and the file is useful without the
-   server. It is gitignored — every user builds their own — so it
-   exists only where somebody has run `update`, but where it exists it
-   is exact, offline, and costs nothing:
+1. **The shared database itself.** Its normal location is
+   `%USERPROFILE%\.pb-appeon-index\index.db`. It is useful without the MCP
+   server and is exact, offline, and free to query:
 
    ```python
    import sqlite3
-   db = sqlite3.connect(r"C:\path\to\pb-ai-code\docs\appeon-index\index.db")
+   db = sqlite3.connect(r"C:\Users\me\.pb-appeon-index\index.db")
    c = db.cursor()
    c.execute("select version, name, url, syntax, return_value "
              "from pages where name = ?", ("Pos",))
@@ -118,51 +114,42 @@ that answers:
    Columns: `id`, `version`, `url`, `category`, `kind`, `name`,
    `description`, `syntax`, `arguments`, `return_value`, `examples`,
    `see_also`, `scraped_at`. For a name you are unsure of, search
-   `pages_fts` and join back on `pages.id = pages_fts.rowid` — mind
-   that both tables have a `name` column, so qualify it.
+   `pages_fts` and join back on `pages.id = pages_fts.rowid`. Both tables
+   have a `name` column, so qualify it.
 
-   A lookup answered this way is `verified-in-docs` exactly as if the
-   server had answered, and cite the `url` column, which is the real
-   Appeon page.
+   A lookup answered this way is `verified-in-docs` exactly as if the server
+   had answered. Cite the `url` column, which is the real Appeon page.
 
-2. **A budgeted live fetch**, when there is no checkout and a finding
-   genuinely turns on the semantic. Two or three pages, on the
-   behaviours your findings depend on — not background reading. The
-   objection to the web is **volume**, thousands of tokens per page,
-   not principle. Be warned that guessing the URL wastes the budget:
-   the page names are not derivable (`Pos` is `pos_func.html`), so
-   search rather than construct.
+2. **A budgeted live fetch**, when the database is absent and a finding
+   depends on the semantic. Read two or three pages about the required
+   behavior, not background material. Search for the page instead of guessing
+   its URL; `Pos`, for example, is `pos_func.html`.
 
-3. **Neither** — then say so in the finding. `evidence:
-   unverified-semantics` with an `experiment:` naming the concrete test
-   that would settle it. That is an honest finding. Asserting it is not.
+3. **Neither**. Record `evidence: unverified-semantics` with an `experiment:`
+   that names the concrete test that would settle it. Do not present an
+   unverified semantic as fact.
 
-**There is one thing to do, and it is not editing an MCP config.** The
-installer wires this server up by itself whenever the machine can host
-it — it runs from the `pb-ai-code` checkout, so it knows the absolute
-paths that a committed, shared config could never carry, and the
-`.mcp.json` it writes is generated and gitignored, which makes it the
-right place for them.
-
-So the server is absent for exactly one reason: **the index has never
-been built on this machine.** In the `pb-ai-code` checkout:
+**Do not edit an MCP config by hand to add this server.** The project installer
+adds it when it finds a database. If the index is absent, ask the user whether
+they want to download and build it once for their Windows user:
 
 ```pwsh
-uv venv                                 # an environment with the tools
-uv pip install -e ".[dev]"
-.venv\Scripts\pb-appeon-index update    # scrape and index (idempotent)
+pb-appeon-index update --all
 ```
 
-Then re-run `scripts\install-skills.ps1` for the project, and the four
-`appeon_*` tools appear. The permission file already pre-approves them.
+If the command is not installed persistently, the user can run:
 
-**The database is referenced, never copied.** Every project points at the
-one file in the checkout, so rebuilding the index — to add a PB release,
-say, `pb-appeon-index update --version pb2025` after adding it to
-`config.toml` — updates every configured project at once, with no
-re-install. One file, many consumers; a new session picks up the new
-content. Re-running the installer is for changed *skills*, not for a
-changed index.
+```pwsh
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.0 `
+  pb-appeon-index update --all
+```
 
-Full detail: `docs/appeon-index/README.md` and `docs/install.md` §3 in
-that repository.
+Then rerun `pb-ai-code install` for the project and restart the assistant so
+the four `appeon_*` tools appear.
+
+**The database is referenced, never copied.** Every project points at the one
+machine-local file, so rebuilding it updates every configured project without
+a reinstall. Reinstall projects for changed skills, not for a database refresh.
+
+For setup details, direct the user to the installation guide for
+`pb-ai-code`.

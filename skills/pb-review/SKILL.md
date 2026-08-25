@@ -2,7 +2,7 @@
 name: pb-review
 description: Use this to run a structured code review on a PowerBuilder target — an entry, a .pbl, a .pbt, or a free-form description of a block of code. Frames the work with the user, builds a scoped context pack, validates understanding before reviewing, then produces a persistent plan with one YAML-tagged finding per fix and hands off to pb-apply-plan for the edit loop. Never edits PowerBuilder sources or CHANGELOG.md during review; it writes the plan and a one-line pointer into the project's own backlog if it has one.
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Structured code review on a PowerBuilder target
@@ -321,17 +321,14 @@ the refusal in `pb-apply-plan` — applies unchanged. Unattended means
    right one and arrives with a suggested edit attached.
 
    That leaves a real gap, so name what fills it. **The absence of the
-   `appeon_*` tools does not mean the index is absent** — it is a
-   SQLite file, and the server is a wrapper over it. If a `pb-ai-code`
-   checkout is on this machine, query
-   `docs/appeon-index/index.db` directly and you get the same answer,
-   citable, for nothing; only if there is no checkout do you spend
-   **two or three** web lookups on the semantics a finding actually
-   turns on. The ladder and the SQL are in
+   `appeon_*` tools does not prove that the index is absent.** The shared
+   database is normally at `%USERPROFILE%\.pb-appeon-index\index.db`, and
+   the server is only a wrapper over it. Query it directly when it exists.
+   Otherwise spend **two or three** web lookups on the semantics a finding
+   actually depends on. The ladder and SQL are in
    [`appeon-query`](../appeon-query/SKILL.md) under *What to do when the
-   index isn't available* — follow it there rather than improvising,
-   and budget the web tier: the handful of behaviours your findings
-   depend on, not background reading.
+   index isn't available*. Follow it rather than improvising, and limit the
+   web tier to the behaviors the finding depends on.
 
    What you look up becomes `evidence: verified-in-docs` with the
    citation. What you cannot check becomes `evidence:

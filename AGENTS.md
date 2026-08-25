@@ -7,13 +7,10 @@ guide for *using* the dev kit on a PowerBuilder project: that is the
 [README](README.md) and [`docs/install.md`](docs/install.md).
 
 > **Were you asked to install this kit into someone's PowerBuilder project?**
-> Then you are in the wrong file, and the right one is
-> [README.md § Agents: setting this up in a PowerBuilder project](README.md#agents-setting-this-up-in-a-powerbuilder-project).
-> It is a checklist with a check at every step. The short of it: from the
-> root of their project, run
-> `uvx --from git+https://github.com/restoresrl/pb-ai-code pb-ai-code install`,
-> verify with `pb-ai-code status --json`, and tell them to restart you so the
-> MCP servers and the skill list are picked up.
+> Then you are in the wrong file. Follow
+> [`docs/agent-setup.md`](docs/agent-setup.md), which covers the machine setup,
+> optional PB Search database, project installation, verification, and restart.
+> Do not assume that `uv` or the persistent commands are already installed.
 >
 > Everything below is about editing *this* repository instead.
 
@@ -48,21 +45,15 @@ harness/<harness>/        per-assistant config (e.g. Claude Code
                           permissions)
 docs/                     the knowledge base (see below)
 tools/                    two local Python tools
-scripts/install-skills.ps1
-.mcp.json                 the one required MCP server, wired through uvx
+scripts/install-skills.ps1 legacy compatibility installer; not for consumers
 ```
 
-`.mcp.json` deliberately carries only `pb-orca`. The optional Appeon index
-needs a Python environment and a database that a fresh clone does not have, so
-it is documented in [`docs/install.md`](docs/install.md) rather than shipped —
-a committed config should not contain an entry that cannot start.
-
 Generated, **gitignored**, never hand-edited: `.claude/`, `.cursor/`,
-and anything else an install produces. The installer materializes the
-canonical files into the layout a given assistant reads. **Edit
-`skills/` and `commands/`, then re-run
-`scripts/install-skills.ps1`** — a fix applied to a generated copy is
-lost on the next install.
+`.agents/`, `.mcp.json`, and anything else an install produces. The installer
+materializes the canonical files into the layout a given assistant reads.
+**Edit `skills/` and `commands/`, then run `pb-ai-code install` against the
+consumer target.** A fix applied to a generated copy is lost on the next
+install. `scripts/install-skills.ps1` remains only for compatibility testing.
 
 `docs/` holds three things: `pb-source-format/` (a wiki on the textual
 layout of each `.sr*` entry type, grown incrementally as cases are

@@ -78,7 +78,9 @@ def _default_db() -> Path:
     return Path.home() / ".pb-appeon-index" / "index.db"
 
 
-_DEFAULT_CACHE = Path(".appeon-cache")
+def _default_cache() -> Path:
+    """Keep the scraper cache with the shared database, not a project cwd."""
+    return Path.home() / ".pb-appeon-index" / "cache"
 
 
 def _resolve_versions(cfg: Config, slug: str | None, all_flag: bool) -> list[VersionConfig]:
@@ -158,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def _add_path_args(p: argparse.ArgumentParser, with_db: bool = True) -> None:
         p.add_argument("--config", default=str(_default_config()))
-        p.add_argument("--cache", default=str(_DEFAULT_CACHE))
+        p.add_argument("--cache", default=str(_default_cache()))
         if with_db:
             p.add_argument("--db", default=str(_default_db()))
 

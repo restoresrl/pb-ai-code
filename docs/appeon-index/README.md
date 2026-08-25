@@ -55,8 +55,8 @@ ahead of related pages like `SetLeftMargin`.
 ## Multi-version
 
 A single SQLite DB holds every indexed version; rows are
-distinguished by the `version` column. Adding a new version is a
-TOML edit (no code change):
+distinguished by the `version` column. Maintainers add a new version with a
+TOML edit:
 
 ```toml
 # tools/pb-appeon-index/config.toml
@@ -79,21 +79,24 @@ The full list of slugs Appeon currently publishes (verified
 For a normal installation, install the kit as a persistent tool:
 
 ```pwsh
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.9.2
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.0
 ```
 
 Then build the shared machine-local database:
 
 ```pwsh
-# One-shot: scrape + parse + index for the default version
-pb-appeon-index update --db "$HOME\.pb-appeon-index\index.db"
+# One-shot: scrape, parse, and index the default version
+pb-appeon-index update
 
-# Rebuild a specific version (idempotent — safe to re-run)
-pb-appeon-index update --version pb2022r3 --db "$HOME\.pb-appeon-index\index.db"
+# Rebuild a specific configured version
+pb-appeon-index update --version pb2022r3
 
 # Re-index every configured version
-pb-appeon-index update --all --db "$HOME\.pb-appeon-index\index.db"
+pb-appeon-index update --all
 ```
+
+These commands use the default shared database at
+`%USERPROFILE%\.pb-appeon-index\index.db`.
 
 When developing this repository itself, an editable environment also works:
 `uv venv` followed by `uv pip install -e ".[dev]"`.
@@ -109,8 +112,8 @@ Inputs and outputs:
 | Path | Contents | Gitignored? |
 |---|---|---|
 | `tools/pb-appeon-index/config.toml` | version list + scraper settings | no: committed |
-| `.appeon-cache/<slug>/...html` | raw HTML mirror, one file per page | **yes** |
-| `.appeon-cache/<slug>/.etag.json` | per-URL ETag/Last-Modified cache | **yes** |
+| `~/.pb-appeon-index/cache/<slug>/...html` | raw HTML mirror, one file per page | outside the repository |
+| `~/.pb-appeon-index/cache/<slug>/.etag.json` | per-URL ETag/Last-Modified cache | outside the repository |
 | `~/.pb-appeon-index/index.db` | SQLite FTS5 database | outside the repository |
 | `docs/appeon-index/README.md` | this file | no: committed |
 
@@ -120,8 +123,8 @@ Inputs and outputs:
 > database is never shipped. That is deliberate: the PowerBuilder manuals
 > reserve reproduction rights, so a built index attached to a release would
 > need Appeon's written permission. A drafted request for exactly that is in
-> [`redistribution-request.md`](redistribution-request.md): unsent, and
-> nothing changes until it is answered.
+> [`redistribution request`](../internal/appeon-index-redistribution-request.md):
+> unsent, and nothing changes until it is answered.
 
 **The installer configures this server for you** once the index exists.
 It resolves the machine-local database to an absolute path and writes it into
@@ -134,30 +137,30 @@ It prints `Appeon index      <db path>` and records the decision in the
 marker as `# Appeon:    pb-appeon-index configured -> <db path>`, or names
 what is missing if you have not built it yet.
 
-The block it writes looks like this: worth reading if you are wiring up
-a client the installer does not know about:
+The block uses `uvx` to start the same release that installed the project,
+and it records the absolute path of the shared database:
 
 ```jsonc
 {
   "mcpServers": {
     "pb-appeon-index": {
-      "command": "C:\\path\\to\\pb-ai-code\\.venv\\Scripts\\python.exe",
-      "args": ["-m", "pb_appeon_index", "serve-mcp"],
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/restoresrl/pb-ai-code@v0.11.0",
+        "pb-appeon-index",
+        "serve-mcp"
+      ],
       "env": {
-        "PB_APPEON_INDEX_DB": "C:\\path\\to\\pb-ai-code\\docs\\appeon-index\\index.db"
+        "PB_APPEON_INDEX_DB": "C:\\Users\\me\\.pb-appeon-index\\index.db"
       }
     }
   }
 }
 ```
 
-On macOS or Linux the interpreter is `.venv/bin/python`.
-
-Relative paths do work when the client launches servers with the
-repository as their working directory, the server itself falls back to
-`./docs/appeon-index/index.db` on that assumption, but which clients do
-that is not something to rely on. Absolute paths cost nothing and remove
-the question, which is why the installer writes them.
+The project does not need a checkout or a Python virtual environment. Absolute
+paths keep the server independent of the MCP client's working directory.
 
 Where the block goes depends on the client:
 [`docs/install.md`](../install.md) has the table.
@@ -170,11 +173,12 @@ ordinary MCP tools.
 
 Steps the day a new PB release lands on `docs.appeon.com`:
 
-1. Add a `[[versions]]` entry in `config.toml` with the new slug.
-2. `pb-appeon-index update --version <new-slug>`: fetches only the
-   new pages, leaves existing versions untouched.
-3. Commit the updated `config.toml`. The `index.db` is gitignored;
-   each developer rebuilds locally.
+1. Add a `[[versions]]` entry in `config.toml` with the new slug when
+   contributing to this repository.
+2. `pb-appeon-index update --version <new-slug>` fetches only the new pages
+   and leaves existing versions untouched.
+3. Each developer rebuilds the local database. It is not committed or
+   redistributed.
 
 To refresh an existing version (e.g. Appeon edited a function page),
 re-run the same `update --version <slug>`; conditional GETs make it

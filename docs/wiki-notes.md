@@ -127,8 +127,8 @@ written yet is how you get a tool that fits nothing.
    one it is a test the next reader can run.
 5. Update the page's `status` in its frontmatter if it moved: `stub` →
    `seeded` → `populated`.
-6. Re-run `scripts/install-skills.ps1` wherever the kit is installed, so
-   the projects get what was learned.
+6. Re-run `pb-ai-code install` in each project that should receive the
+   updated knowledge bundle.
 
 ## How to use a note well
 

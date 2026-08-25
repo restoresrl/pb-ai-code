@@ -1,13 +1,13 @@
 # `harness/`
 
 Configuration that is *about* an assistant rather than about PowerBuilder.
-Nothing here is read by any tool in place: `scripts/install-skills.ps1`
+Nothing here is read by any tool in place. `pb-ai-code install`
 materializes these files into the locations a given assistant expects, the
 same way it does for `skills/` and `commands/`.
 
 | File | Materialized as | Scope |
 | --- | --- | --- |
-| `mcp-servers.json` | `<target>/.mcp.json` (`--harness claude-code`) or `<target>/.agents/mcp.json` (`--harness generic`) | Claude Code and Cursor take this JSON as written; other clients need it translated: see below |
+| `mcp-servers.json` | `<target>/.mcp.json` for either supported harness | Claude Code reads this JSON as written; other clients may need it translated |
 | `claude-code/settings.json` | `<target>/.claude/settings.json` | Claude Code only |
 
 `mcp-servers.json` sits at the top level, not under `claude-code/`, because it
@@ -24,9 +24,9 @@ it. Claude Code and Cursor take this object as written. Codex CLI wants TOML,
 and calls the environment key `environment`. Continue is YAML with a `name`
 field inside the entry. Aider has no MCP at all.
 
-The installer writes the neutral JSON form for both supported layouts. For
-`generic` it always uses `<target>/.agents/mcp.json`; clients that require a
-different dialect still need the values translated into their own config.
+The installer writes the neutral JSON form to `<target>/.mcp.json` for both
+supported layouts. Clients that require another dialect still need the values
+translated into their own configuration.
 
 ## Why the installer writes the MCP config at all
 
@@ -41,9 +41,9 @@ So a project using this kit commits **nothing** agentic: no `.claude/`, no
 synchronization step, and it updates the skills and the server pin together,
 so the two cannot drift apart.
 
-That applies to this repository too: its own root `.mcp.json` is generated
-and gitignored, exactly like `.claude/`. Edit it here, then re-run
-`scripts\install-skills.ps1`.
+That applies to this repository too: its root `.mcp.json` is generated and
+gitignored. Edit the canonical harness files, then run `pb-ai-code install`
+against the target you want to update.
 
 ## Changing the pin
 

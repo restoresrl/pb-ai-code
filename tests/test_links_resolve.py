@@ -20,10 +20,9 @@ it was the mechanism by which the check could silently no-op, and a check whose
 entire job is to catch what only appears post-install has no business skipping
 itself (`docs/cli-port-spec.md` §6).
 
-`scripts/install-skills.ps1` stays in the tree for one more release
-(cli-port-spec §7) and is still what `README.md` and `docs/install.md` tell a
-consumer to run, so it keeps a guard of its own — the third test, which pins
-the one thing about it that can rot while it sits there frozen.
+`scripts/install-skills.ps1` remains as a legacy compatibility tool. It is not
+a supported consumer path, but it keeps a guard of its own: the third test pins
+the knowledge-base behavior that can rot while the script remains in the tree.
 
 Links inside fenced code blocks are ignored: those illustrate generated output
 — a plan file's `([plan](.pb-review/…))` bullets, for instance — and are not
@@ -193,19 +192,16 @@ def test_installed_layout_has_no_dead_links(
 
 
 def test_frozen_powershell_installer_still_copies_the_same_knowledge_base() -> None:
-    """`scripts/install-skills.ps1` is frozen, which is not the same as safe.
+    """The legacy script is unsupported, but still needs a payload guard.
 
-    It stays in the tree for one release (cli-port-spec §7) and consumers are
-    still pointed at it, but nothing drives it any more — so the one way it can
-    rot is invisible. The links the tests above check are made by the
-    *payload*: a documentation tree added under `docs/` reaches the CLI through
-    `plan.DOC_TREES` and the script through a literal of its own (ps1:118-126),
-    and updating the first without the second gives every bundle the script
-    installs a fresh set of dead links. That is the 2026-08 incident exactly.
+    The links the tests above check are made by the packaged payload. A
+    documentation tree added under `docs/` reaches the CLI through
+    `plan.DOC_TREES` and the script through a literal of its own. Updating the
+    first without the second would give every bundle the script installs dead
+    links.
 
-    Grepping a frozen file is a poor test in general and the right one here: it
-    costs nothing, it cannot silently no-op, and it goes red the day the script
-    is deleted — which is the day to delete this test with it.
+    Grepping a legacy file is appropriate here. The test costs little, cannot
+    silently skip, and should be deleted with the script.
     """
     script = REPO_ROOT / "scripts" / "install-skills.ps1"
     assert script.is_file(), (

@@ -13,6 +13,26 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-25
+
+### Changed
+
+- Reorganized installation documentation around machine setup, project setup,
+  updates, and a separate procedure for coding agents.
+- Moved internal porting and bootstrap plans under `docs/internal/` so they do
+  not appear as user installation guides.
+- Updated PB Search guidance to use the shared user database and persistent
+  commands instead of a local checkout.
+- Moved the PB Search scraper cache into the shared user directory instead of
+  the directory from which the command runs.
+
+## [0.10.0] - 2026-08-25
+
+### Changed
+
+- Added a root README quick start for persistent commands, PB Search, project
+  installation, and updates.
+
 ## [0.9.2] - 2026-08-25
 
 ### Changed
