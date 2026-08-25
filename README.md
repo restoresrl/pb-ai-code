@@ -18,13 +18,20 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/) once:
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Open a new terminal, then install this release:
+Open a new terminal, then install this release and check that both commands
+are available:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.0
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.1
 pb-ai-code --version
 pb-appeon-index --help
 ```
+
+The `@v0.11.1` suffix pins the install to that release. If you omit it, `uv`
+installs the repository's default branch, not GitHub's latest release. The two
+checks do not change anything: `pb-ai-code --version` prints the installed kit
+version, and `pb-appeon-index --help` verifies the optional PB Search command
+without downloading documentation.
 
 Build the optional PB Search database once. It is shared by every project for
 this Windows user:
@@ -67,12 +74,13 @@ Install a newer release globally, then rerun the project install in every
 project that should receive it:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.0
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.1
 pb-ai-code install --target C:\Projects\MyPowerBuilderApp
 ```
 
-Replace `v0.11.0` with the release tag you want. Refresh PB Search separately
-when needed:
+Replace `v0.11.1` with the release tag you want. Keep the tag unless you
+intentionally want the current default branch instead of a release. Refresh PB
+Search separately when needed:
 
 ```powershell
 pb-appeon-index update --all

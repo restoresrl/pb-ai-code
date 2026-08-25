@@ -38,15 +38,26 @@ uv --version
 Install a release as a persistent `uv` tool:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.0
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.11.1
 ```
 
-This exposes these commands for the current user:
+The `@v0.11.1` part is a Git tag, not a decoration. It makes the install
+repeatable: every machine gets the same released code. If you leave the tag
+off, `uv` installs the repository's default branch, which may be newer than the
+latest GitHub release.
+
+Then check the two commands the tool install puts on the current user's
+`PATH`:
 
 ```powershell
 pb-ai-code --version
 pb-appeon-index --help
 ```
+
+`pb-ai-code --version` confirms which kit version PowerShell can run.
+`pb-appeon-index --help` only prints help; it does not download documentation
+or create the PB Search database. It is there to catch a `PATH` problem before
+you run the longer index build.
 
 If either command is not found, open a new PowerShell or Command Prompt. If it
 is still not found, run `uv tool dir --bin` to find the executable directory
@@ -166,13 +177,14 @@ Updating has two independent parts.
 Install the desired release globally, then install it in each project:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.0
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.11.1
 pb-ai-code install --target C:\Projects\MyApp
 ```
 
-Replace `v0.11.0` with the release tag you chose. Re-run the last command for
-every project that should receive that release. The marker file records the
-installed source and `pb-ai-code status` displays it.
+Replace `v0.11.1` with the release tag you chose. Do not omit the tag unless
+you deliberately want the current default branch instead of a released version.
+Re-run the last command for every project that should receive that release. The
+marker file records the installed source and `pb-ai-code status` displays it.
 
 ### Update PB Search
 
@@ -191,7 +203,7 @@ if it has the server open.
 Use `uvx` if you cannot or do not want to install persistent commands:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.0 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
   pb-ai-code install --target C:\Projects\MyApp --pb-version 22.0
 ```
 
@@ -199,7 +211,7 @@ This installs the project bundle but does not make `pb-ai-code` available in
 future terminals. Build PB Search with the same one-off form if required:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.0 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
   pb-appeon-index update --all
 ```
 

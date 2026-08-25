@@ -140,7 +140,7 @@ pb-appeon-index update --all
 If the command is not installed persistently, the user can run:
 
 ```pwsh
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.0 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.11.1 `
   pb-appeon-index update --all
 ```
 

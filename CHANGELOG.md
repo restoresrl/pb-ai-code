@@ -13,6 +13,14 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-08-25
+
+### Changed
+
+- Updated installation examples to pin `pb-ai-code` at `v0.11.1`.
+- Clarified why the install command uses a release tag, and what the initial
+  `pb-ai-code --version` and `pb-appeon-index --help` checks prove.
+
 ## [0.11.0] - 2026-08-25
 
 ### Changed
