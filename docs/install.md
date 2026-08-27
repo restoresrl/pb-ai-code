@@ -38,10 +38,10 @@ uv --version
 Install a release as a persistent `uv` tool:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.2
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.13.0
 ```
 
-The `@v0.12.2` part is a Git tag, not a decoration. It makes the install
+The `@v0.13.0` part is a Git tag, not a decoration. It makes the install
 repeatable: every machine gets the same released code. If you leave the tag
 off, `uv` installs the repository's default branch, which may be newer than the
 latest GitHub release.
@@ -207,13 +207,27 @@ Run this without an installed project to update only the persistent tool. A
 project with no marker is not changed; use `pb-ai-code install` to configure it
 for the first time.
 
-### Check without changing anything
+### Session preflight and update checks
+
+Run this before starting assistant work, either manually or from a client
+startup hook:
+
+```powershell
+pb-ai-code session-start
+```
+
+It reports the installed project bundle, checks the latest stable GitHub
+Release, and asks before running `pb-ai-code update`. Use `--json` when a hook
+or wrapper wants machine-readable output without prompts, and `--refresh` to
+bypass the 24-hour local cache.
+
+For a read-only update check, use:
 
 ```powershell
 pb-ai-code update --check
 ```
 
-For an agent or another program, use the JSON form:
+For an agent, hook, or another program, use the JSON form:
 
 ```powershell
 pb-ai-code update --check --json
@@ -221,17 +235,12 @@ pb-ai-code update --check --json
 
 The response contains `update_available`, `global_update_available`, and, for
 an installed project, `project_update_available`. Checks use GitHub Releases,
-not the default Git branch. A successful check is cached in the current user's
-local data directory for 24 hours; use `--refresh` to bypass the cache:
+not the default Git branch.
 
-```powershell
-pb-ai-code update --check --refresh
-```
-
-The generated `AGENTS.md` tells an agent to run the JSON check once at the
-start of a session. If an update is available, it must offer the update and
-wait for the user's approval. It must not update the user's global tool or the
-project automatically.
+The generated `AGENTS.md` does not tell the model to run these checks at the
+start of a session. If you want a true startup preflight, add a hook in your
+assistant client that runs `pb-ai-code session-start`, or ask the local agent to
+create one for its harness after you approve the change.
 
 ### Pin a particular release
 
@@ -239,11 +248,11 @@ To install a specific release instead of the latest published release, use its
 tag explicitly and then install it in each project:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.12.2
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.13.0
 pb-ai-code install --target C:\Projects\MyApp
 ```
 
-Replace `v0.12.2` with the release tag you chose. Do not omit the tag unless
+Replace `v0.13.0` with the release tag you chose. Do not omit the tag unless
 you deliberately want the current default branch instead of a released version.
 Re-run the last command for every project that should receive that release. The
 marker file records the installed source and `pb-ai-code status` displays it.
@@ -271,7 +280,7 @@ if it has the server open.
 Use `uvx` if you cannot or do not want to install persistent commands:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.2 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.13.0 `
   pb-ai-code install --target C:\Projects\MyApp --pb-version pb2022r3
 ```
 
@@ -279,7 +288,7 @@ This installs the project bundle but does not make `pb-ai-code` available in
 future terminals. Build PB Search with the same one-off form if required:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.2 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.13.0 `
   pb-ai-code search setup
 ```
 

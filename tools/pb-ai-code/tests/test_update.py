@@ -49,6 +49,87 @@ def test_check_rejects_non_release_tags() -> None:
     assert update._release_from_payload(release_payload("v0.11.2rc1")) is None
 
 
+def test_session_start_json_reports_preflight_without_updating(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    latest = update._release_from_payload(release_payload())
+    assert latest is not None
+    monkeypatch.setattr(
+        update,
+        "check",
+        lambda version, refresh: update.CheckResult(version, latest, True, False),
+    )
+    calls: list[list[str]] = []
+    monkeypatch.setattr(update, "run", lambda command: calls.append(command) or 0)
+
+    assert cli.main(["session-start", "--target", str(tmp_path), "--json"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["installed"] is False
+    assert payload["latest_tag"] == "v0.11.2"
+    assert payload["global_update_available"] is True
+    assert payload["update_available"] is True
+    assert calls == []
+
+
+def test_session_start_can_launch_an_approved_update(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    latest = update._release_from_payload(release_payload())
+    assert latest is not None
+    monkeypatch.setattr(
+        update,
+        "check",
+        lambda version, refresh: update.CheckResult(version, latest, True, False),
+    )
+    calls: list[list[str]] = []
+    monkeypatch.setattr(cli, "_windows_self_update", lambda: False)
+    monkeypatch.setattr(update, "run", lambda command: calls.append(command) or 0)
+
+    assert cli.main(["session-start", "--target", str(tmp_path), "--yes"]) == 0
+
+    assert calls == [update.global_install_command(latest)]
+    output = capsys.readouterr().out
+    assert "pb-ai-code session preflight" in output
+    assert "Update available: 0.11.2" in output
+
+
+def test_session_start_reports_project_marker(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    target = tmp_path / "project"
+    target.mkdir()
+    marker_path = target / ".agents" / "_installed-from-pb-ai-code.txt"
+    marker_path.parent.mkdir()
+    marker_path.write_text(
+        "\n".join(
+            [
+                "# Version:   0.11.1",
+                "# Harness:   generic",
+                "# PB:        pb2022r3",
+                f"# MCP:       {report.MCP_MARKER_SKIPPED}",
+                "# Appeon:    not configured",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    latest = update._release_from_payload(release_payload("v0.11.1"))
+    assert latest is not None
+    monkeypatch.setattr(
+        update,
+        "check",
+        lambda version, refresh: update.CheckResult(version, latest, False, False),
+    )
+
+    assert cli.main(["session-start", "--target", str(target), "--json"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["installed"] is True
+    assert payload["project_version"] == "0.11.1"
+    assert payload["pb_release"] == "pb2022r3"
+    assert payload["mcp"] == report.MCP_MARKER_SKIPPED
+
+
 def test_update_check_json_reports_an_available_release(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -13,6 +13,21 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-27
+
+### Added
+
+- Added `pb-ai-code session-start` as an explicit startup preflight for humans,
+  wrappers, or client hooks. It reports the installed bundle, checks for a newer
+  release, and asks before running `pb-ai-code update`.
+
+### Changed
+
+- Generated project instructions no longer tell the model to run the update
+  check at the start of a session. Startup checks now belong in
+  `pb-ai-code session-start`, so clients can run them before the first user
+  request instead of during the first answer.
+
 ## [0.12.2] - 2026-08-27
 
 ### Changed

@@ -6,6 +6,7 @@ Subcommands::
             [--skills-dir REL] [--commands-dir REL]
             [--skip-mcp-config] [--dry-run]
     status  [--target PATH] [--json]
+    session-start [--target PATH] [--json] [--refresh] [--yes]
     search  {setup,status,update} [--db PATH]
     update  [--target PATH] [--check] [--json] [--refresh] [--yes]
 
@@ -745,6 +746,149 @@ def _confirm_update() -> bool:
         return False
 
 
+def _session_project_payload(
+    *,
+    target: Path,
+    marker_path: Path | None,
+    fields: marker_mod.MarkerFields | None,
+    running_version: str,
+) -> dict[str, object]:
+    if fields is None or marker_path is None:
+        return {
+            "installed": False,
+            "target": str(target),
+            "marker_path": None,
+            "project_version": None,
+            "project_update_available": False,
+            "pb_release": None,
+            "mcp": None,
+            "appeon": None,
+        }
+    return {
+        "installed": True,
+        "target": str(target),
+        "marker_path": str(marker_path),
+        "project_version": fields.version,
+        "project_update_available": fields.version is not None
+        and fields.version != running_version,
+        "pb_release": fields.pb_version,
+        "mcp": fields.mcp,
+        "appeon": fields.appeon,
+    }
+
+
+def _print_session_start_report(
+    *,
+    target: Path,
+    marker_path: Path | None,
+    fields: marker_mod.MarkerFields | None,
+    running_version: str,
+    checked: update_mod.CheckResult | None,
+    check_error: str | None,
+) -> None:
+    print("pb-ai-code session preflight")
+    print(f"Target: {target}")
+    if fields is None or marker_path is None:
+        print("Project bundle: not installed")
+    else:
+        up_to_date = fields.version is not None and fields.version == running_version
+        state = "current" if up_to_date else "stale or unknown"
+        print(f"Project bundle: {fields.version or _UNKNOWN} ({state})")
+        print(f"Marker: {marker_path.relative_to(target)}")
+        print(f"PowerBuilder release: {fields.pb_version or _UNKNOWN}")
+        print(f"MCP: {fields.mcp or _UNKNOWN}")
+        print(f"Appeon index: {fields.appeon or _UNKNOWN}")
+    print(f"Running tool: {running_version}")
+    if check_error is not None:
+        print(f"Update check unavailable: {check_error}")
+    elif checked is not None and checked.update_available:
+        print(f"Update available: {checked.latest.version} ({checked.latest.tag})")
+    elif checked is not None:
+        cache = " from cache" if checked.from_cache else ""
+        print(f"Update: none; latest is {checked.latest.version}{cache}")
+
+
+def _confirm_session_update(latest_tag: str) -> bool:
+    if not sys.stdin.isatty():
+        print(f"Run `pb-ai-code update --refresh` later to install {latest_tag}.")
+        return False
+    try:
+        return input(
+            f"Run pb-ai-code update to install {latest_tag} before continuing? [y/N] "
+        ).strip().lower() in {
+            "y",
+            "yes",
+        }
+    except EOFError:
+        return False
+
+
+def _cmd_session_start(args: argparse.Namespace) -> int:
+    """Run explicit startup checks for a human, hook, or local assistant."""
+    target = plan_mod.validate_target(args.target)
+    marker_path = marker_mod.find(target)
+    fields = (
+        marker_mod.parse(marker_path.read_text(encoding="utf-8-sig"))
+        if marker_path is not None
+        else None
+    )
+    running_version = provenance_mod.distribution_version()
+    checked: update_mod.CheckResult | None = None
+    check_error: str | None = None
+    try:
+        checked = update_mod.check(running_version, refresh=bool(args.refresh))
+    except update_mod.UpdateCheckError as exc:
+        check_error = str(exc)
+
+    project = _session_project_payload(
+        target=target,
+        marker_path=marker_path,
+        fields=fields,
+        running_version=running_version,
+    )
+    payload: dict[str, object] = {
+        "running_version": running_version,
+        "check_error": check_error,
+        **project,
+    }
+    if checked is not None:
+        payload.update(
+            _update_check_payload(
+                checked,
+                project_version=fields.version if fields is not None else None,
+            )
+        )
+    else:
+        payload["update_available"] = bool(project["project_update_available"])
+
+    if args.json:
+        print(json.dumps(payload, indent=2))
+        return EXIT_OK
+
+    _print_session_start_report(
+        target=target,
+        marker_path=marker_path,
+        fields=fields,
+        running_version=running_version,
+        checked=checked,
+        check_error=check_error,
+    )
+    update_available = bool(payload["update_available"])
+    if not update_available:
+        return EXIT_OK
+    if args.yes or (checked is not None and _confirm_session_update(checked.latest.tag)):
+        return _cmd_update(
+            argparse.Namespace(
+                target=args.target,
+                check=False,
+                json=False,
+                refresh=args.refresh,
+                yes=True,
+            )
+        )
+    return EXIT_OK
+
+
 def _cmd_update(args: argparse.Namespace) -> int:
     """Check a release, then update the persistent tool and installed project."""
     target = plan_mod.validate_target(args.target)
@@ -905,6 +1049,32 @@ def build_parser() -> argparse.ArgumentParser:
         help="machine-readable form on stdout, and nothing else",
     )
     p_status.set_defaults(func=_cmd_status)
+
+    p_session = sub.add_parser(
+        "session-start",
+        help="run startup preflight checks without relying on agent instructions",
+    )
+    p_session.add_argument(
+        "--target",
+        default=_DEFAULT_TARGET,
+        help="installed project to inspect before a session starts (default: .)",
+    )
+    p_session.add_argument(
+        "--json",
+        action="store_true",
+        help="machine-readable preflight result; never prompts or updates",
+    )
+    p_session.add_argument(
+        "--refresh",
+        action="store_true",
+        help="ignore the 24-hour local release-check cache",
+    )
+    p_session.add_argument(
+        "--yes",
+        action="store_true",
+        help="perform an available update without asking for confirmation",
+    )
+    p_session.set_defaults(func=_cmd_session_start)
 
     p_update = sub.add_parser(
         "update",

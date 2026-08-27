@@ -7,7 +7,7 @@ setup walkthrough.
 ## Commands
 
 ```text
-pb-ai-code [--version] {install,status,update}
+pb-ai-code [--version] {install,status,session-start,update}
 pb-appeon-index {scrape,build,update,search,serve-mcp,versions}
 ```
 
@@ -42,6 +42,24 @@ pb-ai-code status [--target PATH] [--json]
 
 `--json` writes only machine-readable status to standard output. The command
 reads the marker created during installation and does not contact the network.
+
+### `pb-ai-code session-start`
+
+```text
+pb-ai-code session-start [--target PATH] [--json] [--refresh] [--yes]
+```
+
+Runs the explicit preflight meant for a human, wrapper script, or client
+startup hook. It reports the installed project bundle, checks GitHub Releases,
+and asks before delegating to `pb-ai-code update` when an update is available.
+`--json` prints the preflight payload and never prompts or updates.
+
+| Option | Effect |
+| --- | --- |
+| `--target PATH` | Project to inspect. Defaults to the current directory. |
+| `--json` | Machine-readable result; make no changes. |
+| `--refresh` | Ignore the successful 24-hour local release-check cache. |
+| `--yes` | Run an available update without asking again. |
 
 ### `pb-ai-code update`
 

@@ -50,7 +50,7 @@ If `uv` exists but either persistent command is missing, ask before installing
 this release for the current user:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.2
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.13.0
 ```
 
 Open a new terminal if needed, then verify:
@@ -103,7 +103,7 @@ If the persistent command is unavailable, replace the command in either example
 with:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.2 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.13.0 `
   pb-ai-code install
 ```
 
@@ -120,7 +120,7 @@ pb-ai-code status --target C:\Projects\MyApp --json
 For a one-off install:
 
 ```powershell
-uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.12.2 `
+uvx --from git+https://github.com/restoresrl/pb-ai-code@v0.13.0 `
   pb-ai-code status --target C:\Projects\MyApp --json
 ```
 
@@ -139,23 +139,28 @@ If the project already has an `AGENTS.md`, the installer leaves it unchanged
 and prints the PowerBuilder version note to add manually. Report that result to
 the user instead of editing their instruction file without permission.
 
-## 6. Check for updates at the start of a later session
+## 6. Set up an optional session preflight
 
-When an agent begins work in an installed project, run this once per session:
+Do not put an automatic update check into `AGENTS.md`: the model would run it
+while answering the user's first request, which makes the conversation start
+with unrelated maintenance output.
+
+Instead, offer this command as the preflight to run before assistant work:
 
 ```powershell
-pb-ai-code update --check --json
+pb-ai-code session-start
 ```
 
-The result is cached for 24 hours and changes neither the machine nor the
-project. If `update_available` is `true`, tell the user which release is
-available and offer to run `pb-ai-code update`. Do not run that command until
-the user approves: it can update a persistent tool for the current Windows user
-and regenerate files in the project.
+It checks the installed bundle, looks for a newer GitHub Release, and asks
+before running `pb-ai-code update`. The result is cached for 24 hours unless
+`--refresh` is used. If the user's assistant client supports startup hooks,
+offer to create one that runs `pb-ai-code session-start`; do not create the
+hook without permission. If the client has no hook mechanism, tell the user to
+run the command manually when they start a session.
 
-Do not treat a failed check as a setup failure. Network access and GitHub may be
-unavailable; continue with the installed bundle and mention the check only if it
-matters to the requested work.
+Do not treat a failed update check as a setup failure. Network access and
+GitHub may be unavailable; continue with the installed bundle and mention the
+check only if it matters to the requested work.
 
 ## 7. Explain the client limitation and restart
 

@@ -278,6 +278,7 @@ def test_the_written_file_keeps_the_operating_rules_short(tmp_path: Path) -> Non
     assert "Do not edit files, import PowerBuilder objects" in written
     assert "The original request is not approval" in written
     assert "Treat questions about code as analysis only" in written
+    assert "update --check" not in written
     assert "## PowerBuilder workflow" in written
     assert "installed `pb-*` skills" in written
     assert "configured `pb_*` ORCA tools" in written

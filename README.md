@@ -22,12 +22,12 @@ Open a new terminal, then install this release and check that both commands
 are available:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.2
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.13.0
 pb-ai-code --version
 pb-appeon-index --help
 ```
 
-The `@v0.12.2` suffix pins the install to that release. If you omit it, `uv`
+The `@v0.13.0` suffix pins the install to that release. If you omit it, `uv`
 installs the repository's default branch, not GitHub's latest release. The two
 checks do not change anything: `pb-ai-code --version` prints the installed kit
 version, and `pb-appeon-index --help` verifies the optional PB Search command
@@ -103,15 +103,25 @@ pb-ai-code update --check
 ```
 
 The release check uses GitHub Releases and is cached locally for 24 hours. Use
-`--refresh` when you need a fresh result. The installed project instructions
-ask an agent to check once at the start of a session and propose this command
-when an update is available; the agent must not run it without approval.
+`--refresh` when you need a fresh result.
+
+To run startup checks before an assistant session, use:
+
+```powershell
+pb-ai-code session-start
+```
+
+That command reports the installed bundle, checks for updates, and asks before
+running `pb-ai-code update`. Run it manually, wire it into a client startup
+hook, or ask your local assistant to create a hook for its harness. The
+generated `AGENTS.md` does not trigger the preflight automatically, because
+that would make the first answer about updates instead of the user's request.
 
 To select a particular release instead, install its tag explicitly and then
 refresh each project that should receive it:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.12.2
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.13.0
 pb-ai-code install --target C:\Projects\MyPowerBuilderApp
 ```
 

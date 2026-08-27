@@ -171,11 +171,7 @@ def _lines(facts: WorkspaceFacts) -> list[str]:
         "- Never edit or delete files under `ws_objects/`; PowerBuilder owns it.",
         "- Never edit or replace a `.pbl` file directly.",
         "- Read the PowerBuilder release before opening an ORCA session; use its",
-        "  derived ORCA token stated above."
-        "- At the start of a session, run `pb-ai-code update --check --json` once.",
-        "  If it reports `update_available: true`, tell the user and offer to run",
-        "  `pb-ai-code update`; never update the machine or this project without",
-        "  the user's approval.",
+        "  derived ORCA token stated above.",
     ]
     return out
 
