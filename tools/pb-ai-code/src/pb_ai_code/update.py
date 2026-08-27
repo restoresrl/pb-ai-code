@@ -92,7 +92,11 @@ def _release_from_payload(payload: object) -> Release | None:
     return Release(
         tag=tag,
         version=tag[1:],
-        number=tuple(int(match.group(name)) for name in ("major", "minor", "patch")),
+        number=(
+            int(match.group("major")),
+            int(match.group("minor")),
+            int(match.group("patch")),
+        ),
         url=url if isinstance(url, str) else None,
     )
 
@@ -153,7 +157,11 @@ def _version_number(version: str) -> tuple[int, int, int] | None:
     match = _VERSION_RE.match(version)
     if match is None:
         return None
-    return tuple(int(match.group(name)) for name in ("major", "minor", "patch"))
+    return (
+        int(match.group("major")),
+        int(match.group("minor")),
+        int(match.group("patch")),
+    )
 
 
 def check(running_version: str, *, refresh: bool = False) -> CheckResult:

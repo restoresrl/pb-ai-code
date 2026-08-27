@@ -22,12 +22,12 @@ Open a new terminal, then install this release and check that both commands
 are available:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.1
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.2
 pb-ai-code --version
 pb-appeon-index --help
 ```
 
-The `@v0.12.1` suffix pins the install to that release. If you omit it, `uv`
+The `@v0.12.2` suffix pins the install to that release. If you omit it, `uv`
 installs the repository's default branch, not GitHub's latest release. The two
 checks do not change anything: `pb-ai-code --version` prints the installed kit
 version, and `pb-appeon-index --help` verifies the optional PB Search command
@@ -111,7 +111,7 @@ To select a particular release instead, install its tag explicitly and then
 refresh each project that should receive it:
 
 ```powershell
-uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.12.1
+uv tool install --force git+https://github.com/restoresrl/pb-ai-code@v0.12.2
 pb-ai-code install --target C:\Projects\MyPowerBuilderApp
 ```
 

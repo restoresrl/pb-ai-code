@@ -13,6 +13,18 @@ installer leaves in a target records which tag that was.
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-08-27
+
+### Changed
+
+- Generated project instructions now require read-only inspection and a scoped
+  plan before any change. Agents must wait for explicit user approval instead
+  of treating the initial request as permission to modify the project.
+
+### Fixed
+
+- Fixed strict type-checking failures in the update version parser.
+
 ## [0.12.1] - 2026-08-25
 
 ### Fixed

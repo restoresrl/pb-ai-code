@@ -102,6 +102,11 @@ Claude Code installation creates:
 The installer creates `AGENTS.md` only when the project has no existing file.
 It never rewrites an existing `AGENTS.md`.
 
+The generated file tells agents to inspect each request without changing the
+project. Before making a change, they must report their findings, propose a
+scoped plan, and wait for explicit approval. The initial request does not count
+as approval, even when it asks the agent to implement or fix something.
+
 All generated files are machine-local configuration. Keep them out of version
 control. The installer prints the relevant `.gitignore` entries. Re-run the
 installer to update a bundle; do not hand-edit an installed skill or knowledge

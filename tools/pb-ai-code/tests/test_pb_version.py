@@ -265,7 +265,7 @@ def test_an_svn_workspace_is_not_reported_as_unversioned(tmp_path: Path) -> None
     assert "Git source protection" not in written
 
 
-def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) -> None:
+def test_the_written_file_keeps_the_operating_rules_short(tmp_path: Path) -> None:
     """Stable operating rules belong here; detailed recovery guidance does not."""
     target = tmp_path / "target"
     target.mkdir()
@@ -273,13 +273,18 @@ def test_the_written_file_keeps_the_powerbuilder_workflow_short(tmp_path: Path) 
     assert run_install(target, "--pb-version", "pb2022r3").returncode == 0
 
     written = (target / "AGENTS.md").read_text(encoding="utf-8")
+    assert "## Approval before changes" in written
+    assert "Start every request about this project with read-only inspection" in written
+    assert "Do not edit files, import PowerBuilder objects" in written
+    assert "The original request is not approval" in written
+    assert "Treat questions about code as analysis only" in written
     assert "## PowerBuilder workflow" in written
     assert "installed `pb-*` skills" in written
     assert "configured `pb_*` ORCA tools" in written
     assert "Never edit or delete files under `ws_objects/`" in written
     assert "Never edit or replace a `.pbl` file directly" in written
     assert "pb-apply-plan" not in written
-    assert len(written.splitlines()) <= 30
+    assert len(written.splitlines()) <= 45
 
 
 def test_a_workspace_with_projection_and_git_records_both_facts(tmp_path: Path) -> None:

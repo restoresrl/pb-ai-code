@@ -16,7 +16,7 @@ new `PATH`; restart it before continuing.
 Install the persistent tool:
 
 ```powershell
-uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.1
+uv tool install git+https://github.com/restoresrl/pb-ai-code@v0.12.2
 ```
 
 Open a new terminal. If the commands are still unavailable, locate the tool
