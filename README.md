@@ -53,7 +53,7 @@ Run these commands from the project root, or provide `--target`:
 ```powershell
 cd C:\Projects\MyPowerBuilderApp
 pb-ai-code install --pb-version pb2022r3
-pb-ai-code status --json
+pb-ai-code status
 ```
 
 `pb2022r3` is the project's exact Appeon release slug. It selects the
